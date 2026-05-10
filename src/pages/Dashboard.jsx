@@ -1,74 +1,30 @@
 import { useState, useEffect, useRef } from 'react'
 import { getPersonas, getResumenAnio } from '../lib/supabase'
 import { estadoSocio, mesesPendientes, MESES_SHORT, formatMoney } from '../lib/helpers'
-import { Chart, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend } from 'chart.js'
+import {
+  Chart as ChartJS,
+  CategoryScale, LinearScale, BarElement,
+  ArcElement, Tooltip, Legend
+} from 'chart.js'
+import { Bar, Doughnut } from 'react-chartjs-2'
 
-Chart.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
 export default function Dashboard() {
   const [personas, setPersonas] = useState([])
   const [pagos, setPagos] = useState([])
   const [loading, setLoading] = useState(true)
-  const chartBarRef = useRef(null)
-  const chartPieRef = useRef(null)
-  const barInstance = useRef(null)
-  const pieInstance = useRef(null)
 
   useEffect(() => {
     Promise.all([
       getPersonas({ soloVigentes: true }),
       getResumenAnio(new Date().getFullYear())
     ]).then(([p, pg]) => {
-      setPersonas(p)
-      setPagos(pg)
+      setPersonas(p || [])
+      setPagos(pg || [])
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))
   }, [])
-
-  useEffect(() => {
-    if (loading || !chartBarRef.current || !chartPieRef.current) return
-
-    const ingrMes = MESES_SHORT.map((_, i) =>
-      pagos.filter(p => p.mes === i + 1).reduce((a, p) => a + (p.monto || 0), 0)
-    )
-
-    const alDia = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'al-dia').length
-    const morosos = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'moroso').length
-    const parcial = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'parcial').length
-
-    if (barInstance.current) barInstance.current.destroy()
-    barInstance.current = new Chart(chartBarRef.current, {
-      type: 'bar',
-      data: {
-        labels: MESES_SHORT,
-        datasets: [{ label: 'Ingresos', data: ingrMes, backgroundColor: '#2e7d52', borderRadius: 4 }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: { ticks: { callback: v => '$' + v.toLocaleString('es-CL') }, grid: { color: 'rgba(0,0,0,.05)' } },
-          x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 0, font: { size: 10 } } }
-        }
-      }
-    })
-
-    if (pieInstance.current) pieInstance.current.destroy()
-    pieInstance.current = new Chart(chartPieRef.current, {
-      type: 'doughnut',
-      data: {
-        labels: ['Al día', 'Moroso', 'Parcial'],
-        datasets: [{ data: [alDia, morosos, parcial], backgroundColor: ['#16a34a', '#dc2626', '#d97706'], borderWidth: 2 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } } }, cutout: '62%' }
-    })
-
-    return () => {
-      barInstance.current?.destroy()
-      pieInstance.current?.destroy()
-    }
-  }, [loading, personas, pagos])
 
   if (loading) return (
     <div className="content">
@@ -81,6 +37,11 @@ export default function Dashboard() {
   const morosos = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'moroso').length
   const parcial = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'parcial').length
   const ingTotal = pagos.reduce((a, p) => a + (p.monto || 0), 0)
+
+  const ingrMes = MESES_SHORT.map((_, i) =>
+    pagos.filter(p => p.mes === i + 1).reduce((a, p) => a + (p.monto || 0), 0)
+  )
+
   const morososList = personas
     .filter(p => estadoSocio(p.id_caif, pagos) !== 'al-dia')
     .sort((a, b) => mesesPendientes(b.id_caif, pagos) - mesesPendientes(a.id_caif, pagos))
@@ -125,13 +86,38 @@ export default function Dashboard() {
         <div className="card">
           <div className="card-title"><i className="ti ti-chart-bar"></i>Ingresos mensuales {anioActual}</div>
           <div style={{position:'relative',height:200}}>
-            <canvas ref={chartBarRef} role="img" aria-label="Gráfico de ingresos mensuales">Ingresos por mes del año actual.</canvas>
+            <Bar
+              data={{
+                labels: MESES_SHORT,
+                datasets: [{ label: 'Ingresos', data: ingrMes, backgroundColor: '#2e7d52', borderRadius: 4 }]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                  y: { ticks: { callback: v => '$' + v.toLocaleString('es-CL') }, grid: { color: 'rgba(0,0,0,.05)' } },
+                  x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+              }}
+            />
           </div>
         </div>
         <div className="card">
           <div className="card-title"><i className="ti ti-chart-pie"></i>Estado de socios</div>
           <div style={{position:'relative',height:200}}>
-            <canvas ref={chartPieRef} role="img" aria-label="Estado de pagos de socios">Distribución de estado de pago.</canvas>
+            <Doughnut
+              data={{
+                labels: ['Al día', 'Moroso', 'Parcial'],
+                datasets: [{ data: [alDia, morosos, parcial], backgroundColor: ['#16a34a','#dc2626','#d97706'], borderWidth: 2 }]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } } },
+                cutout: '62%'
+              }}
+            />
           </div>
         </div>
       </div>
