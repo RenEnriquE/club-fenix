@@ -7,23 +7,29 @@ import Socios from './pages/Socios'
 import Comite from './pages/Comite'
 
 export default function App() {
-  const [session, setSession] = useState(null)
+  const [session, setSession] = useState(undefined) // undefined = still loading
   const [role, setRole] = useState(null)
   const [page, setPage] = useState('dashboard')
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session directly
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+    // Force show login after 4 seconds no matter what
+    const timeout = setTimeout(() => {
+      setSession(prev => prev === undefined ? null : prev)
+    }, 4000)
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      clearTimeout(timeout)
+      const s = data?.session || null
       setSession(s)
       if (s) {
         const r = await getUserRole(s.user.id)
         setRole(r)
       }
-      setLoading(false)
+    }).catch(() => {
+      clearTimeout(timeout)
+      setSession(null)
     })
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, s) => {
       setSession(s)
       if (s) {
@@ -34,10 +40,14 @@ export default function App() {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
-  if (loading) return (
+  // Still loading
+  if (session === undefined) return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',gap:12,fontFamily:'Inter,sans-serif',color:'#475569'}}>
       <div style={{width:20,height:20,border:'2px solid #e2e8f0',borderTopColor:'#1a5e3a',borderRadius:'50%',animation:'spin .7s linear infinite'}}></div>
       <span>Cargando...</span>
