@@ -119,3 +119,17 @@ export async function getNextPagoId() {
     .limit(1)
   return (data?.[0]?.id_pago || 0) + 1
 }
+
+// ── Buscar socios por apoderado ───────────────────────────────────────
+export async function getSociosPorApoderado(apoderado, excludeId) {
+  if (!apoderado) return []
+  const { data, error } = await supabase
+    .from('personas')
+    .select('*')
+    .eq('vigente', 1)
+    .ilike('apoderado', `%${apoderado.trim()}%`)
+    .neq('id_caif', excludeId)
+    .order('nombre_comp')
+  if (error) return []
+  return data
+}
