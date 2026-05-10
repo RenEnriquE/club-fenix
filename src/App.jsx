@@ -15,14 +15,6 @@ export default function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getSession().then(async (s) => {
-      setSession(s)
-      if (s) {
-        const r = await getUserRole(s.user.id)
-        setRole(r)
-      }
-      setLoading(false)
-    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, s) => {
       setSession(s)
       if (s) {
@@ -31,6 +23,11 @@ export default function App() {
       } else {
         setRole(null)
       }
+      setLoading(false)
+    })
+    // Trigger initial session check
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (!s) setLoading(false)
     })
     return () => subscription.unsubscribe()
   }, [])
