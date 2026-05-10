@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react'
-import { supabase, getSession, getUserRole, signOut } from './lib/supabase'
+import { supabase, getUserRole, signOut } from './lib/supabase'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Pagos from './pages/Pagos'
 import Socios from './pages/Socios'
 import Comite from './pages/Comite'
-
-const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -15,6 +13,17 @@ export default function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Get initial session directly
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      setSession(s)
+      if (s) {
+        const r = await getUserRole(s.user.id)
+        setRole(r)
+      }
+      setLoading(false)
+    })
+
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, s) => {
       setSession(s)
       if (s) {
@@ -23,19 +32,16 @@ export default function App() {
       } else {
         setRole(null)
       }
-      setLoading(false)
     })
-    // Trigger initial session check
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (!s) setLoading(false)
-    })
+
     return () => subscription.unsubscribe()
   }, [])
 
   if (loading) return (
-    <div className="loading-center" style={{minHeight:'100vh'}}>
-      <div className="spinner"></div>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',gap:12,fontFamily:'Inter,sans-serif',color:'#475569'}}>
+      <div style={{width:20,height:20,border:'2px solid #e2e8f0',borderTopColor:'#1a5e3a',borderRadius:'50%',animation:'spin .7s linear infinite'}}></div>
       <span>Cargando...</span>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 
@@ -45,7 +51,13 @@ export default function App() {
 
   const pages = {
     dashboard: <Dashboard />,
-    pagos: isAdmin ? <Pagos /> : <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido a administradores.</p></div></div>,
+    pagos: isAdmin ? <Pagos /> : (
+      <div style={{padding:'1.5rem'}}>
+        <div style={{background:'#fff',border:'0.5px solid #e2e8f0',borderRadius:12,padding:'1.25rem'}}>
+          <p style={{color:'#475569'}}>Acceso restringido a administradores.</p>
+        </div>
+      </div>
+    ),
     socios: <Socios isAdmin={isAdmin} />,
     comite: <Comite />,
   }
