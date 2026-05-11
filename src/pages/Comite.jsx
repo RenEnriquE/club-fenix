@@ -75,7 +75,7 @@ export default function Comite() {
   // Calcular totales por columna
   const totalesCols = columnas.map(col => {
     return lista.reduce((sum, p) => {
-      const pago = pagos.find(pg => pg.id_socio === p.id_caif && pg.periodo === col.periodo)
+      const pago = pagos.find(pg => pg.id_socio === p.id_caif && Number(pg.periodo) === col.periodo)
       return sum + (pago ? pago.monto : 0)
     }, 0)
   })
@@ -167,9 +167,9 @@ export default function Comite() {
             <table className="tbl" style={{fontSize:11}}>
               <thead>
                 <tr>
-                  <th style={{width:30,position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>ID</th>
-                  <th style={{minWidth:160,position:'sticky',left:30,background:'#f8fafc',zIndex:2}}>Nombre</th>
-                  <th style={{width:55}}>RUT</th>
+                  <th style={{width:50,position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>ID</th>
+                  <th style={{minWidth:140,position:'sticky',left:50,background:'#f8fafc',zIndex:2}}>Nombre</th>
+                  <th style={{width:110}}>RUT</th>
                   <th style={{width:50}}>Tipo</th>
                   {columnas.map(col=>(
                     <th key={col.periodo} style={{width:52,textAlign:'right',whiteSpace:'nowrap'}}>
@@ -189,19 +189,19 @@ export default function Comite() {
                     .reduce((a,p) => a+(p.monto||0), 0)
                   return (
                     <tr key={s.id_caif} style={{opacity: s.vigente !== 1 ? 0.65 : 1}}>
-                      <td style={{position:'sticky',left:0,background: s.vigente!==1?'#fafafa':'#fff',color:'var(--text-3)',zIndex:1,width:45,minWidth:45}}>{s.id_caif}</td>
-                      <td style={{position:'sticky',left:30,background: s.vigente!==1?'#fafafa':'#fff',fontWeight:500,zIndex:1,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.nombre_comp}>
+                      <td style={{position:'sticky',left:0,background: s.vigente!==1?'#fafafa':'#fff',color:'var(--text-3)',zIndex:1,width:50,minWidth:50,paddingRight:8}}>{s.id_caif}</td>
+                      <td style={{position:'sticky',left:50,background: s.vigente!==1?'#fafafa':'#fff',fontWeight:500,zIndex:1,maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.nombre_comp}>
                         {s.nombre_comp}
                         {s.vigente!==1 && <span style={{marginLeft:5,fontSize:10,color:'#94a3b8'}}>(inactivo)</span>}
                       </td>
-                      <td style={{color:'var(--text-3)',fontSize:10,whiteSpace:'nowrap'}}>{s.rut}{s.dv?`-${s.dv}`:''}</td>
+                      <td style={{color:'var(--text-3)',fontSize:11,whiteSpace:'nowrap',overflow:'visible'}}>{s.rut}{s.dv?`-${s.dv}`:''}</td>
                       <td>
                         <span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`} style={{fontSize:9}}>
                           {s.atleta==='Atleta Niño'?'N':'A'}
                         </span>
                       </td>
                       {columnas.map(col => {
-                        const pago = pagosSocio.find(pg => pg.periodo === col.periodo)
+                        const pago = pagosSocio.find(pg => Number(pg.periodo) === col.periodo)
                         return (
                           <td key={col.periodo} style={{textAlign:'right',color: pago ? '#16a34a' : '#e2e8f0'}}>
                             {pago ? `$${(pago.monto/1000).toFixed(0)}k` : '—'}
@@ -216,7 +216,7 @@ export default function Comite() {
                 })}
                 {/* Fila totales */}
                 <tr style={{background:'#f0fdf4',fontWeight:700,fontSize:12}}>
-                  <td colSpan={4} style={{position:'sticky',left:0,background:'#f0fdf4',color:'#16a34a'}}>
+                  <td colSpan={4} style={{position:'sticky',left:0,background:'#f0fdf4',color:'#16a34a',minWidth:360}}>
                     TOTAL PERÍODO
                   </td>
                   {totalesCols.map((t,i) => (
