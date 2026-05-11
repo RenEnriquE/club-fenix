@@ -52,14 +52,21 @@ export default function Comite() {
   useEffect(() => {
     setLoading(true)
     setPagos([]) // clear pagos while loading to avoid stale data
+    // Fetch all years in range, filter client-side for accuracy
+    const anioDesde = Math.floor(desde / 100)
+    const anioHasta = Math.floor(hasta / 100)
+    const anios = []
+    for (let a = anioDesde; a <= anioHasta; a++) anios.push(a)
+
     Promise.all([
       supabase.from('personas').select('id_caif,nombre_comp,rut,dv,atleta,vigente,fecha_nac').order('nombre_comp'),
-      supabase.from('pagos').select('id_socio,periodo,mes,anio,monto')
-        .gte('periodo', desde)
-        .lte('periodo', hasta)
+      supabase.from('pagos').select('id_socio,periodo,mes,anio,monto').in('anio', anios)
     ]).then(([resP, resPg]) => {
       setPersonas(resP.data || [])
-      setPagos(resPg.data || [])
+      // Filter client-side to exact period range
+      const allPagos = resPg.data || []
+      const filtered = allPagos.filter(p => Number(p.periodo) >= desde && Number(p.periodo) <= hasta)
+      setPagos(filtered)
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [intento, desde, hasta])
