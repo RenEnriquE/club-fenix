@@ -96,7 +96,7 @@ export default function Socios({ isAdmin }) {
       const apodoVal = (form.apodo || '').trim()
       const nombreVal = (form.nombre || '').trim()
       const nombre_comp = apodoVal && apodoVal.toLowerCase() !== nombreVal.toLowerCase()
-        ? \`\${apodoVal} - \${nombreBase}\`
+        ? `${apodoVal} - ${nombreBase}`
         : nombreBase
       const datos = {
         ...form,
