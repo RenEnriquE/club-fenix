@@ -14,28 +14,22 @@ export default function App() {
   useEffect(() => {
     let resolved = false
 
-    async function init() {
-      try {
-        const { data } = await supabase.auth.getSession()
-        if (resolved) return
-        resolved = true
-        const s = data?.session || null
-        setSession(s)
-        if (s) {
-          const r = await getUserRole(s.user.id)
-          setRole(r)
-        }
-      } catch {
-        if (!resolved) { resolved = true; setSession(null) }
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (resolved) return
+      resolved = true
+      const s = data?.session || null
+      setSession(s)
+      if (s) {
+        const r = await getUserRole(s.user.id)
+        setRole(r)
       }
-    }
+    }).catch(() => {
+      if (!resolved) { resolved = true; setSession(null) }
+    })
 
-    init()
-
-    // Fallback: si en 8 segundos no resuelve, mostrar login
     const fallback = setTimeout(() => {
       if (!resolved) { resolved = true; setSession(null) }
-    }, 8000)
+    }, 10000)
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, s) => {
       resolved = true
@@ -54,8 +48,8 @@ export default function App() {
 
   if (session === undefined) return (
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',gap:12,fontFamily:'Inter,sans-serif',color:'#475569'}}>
-      <div style={{width:24,height:24,border:'2px solid #e2e8f0',borderTopColor:'#1a5e3a',borderRadius:'50%',animation:'spin .7s linear infinite'}}></div>
-      <span style={{fontSize:14}}>Cargando...</span>
+      <div style={{width:28,height:28,border:'3px solid #e2e8f0',borderTopColor:'#1a5e3a',borderRadius:'50%',animation:'spin .7s linear infinite'}}></div>
+      <span style={{fontSize:14}}>Iniciando...</span>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
@@ -100,12 +94,14 @@ export default function App() {
             <i className="ti ti-report"></i>Comité
           </button>
         </nav>
-        <div className="topbar-user">
-          <span className="chip" style={{background:'rgba(255,255,255,.15)',color:'#fff'}}>
-            <i className="ti ti-shield-check"></i>{role === 'admin' ? 'Admin' : 'Comité'}
+        <div style={{display:'flex',alignItems:'center',gap:10,marginLeft:8}}>
+          <span style={{background:'rgba(255,255,255,.15)',color:'#fff',fontSize:12,padding:'4px 10px',borderRadius:6,display:'flex',alignItems:'center',gap:5}}>
+            <i className="ti ti-shield-check"></i>
+            {role === 'admin' ? 'Admin' : 'Comité'}
           </span>
-          <button onClick={() => signOut()}
-            style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:'6px',color:'#fff',cursor:'pointer',fontSize:'13px',display:'flex',alignItems:'center',gap:'6px',padding:'5px 10px'}}>
+          <button
+            onClick={async () => { await signOut(); setSession(null); setRole(null) }}
+            style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,color:'#fff',cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',gap:6,padding:'5px 12px',fontFamily:'inherit'}}>
             <i className="ti ti-logout"></i>Salir
           </button>
         </div>
