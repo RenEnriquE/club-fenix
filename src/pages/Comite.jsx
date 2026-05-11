@@ -51,14 +51,9 @@ export default function Comite() {
 
   useEffect(() => {
     setLoading(true)
-    // Obtener años del rango para filtrar pagos
-    const anioDesde = Math.floor(desde / 100)
-    const anioHasta = Math.floor(hasta / 100)
-    const anios = []
-    for (let a = anioDesde; a <= anioHasta; a++) anios.push(a)
-
+    setPagos([]) // clear pagos while loading to avoid stale data
     Promise.all([
-      supabase.from('personas').select('id_caif,nombre_comp,rut,atleta,vigente,fecha_nac').order('nombre_comp'),
+      supabase.from('personas').select('id_caif,nombre_comp,rut,dv,atleta,vigente,fecha_nac').order('nombre_comp'),
       supabase.from('pagos').select('id_socio,periodo,mes,anio,monto')
         .gte('periodo', desde)
         .lte('periodo', hasta)
@@ -194,12 +189,12 @@ export default function Comite() {
                     .reduce((a,p) => a+(p.monto||0), 0)
                   return (
                     <tr key={s.id_caif} style={{opacity: s.vigente !== 1 ? 0.65 : 1}}>
-                      <td style={{position:'sticky',left:0,background: s.vigente!==1?'#fafafa':'#fff',color:'var(--text-3)',zIndex:1}}>{s.id_caif}</td>
+                      <td style={{position:'sticky',left:0,background: s.vigente!==1?'#fafafa':'#fff',color:'var(--text-3)',zIndex:1,width:45,minWidth:45}}>{s.id_caif}</td>
                       <td style={{position:'sticky',left:30,background: s.vigente!==1?'#fafafa':'#fff',fontWeight:500,zIndex:1,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.nombre_comp}>
                         {s.nombre_comp}
                         {s.vigente!==1 && <span style={{marginLeft:5,fontSize:10,color:'#94a3b8'}}>(inactivo)</span>}
                       </td>
-                      <td style={{color:'var(--text-3)',fontSize:10}}>{s.rut}</td>
+                      <td style={{color:'var(--text-3)',fontSize:10,whiteSpace:'nowrap'}}>{s.rut}{s.dv?`-${s.dv}`:''}</td>
                       <td>
                         <span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`} style={{fontSize:9}}>
                           {s.atleta==='Atleta Niño'?'N':'A'}
