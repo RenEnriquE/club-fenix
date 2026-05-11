@@ -105,8 +105,8 @@ export default function App() {
             <i className="ti ti-shield-check"></i>{role === 'admin' ? 'Admin' : 'Comité'}
           </span>
           <button onClick={() => signOut()}
-            style={{background:'transparent',border:'none',color:'rgba(255,255,255,.7)',cursor:'pointer',fontSize:'13px',display:'flex',alignItems:'center',gap:'4px'}}>
-            <i className="ti ti-logout"></i>
+            style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:'6px',color:'#fff',cursor:'pointer',fontSize:'13px',display:'flex',alignItems:'center',gap:'6px',padding:'5px 10px'}}>
+            <i className="ti ti-logout"></i>Salir
           </button>
         </div>
       </div>
