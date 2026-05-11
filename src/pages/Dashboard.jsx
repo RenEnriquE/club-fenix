@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getPersonas, getResumenAnio } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { estadoSocio, mesesPendientes, MESES_SHORT, formatMoney } from '../lib/helpers'
 import {
   Chart as ChartJS,
@@ -10,25 +10,56 @@ import { Bar, Doughnut } from 'react-chartjs-2'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
+async function fetchWithTimeout(promise, ms = 8000) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('timeout')), ms)
+  )
+  return Promise.race([promise, timeout])
+}
+
 export default function Dashboard() {
   const [personas, setPersonas] = useState([])
   const [pagos, setPagos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    Promise.all([
-      getPersonas({ soloVigentes: true }),
-      getResumenAnio(new Date().getFullYear())
-    ]).then(([p, pg]) => {
-      setPersonas(p || [])
-      setPagos(pg || [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    async function cargar() {
+      try {
+        const anio = new Date().getFullYear()
+        const [resP, resPg] = await Promise.all([
+          fetchWithTimeout(supabase.from('personas').select('id_caif,nombre_comp,atleta,apoderado').eq('vigente', 1)),
+          fetchWithTimeout(supabase.from('pagos').select('id_socio,mes,monto,anio').eq('anio', anio))
+        ])
+        setPersonas(resP.data || [])
+        setPagos(resPg.data || [])
+      } catch (e) {
+        setError('No se pudieron cargar los datos. Intenta recargar la página.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    cargar()
   }, [])
 
   if (loading) return (
     <div className="content">
       <div className="loading-center"><div className="spinner"></div><span>Cargando datos...</span></div>
+    </div>
+  )
+
+  if (error) return (
+    <div className="content">
+      <div className="card">
+        <div style={{textAlign:'center',padding:'2rem',color:'#dc2626'}}>
+          <i className="ti ti-alert-circle" style={{fontSize:32,display:'block',marginBottom:8}}></i>
+          {error}
+          <br/>
+          <button className="btn primary" style={{marginTop:12}} onClick={() => window.location.reload()}>
+            <i className="ti ti-refresh"></i>Reintentar
+          </button>
+        </div>
+      </div>
     </div>
   )
 
@@ -89,15 +120,14 @@ export default function Dashboard() {
             <Bar
               data={{
                 labels: MESES_SHORT,
-                datasets: [{ label: 'Ingresos', data: ingrMes, backgroundColor: '#2e7d52', borderRadius: 4 }]
+                datasets: [{ label:'Ingresos', data:ingrMes, backgroundColor:'#2e7d52', borderRadius:4 }]
               }}
               options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  y: { ticks: { callback: v => '$' + v.toLocaleString('es-CL') }, grid: { color: 'rgba(0,0,0,.05)' } },
-                  x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                responsive:true, maintainAspectRatio:false,
+                plugins:{ legend:{ display:false } },
+                scales:{
+                  y:{ ticks:{ callback: v => '$'+v.toLocaleString('es-CL') }, grid:{ color:'rgba(0,0,0,.05)' } },
+                  x:{ grid:{ display:false }, ticks:{ font:{ size:10 } } }
                 }
               }}
             />
@@ -108,14 +138,13 @@ export default function Dashboard() {
           <div style={{position:'relative',height:200}}>
             <Doughnut
               data={{
-                labels: ['Al día', 'Moroso', 'Parcial'],
-                datasets: [{ data: [alDia, morosos, parcial], backgroundColor: ['#16a34a','#dc2626','#d97706'], borderWidth: 2 }]
+                labels:['Al día','Moroso','Parcial'],
+                datasets:[{ data:[alDia,morosos,parcial], backgroundColor:['#16a34a','#dc2626','#d97706'], borderWidth:2 }]
               }}
               options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } } },
-                cutout: '62%'
+                responsive:true, maintainAspectRatio:false,
+                plugins:{ legend:{ position:'bottom', labels:{ font:{ size:12 }, padding:12 } } },
+                cutout:'62%'
               }}
             />
           </div>
@@ -124,22 +153,23 @@ export default function Dashboard() {
 
       <div className="card">
         <div className="card-title"><i className="ti ti-alert-triangle"></i>Socios con pagos pendientes</div>
-        {morososList.length === 0 ? (
-          <div className="empty"><i className="ti ti-circle-check"></i>Todos los socios están al día</div>
-        ) : morososList.map(s => {
-          const pend = mesesPendientes(s.id_caif, pagos)
-          const estado = estadoSocio(s.id_caif, pagos)
-          return (
-            <div className="moroso-row" key={s.id_caif}>
-              <span className="moroso-name">{s.nombre_comp}</span>
-              <span className={`badge ${s.atleta === 'Atleta Niño' ? 'nino' : 'adulto'}`} style={{marginRight:8}}>
-                {s.atleta === 'Atleta Niño' ? 'Niño' : 'Adulto'}
-              </span>
-              <span className={`badge ${estado}`} style={{marginRight:8}}>{estado === 'parcial' ? 'Parcial' : 'Sin pago'}</span>
-              <span className="moroso-meses">{pend} mes{pend !== 1 ? 'es' : ''} pendiente{pend !== 1 ? 's' : ''}</span>
-            </div>
-          )
-        })}
+        {morososList.length === 0
+          ? <div className="empty"><i className="ti ti-circle-check"></i>Todos los socios están al día</div>
+          : morososList.map(s => {
+            const pend = mesesPendientes(s.id_caif, pagos)
+            const estado = estadoSocio(s.id_caif, pagos)
+            return (
+              <div className="moroso-row" key={s.id_caif}>
+                <span className="moroso-name">{s.nombre_comp}</span>
+                <span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`} style={{marginRight:8}}>
+                  {s.atleta==='Atleta Niño'?'Niño':'Adulto'}
+                </span>
+                <span className={`badge ${estado}`} style={{marginRight:8}}>{estado==='parcial'?'Parcial':'Sin pago'}</span>
+                <span className="moroso-meses">{pend} mes{pend!==1?'es':''} pendiente{pend!==1?'s':''}</span>
+              </div>
+            )
+          })
+        }
       </div>
     </div>
   )
