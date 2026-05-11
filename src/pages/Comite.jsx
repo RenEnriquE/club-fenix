@@ -59,13 +59,15 @@ export default function Comite() {
 
     Promise.all([
       supabase.from('personas').select('id_caif,nombre_comp,rut,atleta,vigente,fecha_nac').order('nombre_comp'),
-      supabase.from('pagos').select('id_socio,periodo,mes,anio,monto').in('anio', anios)
+      supabase.from('pagos').select('id_socio,periodo,mes,anio,monto')
+        .gte('periodo', desde)
+        .lte('periodo', hasta)
     ]).then(([resP, resPg]) => {
       setPersonas(resP.data || [])
       setPagos(resPg.data || [])
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [intento])
+  }, [intento, desde, hasta])
 
   const columnas = columnaEntre(desde, hasta)
 
@@ -86,8 +88,8 @@ export default function Comite() {
 
   // KPIs del rango
   const totalSocios = lista.length
-  const sociosConPago = lista.filter(p => pagos.some(pg => pg.id_socio === p.id_caif && pg.periodo >= desde && pg.periodo <= hasta)).length
-  const ingTotalRango = pagos.filter(pg => pg.periodo >= desde && pg.periodo <= hasta && lista.some(p => p.id_caif === pg.id_socio)).reduce((a,p) => a + (p.monto||0), 0)
+  const sociosConPago = lista.filter(p => pagos.some(pg => pg.id_socio === p.id_caif)).length
+  const ingTotalRango = pagos.filter(pg => lista.some(p => p.id_caif === pg.id_socio)).reduce((a,p) => a + (p.monto||0), 0)
 
   return (
     <div className="content">
