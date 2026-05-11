@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase, getUserRole, signOut } from './lib/supabase'
+import { supabase, getUserRole } from './lib/supabase'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Pagos from './pages/Pagos'
@@ -46,11 +46,37 @@ export default function App() {
     return () => { clearTimeout(fallback); subscription.unsubscribe() }
   }, [])
 
+  async function handleSignOut() {
+    // Limpia estado local primero para ir al login inmediatamente
+    setSession(null)
+    setRole(null)
+    // Luego cierra sesión en Supabase
+    await supabase.auth.signOut()
+    // Limpia localStorage por si acaso
+    localStorage.removeItem('club-fenix-auth')
+  }
+
   if (session === undefined) return (
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',gap:12,fontFamily:'Inter,sans-serif',color:'#475569'}}>
-      <div style={{width:28,height:28,border:'3px solid #e2e8f0',borderTopColor:'#1a5e3a',borderRadius:'50%',animation:'spin .7s linear infinite'}}></div>
-      <span style={{fontSize:14}}>Iniciando...</span>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+      {/* Topbar con botón Salir visible incluso durante carga */}
+      <div className="topbar">
+        <div className="topbar-brand">
+          Club Atlético Independencia Fénix
+          <span>Sistema de gestión de cuotas</span>
+        </div>
+        <div style={{marginLeft:'auto'}}>
+          <button onClick={handleSignOut}
+            style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,color:'#fff',cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',gap:6,padding:'5px 12px',fontFamily:'inherit'}}>
+            <i className="ti ti-logout"></i>Salir
+          </button>
+        </div>
+      </div>
+      <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12,color:'#475569'}}>
+        <div style={{width:28,height:28,border:'3px solid #e2e8f0',borderTopColor:'#1a5e3a',borderRadius:'50%',animation:'spin .7s linear infinite'}}></div>
+        <span style={{fontSize:14}}>Cargando datos del club...</span>
+        <span style={{fontSize:12,color:'#94a3b8'}}>Esto puede tardar unos segundos</span>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
     </div>
   )
 
@@ -99,8 +125,7 @@ export default function App() {
             <i className="ti ti-shield-check"></i>
             {role === 'admin' ? 'Admin' : 'Comité'}
           </span>
-          <button
-            onClick={async () => { await signOut(); setSession(null); setRole(null) }}
+          <button onClick={handleSignOut}
             style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,color:'#fff',cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',gap:6,padding:'5px 12px',fontFamily:'inherit'}}>
             <i className="ti ti-logout"></i>Salir
           </button>
