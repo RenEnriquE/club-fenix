@@ -75,7 +75,7 @@ export default function Comite() {
   // Calcular totales por columna
   const totalesCols = columnas.map(col => {
     return lista.reduce((sum, p) => {
-      const pago = pagos.find(pg => pg.id_socio === p.id_caif && Number(pg.periodo) === col.periodo)
+      const pago = pagos.find(pg => Number(pg.id_socio) === Number(p.id_caif) && Number(pg.periodo) === col.periodo)
       return sum + (pago ? pago.monto : 0)
     }, 0)
   })
@@ -83,7 +83,7 @@ export default function Comite() {
 
   // KPIs del rango
   const totalSocios = lista.length
-  const sociosConPago = lista.filter(p => pagos.some(pg => pg.id_socio === p.id_caif)).length
+  const sociosConPago = lista.filter(p => pagos.some(pg => Number(pg.id_socio) === Number(p.id_caif))).length
   const ingTotalRango = pagos.filter(pg => lista.some(p => p.id_caif === pg.id_socio)).reduce((a,p) => a + (p.monto||0), 0)
 
   return (
@@ -163,8 +163,8 @@ export default function Comite() {
             El rango seleccionado tiene {columnas.length} meses. Selecciona un rango de máximo 24 meses para mejor visualización.
           </div>
         ) : (
-          <div className="tbl-wrap">
-            <table className="tbl" style={{fontSize:11}}>
+          <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch',borderRadius:8,border:'0.5px solid #e2e8f0'}}>
+            <table className="tbl" style={{fontSize:11,minWidth:`${360 + columnas.length * 54}px`}}>
               <thead>
                 <tr>
                   <th style={{width:50,position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>ID</th>
@@ -183,9 +183,9 @@ export default function Comite() {
               </thead>
               <tbody>
                 {lista.map(s => {
-                  const pagosSocio = pagos.filter(pg => pg.id_socio === s.id_caif)
+                  const pagosSocio = pagos.filter(pg => Number(pg.id_socio) === Number(s.id_caif))
                   const totalSocio = pagosSocio
-                    .filter(pg => pg.periodo >= desde && pg.periodo <= hasta)
+                    .filter(pg => Number(pg.periodo) >= desde && Number(pg.periodo) <= hasta)
                     .reduce((a,p) => a+(p.monto||0), 0)
                   return (
                     <tr key={s.id_caif} style={{opacity: s.vigente !== 1 ? 0.65 : 1}}>
@@ -230,6 +230,9 @@ export default function Comite() {
                 </tr>
               </tbody>
             </table>
+          </div>
+          <div style={{fontSize:11,color:'var(--text-3)',marginTop:8,textAlign:'center'}}>
+            ← Desliza horizontalmente para ver todos los meses →
           </div>
         )}
       </div>

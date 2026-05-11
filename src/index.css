@@ -292,3 +292,16 @@ body {
 
 /* Divider */
 hr.divider { border: none; border-top: var(--border); margin: 1rem 0; }
+
+@media (max-width: 480px) {
+  .topbar { padding: 8px 12px; }
+  .topbar-brand { font-size: 13px; }
+  .nav-btn { padding: 5px 8px; font-size: 12px; }
+  .nav-btn i { font-size: 14px; }
+  .content { padding: 0.75rem; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .mes-grid { grid-template-columns: repeat(4, 1fr); }
+  .modal { padding: 1rem; }
+}

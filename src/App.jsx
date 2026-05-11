@@ -55,42 +55,44 @@ export default function App() {
   }
 
   const TopBar = ({ showNav = true }) => (
-    <div className="topbar">
-      <div className="topbar-brand">
-        Club Atlético Independencia Fénix
-        <span>Sistema de gestión de cuotas</span>
-      </div>
-      {showNav && session && (
-        <nav className="nav">
-          <button className={`nav-btn ${page==='dashboard'?'active':''}`} onClick={() => setPage('dashboard')}>
-            <i className="ti ti-layout-dashboard"></i>Dashboard
-          </button>
-          <button className={`nav-btn ${page==='socios'?'active':''}`} onClick={() => setPage('socios')}>
-            <i className="ti ti-users"></i>Socios
-          </button>
-          {role === 'admin' && (
-            <button className={`nav-btn ${page==='pagos'?'active':''}`} onClick={() => setPage('pagos')}>
-              <i className="ti ti-cash"></i>Pagos
-            </button>
+    <>
+      <div className="topbar" style={{flexWrap:'wrap',height:'auto',minHeight:'var(--nav-h)',padding:'8px 1rem',gap:8}}>
+        <div className="topbar-brand" style={{flex:'1 1 auto'}}>
+          Club Atlético Independencia Fénix
+          <span>Sistema de gestión de cuotas</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+          {session && role && (
+            <span style={{background:'rgba(255,255,255,.15)',color:'#fff',fontSize:11,padding:'3px 8px',borderRadius:6,display:'flex',alignItems:'center',gap:4}}>
+              <i className="ti ti-shield-check"></i>
+              {role === 'admin' ? 'Admin' : 'Comité'}
+            </span>
           )}
-          <button className={`nav-btn ${page==='comite'?'active':''}`} onClick={() => setPage('comite')}>
-            <i className="ti ti-report"></i>Comité
+          <button onClick={handleSignOut}
+            style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,color:'#fff',cursor:'pointer',fontSize:12,display:'flex',alignItems:'center',gap:5,padding:'5px 10px',fontFamily:'inherit'}}>
+            <i className="ti ti-logout"></i>Salir
           </button>
-        </nav>
-      )}
-      <div style={{display:'flex',alignItems:'center',gap:10,marginLeft:8}}>
-        {session && role && (
-          <span style={{background:'rgba(255,255,255,.15)',color:'#fff',fontSize:12,padding:'4px 10px',borderRadius:6,display:'flex',alignItems:'center',gap:5}}>
-            <i className="ti ti-shield-check"></i>
-            {role === 'admin' ? 'Admin' : 'Comité'}
-          </span>
+        </div>
+        {showNav && session && (
+          <nav className="nav" style={{width:'100%',borderTop:'1px solid rgba(255,255,255,.15)',paddingTop:6,flexWrap:'wrap',gap:2}}>
+            <button className={`nav-btn ${page==='dashboard'?'active':''}`} onClick={() => setPage('dashboard')}>
+              <i className="ti ti-layout-dashboard"></i>Dashboard
+            </button>
+            <button className={`nav-btn ${page==='socios'?'active':''}`} onClick={() => setPage('socios')}>
+              <i className="ti ti-users"></i>Socios
+            </button>
+            {role === 'admin' && (
+              <button className={`nav-btn ${page==='pagos'?'active':''}`} onClick={() => setPage('pagos')}>
+                <i className="ti ti-cash"></i>Pagos
+              </button>
+            )}
+            <button className={`nav-btn ${page==='comite'?'active':''}`} onClick={() => setPage('comite')}>
+              <i className="ti ti-report"></i>Comité
+            </button>
+          </nav>
         )}
-        <button onClick={handleSignOut}
-          style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,color:'#fff',cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',gap:6,padding:'5px 12px',fontFamily:'inherit'}}>
-          <i className="ti ti-logout"></i>Salir
-        </button>
       </div>
-    </div>
+    </>
   )
 
   // Loading session
