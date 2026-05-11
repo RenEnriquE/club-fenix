@@ -173,12 +173,14 @@ export default function Socios({ isAdmin }) {
           )}
         </div>
         {isAdmin && (
-          <button className="btn" onClick={detectarDuplicados}>
-            <i className="ti ti-copy-off"></i>Ver duplicados
-          </button>
-          <button className="btn primary" onClick={() => abrirModal()}>
-            <i className="ti ti-user-plus"></i>Nuevo socio
-          </button>
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn" onClick={detectarDuplicados}>
+              <i className="ti ti-copy-off"></i>Ver duplicados
+            </button>
+            <button className="btn primary" onClick={() => abrirModal()}>
+              <i className="ti ti-user-plus"></i>Nuevo socio
+            </button>
+          </div>
         )}
       </div>
 
