@@ -6,34 +6,68 @@ import { Bar, Doughnut } from 'react-chartjs-2'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
+const CACHE_KEY = 'club-fenix-dashboard'
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const { data, ts } = JSON.parse(raw)
+    if (Date.now() - ts > CACHE_TTL) return null
+    return data
+  } catch { return null }
+}
+
+function saveCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })) } catch {}
+}
+
 export default function Dashboard() {
-  const [personas, setPersonas] = useState([])
-  const [pagos, setPagos] = useState([])
-  const [loading, setLoading] = useState(true)
+  const anio = new Date().getFullYear()
+  const cached = loadCache()
+
+  const [personas, setPersonas] = useState(cached?.personas || [])
+  const [pagos, setPagos] = useState(cached?.pagos || [])
+  const [loading, setLoading] = useState(!cached)
+  const [refreshing, setRefreshing] = useState(!!cached)
   const [error, setError] = useState(null)
   const [intento, setIntento] = useState(0)
 
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-    const anio = new Date().getFullYear()
+    if (cached) setRefreshing(true)
+    else setLoading(true)
 
     Promise.all([
-      supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac').eq('vigente', 1),
+      supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero').eq('vigente', 1),
       supabase.from('pagos').select('id_socio,mes,monto,anio').eq('anio', anio)
     ]).then(([resP, resPg]) => {
-      setPersonas(resP.data || [])
-      setPagos(resPg.data || [])
+      const p = resP.data || []
+      const pg = resPg.data || []
+      setPersonas(p)
+      setPagos(pg)
+      saveCache({ personas: p, pagos: pg })
       setLoading(false)
+      setRefreshing(false)
     }).catch(() => {
-      setError(true)
+      if (!cached) setError(true)
       setLoading(false)
+      setRefreshing(false)
     })
   }, [intento])
 
+  const mesActual = new Date().getMonth() + 1
+  const DIAS_SEMANA = ['dom','lun','mar','mié','jue','vie','sáb']
+  const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+  const cumpleaneros = personas
+    .filter(p => { if (!p.fecha_nac) return false; return new Date(p.fecha_nac+'T12:00:00').getMonth()+1 === mesActual })
+    .map(p => { const fn = new Date(p.fecha_nac+'T12:00:00'); return {...p, dia:fn.getDate(), diaSemana:DIAS_SEMANA[fn.getDay()]} })
+    .sort((a,b) => a.dia - b.dia)
+
   if (loading) return (
     <div className="content">
-      <div className="loading-center" style={{flexDirection:'column',gap:16}}>
+      <div className="loading-center" style={{flexDirection:'column',gap:12}}>
         <div className="spinner" style={{width:32,height:32,borderWidth:3}}></div>
         <span style={{fontSize:14,color:'var(--text-2)'}}>Cargando datos del club...</span>
         <span style={{fontSize:12,color:'var(--text-3)'}}>Esto puede tardar unos segundos</span>
@@ -45,53 +79,62 @@ export default function Dashboard() {
     <div className="content">
       <div className="card" style={{textAlign:'center',padding:'2.5rem'}}>
         <i className="ti ti-wifi-off" style={{fontSize:40,color:'#94a3b8',display:'block',marginBottom:12}}></i>
-        <p style={{color:'#64748b',marginBottom:6,fontWeight:500}}>No se pudieron cargar los datos</p>
-        <p style={{color:'#94a3b8',fontSize:12,marginBottom:20}}>Verifica tu conexión a internet e intenta nuevamente</p>
-        <button className="btn primary" onClick={() => setIntento(i => i+1)}>
+        <p style={{color:'#64748b',marginBottom:20}}>No se pudieron cargar los datos</p>
+        <button className="btn primary" onClick={() => { setError(null); setLoading(true); setIntento(i=>i+1) }}>
           <i className="ti ti-refresh"></i>Reintentar
         </button>
       </div>
     </div>
   )
 
-  const anioActual = new Date().getFullYear()
   const alDia = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'al-dia').length
   const morosos = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'moroso').length
   const parcial = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'parcial').length
-  const ingTotal = pagos.reduce((a, p) => a + (p.monto || 0), 0)
-  const ingrMes = MESES_SHORT.map((_, i) => pagos.filter(p => p.mes === i+1).reduce((a,p) => a+(p.monto||0), 0))
+  const ingTotal = pagos.reduce((a,p) => a+(p.monto||0), 0)
+  const ingrMes = MESES_SHORT.map((_,i) => pagos.filter(p=>p.mes===i+1).reduce((a,p)=>a+(p.monto||0),0))
   const morososList = personas
-    .filter(p => estadoSocio(p.id_caif, pagos) !== 'al-dia')
-    .sort((a,b) => mesesPendientes(b.id_caif, pagos) - mesesPendientes(a.id_caif, pagos))
-    .slice(0, 8)
+    .filter(p => estadoSocio(p.id_caif,pagos) !== 'al-dia')
+    .sort((a,b) => mesesPendientes(b.id_caif,pagos)-mesesPendientes(a.id_caif,pagos))
+    .slice(0,8)
 
 
-  // Cumpleaños del mes
-  const mesActual2 = new Date().getMonth() + 1
-  const DIAS_SEMANA = ['dom','lun','mar','mié','jue','vie','sáb']
-  const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-
-  const cumpleaneros = personas
-    .filter(p => {
-      if (!p.fecha_nac) return false
-      const mes = new Date(p.fecha_nac + 'T12:00:00').getMonth() + 1
-      return mes === mesActual2
-    })
-    .map(p => {
-      const fn = new Date(p.fecha_nac + 'T12:00:00')
-      return { ...p, dia: fn.getDate(), diaSemana: DIAS_SEMANA[fn.getDay()] }
-    })
-    .sort((a, b) => a.dia - b.dia)
+  // Estadísticas del club
+  const hoy = new Date()
+  const calcEdad = (fn) => {
+    if (!fn) return null
+    const d = new Date(fn + 'T12:00:00')
+    let edad = hoy.getFullYear() - d.getFullYear()
+    const m = hoy.getMonth() - d.getMonth()
+    if (m < 0 || (m === 0 && hoy.getDate() < d.getDate())) edad--
+    return edad
+  }
+  const adultos = personas.filter(p => p.atleta === 'Atleta Adulto').length
+  const ninos = personas.filter(p => p.atleta === 'Atleta Niño').length
+  const mujeres = personas.filter(p => (p.genero||'').toLowerCase().includes('fem')).length
+  const hombres = personas.filter(p => (p.genero||'').toLowerCase().includes('masc')).length
+  const masters = personas.filter(p => { const e = calcEdad(p.fecha_nac); return e !== null && e >= 40 }).length
+  const pctAdultos = personas.length ? Math.round(adultos/personas.length*100) : 0
+  const pctNinos = personas.length ? Math.round(ninos/personas.length*100) : 0
+  const pctMujeres = personas.length ? Math.round(mujeres/personas.length*100) : 0
+  const pctHombres = personas.length ? Math.round(hombres/personas.length*100) : 0
+  const pctMasters = adultos ? Math.round(masters/adultos*100) : 0
 
   return (
     <div className="content">
+      {refreshing && (
+        <div style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'var(--text-3)',marginBottom:12,justifyContent:'flex-end'}}>
+          <div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>
+          Actualizando datos...
+        </div>
+      )}
+
       <div className="kpi-grid">
         {[
           {label:'Total socios activos', val:personas.length, sub:'vigentes en el sistema', icon:'ti-users', cls:''},
-          {label:'Al día', val:alDia, sub:`cuota ${anioActual} al corriente`, icon:'ti-circle-check', cls:'green'},
-          {label:'Morosos', val:morosos, sub:`sin pago en ${anioActual}`, icon:'ti-alert-circle', cls:'red'},
+          {label:'Al día', val:alDia, sub:`cuota ${anio} al corriente`, icon:'ti-circle-check', cls:'green'},
+          {label:'Morosos', val:morosos, sub:`sin pago en ${anio}`, icon:'ti-alert-circle', cls:'red'},
           {label:'Pago parcial', val:parcial, sub:'meses pendientes', icon:'ti-clock', cls:'amber'},
-          {label:`Ingresos ${anioActual}`, val:formatMoney(ingTotal), sub:'total recaudado', icon:'ti-coin', cls:'', small:true},
+          {label:`Ingresos ${anio}`, val:formatMoney(ingTotal), sub:'total recaudado', icon:'ti-coin', cls:'', small:true},
         ].map((k,i) => (
           <div key={i} className={`kpi ${k.cls}`}>
             <div className="kpi-label">{k.label}</div>
@@ -102,86 +145,98 @@ export default function Dashboard() {
         ))}
       </div>
 
+
+      <div className="card" style={{marginBottom:'1rem'}}>
+        <div className="card-title"><i className="ti ti-chart-dots"></i>Estadísticas del club</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12}}>
+          {[
+            {label:'Atletas Adultos', val:`${adultos}`, pct:pctAdultos, color:'#1d4ed8', bg:'#eff6ff', icon:'👤'},
+            {label:'Atletas Niños', val:`${ninos}`, pct:pctNinos, color:'#7c3aed', bg:'#fdf4ff', icon:'👦'},
+            {label:'Mujeres', val:`${mujeres}`, pct:pctMujeres, color:'#db2777', bg:'#fdf2f8', icon:'♀'},
+            {label:'Hombres', val:`${hombres}`, pct:pctHombres, color:'#0369a1', bg:'#f0f9ff', icon:'♂'},
+            {label:'Atletas Master +40', val:`${masters}`, pct:pctMasters, color:'#b45309', bg:'#fffbeb', icon:'🏆', sub:'del total adultos'},
+          ].map((s,i) => (
+            <div key={i} style={{background:s.bg,borderRadius:10,padding:'12px 14px',border:`0.5px solid ${s.color}22`}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+                <span style={{fontSize:11,fontWeight:600,color:s.color,textTransform:'uppercase',letterSpacing:.04}}>{s.label}</span>
+                <span style={{fontSize:18}}>{s.icon}</span>
+              </div>
+              <div style={{fontSize:26,fontWeight:700,color:s.color,lineHeight:1}}>{s.val}</div>
+              <div style={{marginTop:8,height:5,borderRadius:999,background:'rgba(0,0,0,.08)',overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${s.pct}%`,background:s.color,borderRadius:999,transition:'width .5s'}}></div>
+              </div>
+              <div style={{fontSize:11,color:s.color,marginTop:4,fontWeight:500}}>{s.pct}% {s.sub||'del total'}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="two-col">
         <div className="card">
-          <div className="card-title"><i className="ti ti-chart-bar"></i>Ingresos mensuales {anioActual}</div>
+          <div className="card-title"><i className="ti ti-chart-bar"></i>Ingresos mensuales {anio}</div>
           <div style={{position:'relative',height:200}}>
-            <Bar
-              data={{labels:MESES_SHORT,datasets:[{label:'Ingresos',data:ingrMes,backgroundColor:'#2e7d52',borderRadius:4}]}}
+            <Bar data={{labels:MESES_SHORT,datasets:[{label:'Ingresos',data:ingrMes,backgroundColor:'#2e7d52',borderRadius:4}]}}
               options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-                scales:{y:{ticks:{callback:v=>'$'+v.toLocaleString('es-CL')},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}}
-            />
+                scales:{y:{ticks:{callback:v=>'$'+v.toLocaleString('es-CL')},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}}/>
           </div>
         </div>
         <div className="card">
           <div className="card-title"><i className="ti ti-chart-pie"></i>Estado de socios</div>
           <div style={{position:'relative',height:200}}>
-            <Doughnut
-              data={{labels:['Al día','Moroso','Parcial'],datasets:[{data:[alDia,morosos,parcial],backgroundColor:['#16a34a','#dc2626','#d97706'],borderWidth:2}]}}
-              options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:12},padding:12}}},cutout:'62%'}}
-            />
+            <Doughnut data={{labels:['Al día','Moroso','Parcial'],datasets:[{data:[alDia,morosos,parcial],backgroundColor:['#16a34a','#dc2626','#d97706'],borderWidth:2}]}}
+              options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:12},padding:12}}},cutout:'62%'}}/>
           </div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-title"><i className="ti ti-alert-triangle"></i>Socios con pagos pendientes</div>
-        {morososList.length === 0
-          ? <div className="empty"><i className="ti ti-circle-check"></i>Todos los socios están al día</div>
-          : morososList.map(s => {
-              const pend = mesesPendientes(s.id_caif, pagos)
-              const estado = estadoSocio(s.id_caif, pagos)
-              return (
-                <div className="moroso-row" key={s.id_caif}>
-                  <span className="moroso-name">{s.nombre_comp}</span>
-                  <span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`} style={{marginRight:8}}>{s.atleta==='Atleta Niño'?'Niño':'Adulto'}</span>
-                  <span className={`badge ${estado}`} style={{marginRight:8}}>{estado==='parcial'?'Parcial':'Sin pago'}</span>
-                  <span className="moroso-meses">{pend} mes{pend!==1?'es':''} pendiente{pend!==1?'s':''}</span>
+      <div className="two-col">
+        <div className="card">
+          <div className="card-title"><i className="ti ti-alert-triangle"></i>Socios con pagos pendientes</div>
+          {morososList.length===0
+            ? <div className="empty"><i className="ti ti-circle-check"></i>Todos al día</div>
+            : morososList.map(s => {
+                const pend = mesesPendientes(s.id_caif,pagos)
+                const estado = estadoSocio(s.id_caif,pagos)
+                return (
+                  <div className="moroso-row" key={s.id_caif}>
+                    <span className="moroso-name">{s.nombre_comp}</span>
+                    <span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`} style={{marginRight:6}}>{s.atleta==='Atleta Niño'?'Niño':'Adulto'}</span>
+                    <span className={`badge ${estado}`} style={{marginRight:6}}>{estado==='parcial'?'Parcial':'Sin pago'}</span>
+                    <span className="moroso-meses">{pend} mes{pend!==1?'es':''}</span>
+                  </div>
+                )
+              })
+          }
+        </div>
+
+        {cumpleaneros.length > 0 && (
+          <div className="card" style={{background:'linear-gradient(135deg,#fff9f0 0%,#fff0f5 50%,#f0f5ff 100%)',border:'0.5px solid #fde68a',position:'relative',overflow:'hidden'}}>
+            <div style={{position:'absolute',top:8,right:16,fontSize:40,opacity:.08,userSelect:'none'}}>🎂</div>
+            <div style={{position:'absolute',bottom:8,left:16,fontSize:30,opacity:.06,userSelect:'none'}}>🎈</div>
+            <div style={{textAlign:'center',marginBottom:12}}>
+              <div style={{fontSize:11,letterSpacing:2,color:'#92400e',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>
+                🎉 Cumpleaños Socios CAIF 🎉
+              </div>
+              <div style={{fontSize:16,fontWeight:700,color:'#1a5e3a'}}>
+                {MESES_ES[mesActual-1]} · {anio}
+              </div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:4,maxHeight:280,overflowY:'auto'}}>
+              {cumpleaneros.map(s => (
+                <div key={s.id_caif} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 10px',borderRadius:7,background:'rgba(255,255,255,.75)',borderLeft:`3px solid ${s.atleta==='Atleta Niño'?'#a78bfa':'#6ee7b7'}`,fontSize:13}}>
+                  <span style={{fontWeight:500,color:'#1e293b'}}>{s.nombre_comp}</span>
+                  <span style={{color:'#64748b',fontSize:12,fontWeight:500,whiteSpace:'nowrap',marginLeft:8}}>
+                    {s.diaSemana} {String(s.dia).padStart(2,'0')}/{String(mesActual).padStart(2,'0')}
+                  </span>
                 </div>
-              )
-            })
-        }
-      </div>
-
-      {cumpleaneros.length > 0 && (
-        <div className="card" style={{
-          background:'linear-gradient(135deg,#fff9f0 0%,#fff0f5 50%,#f0f5ff 100%)',
-          border:'0.5px solid #fde68a',position:'relative',overflow:'hidden'
-        }}>
-          {/* Decoración fondo */}
-          <div style={{position:'absolute',top:8,right:16,fontSize:40,opacity:.08,userSelect:'none'}}>🎂</div>
-          <div style={{position:'absolute',bottom:8,left:16,fontSize:30,opacity:.06,userSelect:'none'}}>🎈</div>
-
-          <div style={{textAlign:'center',marginBottom:16}}>
-            <div style={{fontSize:12,letterSpacing:2,color:'#92400e',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>🎉 Cumpleaños Socios CAIF 🎉</div>
-            <div style={{fontSize:18,fontWeight:700,color:'#1a5e3a'}}>
-              {MESES_ES[mesActual2-1]} · {anioActual}
+              ))}
+            </div>
+            <div style={{textAlign:'center',marginTop:10,fontSize:11,color:'#94a3b8'}}>
+              {cumpleaneros.length} cumpleaños este mes
             </div>
           </div>
-
-          <div style={{display:'flex',flexDirection:'column',gap:3}}>
-            {cumpleaneros.map(s => (
-              <div key={s.id_caif} style={{
-                display:'flex',justifyContent:'space-between',alignItems:'center',
-                padding:'6px 12px',borderRadius:8,
-                background:'rgba(255,255,255,.7)',
-                borderLeft:`3px solid ${s.atleta==='Atleta Niño'?'#a78bfa':'#6ee7b7'}`,
-                fontSize:13
-              }}>
-                <span style={{fontWeight:500,color:'#1e293b'}}>{s.nombre_comp}</span>
-                <span style={{color:'#64748b',fontSize:12,fontWeight:500}}>
-                  {s.diaSemana} {String(s.dia).padStart(2,'0')}/{String(mesActual2).padStart(2,'0')}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{textAlign:'center',marginTop:12,fontSize:11,color:'#94a3b8'}}>
-            {cumpleaneros.length} cumpleaños este mes
-          </div>
-        </div>
-      )}
-
+        )}
+      </div>
     </div>
   )
 }
