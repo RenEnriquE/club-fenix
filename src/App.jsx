@@ -7,30 +7,39 @@ import Socios from './pages/Socios'
 import Comite from './pages/Comite'
 
 export default function App() {
-  const [session, setSession] = useState(undefined) // undefined = still loading
+  const [session, setSession] = useState(undefined)
   const [role, setRole] = useState(null)
   const [page, setPage] = useState('dashboard')
 
   useEffect(() => {
-    // Force show login after 4 seconds no matter what
-    const timeout = setTimeout(() => {
-      setSession(prev => prev === undefined ? null : prev)
-    }, 4000)
+    let resolved = false
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      clearTimeout(timeout)
-      const s = data?.session || null
-      setSession(s)
-      if (s) {
-        const r = await getUserRole(s.user.id)
-        setRole(r)
+    async function init() {
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (resolved) return
+        resolved = true
+        const s = data?.session || null
+        setSession(s)
+        if (s) {
+          const r = await getUserRole(s.user.id)
+          setRole(r)
+        }
+      } catch {
+        if (!resolved) { resolved = true; setSession(null) }
       }
-    }).catch(() => {
-      clearTimeout(timeout)
-      setSession(null)
-    })
+    }
+
+    init()
+
+    // Fallback: si en 8 segundos no resuelve, mostrar login
+    const fallback = setTimeout(() => {
+      if (!resolved) { resolved = true; setSession(null) }
+    }, 8000)
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, s) => {
+      resolved = true
+      clearTimeout(fallback)
       setSession(s)
       if (s) {
         const r = await getUserRole(s.user.id)
@@ -40,17 +49,13 @@ export default function App() {
       }
     })
 
-    return () => {
-      clearTimeout(timeout)
-      subscription.unsubscribe()
-    }
+    return () => { clearTimeout(fallback); subscription.unsubscribe() }
   }, [])
 
-  // Still loading
   if (session === undefined) return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',gap:12,fontFamily:'Inter,sans-serif',color:'#475569'}}>
-      <div style={{width:20,height:20,border:'2px solid #e2e8f0',borderTopColor:'#1a5e3a',borderRadius:'50%',animation:'spin .7s linear infinite'}}></div>
-      <span>Cargando...</span>
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',gap:12,fontFamily:'Inter,sans-serif',color:'#475569'}}>
+      <div style={{width:24,height:24,border:'2px solid #e2e8f0',borderTopColor:'#1a5e3a',borderRadius:'50%',animation:'spin .7s linear infinite'}}></div>
+      <span style={{fontSize:14}}>Cargando...</span>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
@@ -99,10 +104,8 @@ export default function App() {
           <span className="chip" style={{background:'rgba(255,255,255,.15)',color:'#fff'}}>
             <i className="ti ti-shield-check"></i>{role === 'admin' ? 'Admin' : 'Comité'}
           </span>
-          <button
-            onClick={() => signOut()}
-            style={{background:'transparent',border:'none',color:'rgba(255,255,255,.7)',cursor:'pointer',fontSize:'13px',display:'flex',alignItems:'center',gap:'4px'}}
-          >
+          <button onClick={() => signOut()}
+            style={{background:'transparent',border:'none',color:'rgba(255,255,255,.7)',cursor:'pointer',fontSize:'13px',display:'flex',alignItems:'center',gap:'4px'}}>
             <i className="ti ti-logout"></i>
           </button>
         </div>
