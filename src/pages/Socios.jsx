@@ -17,7 +17,9 @@ export default function Socios({ isAdmin }) {
   const [form, setForm] = useState(emptyForm())
   const [alert, setAlert] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [tabModal, setTabModal] = useState('datos') // 'datos' | 'salida'
+  const [tabModal, setTabModal] = useState('datos')
+  const [showDuplicados, setShowDuplicados] = useState(false)
+  const [duplicados, setDuplicados] = useState([]) // 'datos' | 'salida'
 
   function emptyForm() {
     return {
@@ -31,6 +33,20 @@ export default function Socios({ isAdmin }) {
   useEffect(() => {
     cargar()
   }, [])
+
+
+  function detectarDuplicados() {
+    const grupos = {}
+    personas.forEach(p => {
+      const rut = (p.rut || '').trim()
+      if (!rut || rut === '0') return
+      if (!grupos[rut]) grupos[rut] = []
+      grupos[rut].push(p)
+    })
+    const dups = Object.values(grupos).filter(g => g.length > 1)
+    setDuplicados(dups)
+    setShowDuplicados(true)
+  }
 
   async function cargar() {
     setLoading(true)
@@ -157,6 +173,9 @@ export default function Socios({ isAdmin }) {
           )}
         </div>
         {isAdmin && (
+          <button className="btn" onClick={detectarDuplicados}>
+            <i className="ti ti-copy-off"></i>Ver duplicados
+          </button>
           <button className="btn primary" onClick={() => abrirModal()}>
             <i className="ti ti-user-plus"></i>Nuevo socio
           </button>
@@ -323,6 +342,48 @@ export default function Socios({ isAdmin }) {
           </div>
         </div>
       </div>
+      {/* Modal duplicados */}
+      {showDuplicados && (
+        <div className="modal-bg open" onClick={e=>{if(e.target===e.currentTarget)setShowDuplicados(false)}}>
+          <div className="modal" style={{width:'min(700px,95vw)'}}>
+            <div className="modal-header">
+              <h2><i className="ti ti-copy-off" style={{marginRight:8,color:'#dc2626'}}></i>
+                Socios con RUT duplicado ({duplicados.length})
+              </h2>
+              <button className="modal-close" onClick={()=>setShowDuplicados(false)}><i className="ti ti-x"></i></button>
+            </div>
+            {duplicados.length === 0 ? (
+              <div className="empty"><i className="ti ti-circle-check" style={{color:'var(--success)'}}></i>No se encontraron duplicados</div>
+            ) : duplicados.map((grupo, i) => (
+              <div key={i} style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'10px 14px',marginBottom:10}}>
+                <div style={{fontSize:12,fontWeight:600,color:'#dc2626',marginBottom:8}}>
+                  RUT {grupo[0].rut}-{grupo[0].dv} · {grupo.length} registros
+                </div>
+                <table className="tbl" style={{fontSize:12}}>
+                  <thead><tr>
+                    <th style={{width:55}}>ID</th><th>Nombre</th>
+                    <th style={{width:70}}>Estado</th><th style={{width:90}}>F. ingreso</th>
+                    <th style={{width:90}}>F. salida</th>
+                  </tr></thead>
+                  <tbody>{grupo.map(s => (
+                    <tr key={s.id_caif}>
+                      <td>{s.id_caif}</td>
+                      <td>{s.nombre_comp}</td>
+                      <td><span className={`badge ${s.vigente===1?'al-dia':'moroso'}`}>{s.vigente===1?'Activo':'Inactivo'}</span></td>
+                      <td style={{fontSize:11}}>{s.f_ini_vig ? new Date(s.f_ini_vig).toLocaleDateString('es-CL') : '—'}</td>
+                      <td style={{fontSize:11}}>{s.f_fin_vig ? new Date(s.f_fin_vig).toLocaleDateString('es-CL') : '—'}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            ))}
+            <div style={{fontSize:12,color:'var(--text-3)',marginTop:8}}>
+              Para fusionar duplicados, ejecuta el SQL correspondiente en Supabase.
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
