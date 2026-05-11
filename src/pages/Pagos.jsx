@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
-import { searchPersonas, getPagosBySocio, insertPago, deletePago, getNextPagoId, getSociosPorApoderado } from '../lib/supabase'
+import {
+  searchPersonas, getPagosBySocio, insertPago, deletePago, getNextPagoId,
+  getSociosPorApoderado, getGruposFrecuentes, guardarGrupoPago, getPersonasByIds
+} from '../lib/supabase'
 import { MESES, AÑOS, pagosPorSocioAnio, formatMoney } from '../lib/helpers'
 
 const CUOTA = 3000
@@ -7,50 +10,38 @@ const CUOTA = 3000
 function SocioGrupal({ entry, anio, onRemove, onToggleMes, onChangeMonto }) {
   const { socio, pagos, mesesSel, monto } = entry
   const mesesPagados = pagosPorSocioAnio(socio.id_caif, anio, pagos).map(p => p.mes)
-
   return (
     <div style={{border:'0.5px solid #e2e8f0',borderRadius:10,padding:'1rem',marginBottom:10,background:'#fafafa'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
         <div>
           <div style={{fontWeight:600,fontSize:14}}>{socio.nombre_comp}</div>
-          <div style={{fontSize:12,color:'#64748b'}}>
-            ID {socio.id_caif} · {socio.atleta}
-            {socio.apoderado ? ` · Apoderado: ${socio.apoderado}` : ''}
-          </div>
+          <div style={{fontSize:12,color:'#64748b'}}>ID {socio.id_caif} · {socio.atleta}{socio.apoderado?` · Apod: ${socio.apoderado}`:''}</div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
           <div style={{display:'flex',alignItems:'center',gap:6}}>
             <label style={{fontSize:12,color:'#64748b'}}>$/mes:</label>
-            <input type="number" value={monto}
-              onChange={e => onChangeMonto(socio.id_caif, Number(e.target.value))}
-              style={{width:85,padding:'4px 8px',border:'0.5px solid #e2e8f0',borderRadius:6,fontSize:13,fontFamily:'inherit'}}
-            />
+            <input type="number" value={monto} onChange={e=>onChangeMonto(socio.id_caif,Number(e.target.value))}
+              style={{width:85,padding:'4px 8px',border:'0.5px solid #e2e8f0',borderRadius:6,fontSize:13,fontFamily:'inherit'}}/>
           </div>
-          <button onClick={() => onRemove(socio.id_caif)}
+          <button onClick={()=>onRemove(socio.id_caif)}
             style={{background:'#fef2f2',border:'0.5px solid #fecaca',borderRadius:6,padding:'4px 8px',cursor:'pointer',color:'#dc2626',fontSize:12,fontFamily:'inherit'}}>
             <i className="ti ti-x"></i>
           </button>
         </div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5}}>
-        {MESES.map((m, i) => {
-          const n = i + 1
-          const pagado = mesesPagados.includes(n)
-          const sel = mesesSel.includes(n)
+        {MESES.map((m,i) => {
+          const n=i+1, pagado=mesesPagados.includes(n), sel=mesesSel.includes(n)
           return (
-            <button key={n}
-              className={`mes-btn${pagado?' pagado':''}${sel?' sel':''}`}
-              onClick={() => !pagado && onToggleMes(socio.id_caif, n)}
-              disabled={pagado} title={pagado?'Ya registrado':''}
-              style={{fontSize:11,padding:'5px 2px'}}>
-              {m.substring(0,3)}
-            </button>
+            <button key={n} className={`mes-btn${pagado?' pagado':''}${sel?' sel':''}`}
+              onClick={()=>!pagado&&onToggleMes(socio.id_caif,n)} disabled={pagado}
+              style={{fontSize:11,padding:'5px 2px'}}>{m.substring(0,3)}</button>
           )
         })}
       </div>
-      {mesesSel.length > 0 && (
+      {mesesSel.length>0&&(
         <div style={{marginTop:8,fontSize:12,color:'#1a5e3a',fontWeight:500}}>
-          → {mesesSel.map(m=>MESES[m-1]).join(', ')} · {formatMoney(monto * mesesSel.length)}
+          → {mesesSel.map(m=>MESES[m-1]).join(', ')} · {formatMoney(monto*mesesSel.length)}
         </div>
       )}
     </div>
@@ -80,7 +71,8 @@ export default function Pagos() {
   const [resultadosG, setResultadosG] = useState([])
   const [searchLoadingG, setSearchLoadingG] = useState(false)
   const [entries, setEntries] = useState([])
-  const [sugeridos, setSugeridos] = useState([]) // sugeridos por apoderado
+  const [sugeridos, setSugeridos] = useState([])
+  const [gruposFrecuentes, setGruposFrecuentes] = useState([]) // [{grupo_ids, veces, ultimo_pago, personas}]
   const [anioG, setAnioG] = useState(new Date().getFullYear())
   const [fechaG, setFechaG] = useState(new Date().toISOString().split('T')[0])
   const [metodoG, setMetodoG] = useState('Transferencia')
@@ -88,7 +80,6 @@ export default function Pagos() {
   const [alertG, setAlertG] = useState(null)
   const [loadingG, setLoadingG] = useState(false)
 
-  // Búsqueda individual
   useEffect(() => {
     if (busqueda.length < 2) { setResultados([]); return }
     setSearchLoading(true)
@@ -99,15 +90,14 @@ export default function Pagos() {
     return () => clearTimeout(t)
   }, [busqueda])
 
-  // Búsqueda grupal
   useEffect(() => {
     if (busqGrupal.length < 2) { setResultadosG([]); return }
     setSearchLoadingG(true)
-    const ids = entries.map(e => e.socio.id_caif)
-    const idsS = sugeridos.map(s => s.id_caif)
+    const ids = entries.map(e=>e.socio.id_caif)
+    const idsS = sugeridos.map(s=>s.id_caif)
     const t = setTimeout(async () => {
       const data = await searchPersonas(busqGrupal)
-      setResultadosG(data.filter(s => !ids.includes(s.id_caif) && !idsS.includes(s.id_caif)))
+      setResultadosG(data.filter(s=>!ids.includes(s.id_caif)&&!idsS.includes(s.id_caif)))
       setSearchLoadingG(false)
     }, 300)
     return () => clearTimeout(t)
@@ -118,101 +108,121 @@ export default function Pagos() {
     setPagosInd(await getPagosBySocio(s.id_caif))
   }
 
-  async function agregarAlGrupo(s, esSugerido = false) {
+  async function agregarAlGrupo(s, esSugerido=false) {
     setBusqGrupal(''); setResultadosG([])
-    if (esSugerido) setSugeridos(prev => prev.filter(x => x.id_caif !== s.id_caif))
+    if (esSugerido) setSugeridos(prev=>prev.filter(x=>x.id_caif!==s.id_caif))
     const pagos = await getPagosBySocio(s.id_caif)
-    const nuevoEntry = { socio: s, pagos, mesesSel: [], monto: CUOTA }
     setEntries(prev => {
-      const nuevos = [...prev, nuevoEntry]
-      // Si es el primer socio y tiene apoderado, buscar familia
-      if (prev.length === 0 && s.apoderado) {
-        buscarFamilia(s)
+      const nuevos = [...prev, {socio:s, pagos, mesesSel:[], monto:CUOTA}]
+      // Si es el primer socio, buscar sugerencias
+      if (prev.length === 0) {
+        cargarSugerencias(s)
       }
       return nuevos
     })
   }
 
-  async function buscarFamilia(s) {
-    if (!s.apoderado) return
-    const familia = await getSociosPorApoderado(s.apoderado, s.id_caif)
-    if (familia.length > 0) setSugeridos(familia)
+  async function cargarSugerencias(s) {
+    // 1. Grupos frecuentes
+    const grupos = await getGruposFrecuentes(s.id_caif)
+    if (grupos.length > 0) {
+      const gruposConPersonas = await Promise.all(
+        grupos.map(async g => {
+          const personas = await getPersonasByIds(g.grupo_ids)
+          return { ...g, personas }
+        })
+      )
+      setGruposFrecuentes(gruposConPersonas.filter(g => g.personas.length > 0))
+    }
+    // 2. Sugeridos por apoderado
+    if (s.apoderado) {
+      const familia = await getSociosPorApoderado(s.apoderado, s.id_caif)
+      if (familia.length > 0) setSugeridos(familia)
+    }
+  }
+
+  async function cargarGrupoFrecuente(grupo) {
+    setGruposFrecuentes([])
+    setSugeridos([])
+    for (const persona of grupo.personas) {
+      if (!entries.find(e=>e.socio.id_caif===persona.id_caif)) {
+        const pagos = await getPagosBySocio(persona.id_caif)
+        setEntries(prev => [...prev, {socio:persona, pagos, mesesSel:[], monto:CUOTA}])
+      }
+    }
   }
 
   function removerDelGrupo(id) {
     setEntries(prev => {
-      const nuevos = prev.filter(e => e.socio.id_caif !== id)
-      if (nuevos.length === 0) setSugeridos([])
+      const nuevos = prev.filter(e=>e.socio.id_caif!==id)
+      if (nuevos.length===0) { setSugeridos([]); setGruposFrecuentes([]) }
       return nuevos
     })
   }
 
   function toggleMesGrupal(socioId, mes) {
-    setEntries(prev => prev.map(e =>
-      e.socio.id_caif !== socioId ? e : {
-        ...e,
-        mesesSel: e.mesesSel.includes(mes)
-          ? e.mesesSel.filter(m => m !== mes)
-          : [...e.mesesSel, mes]
-      }
-    ))
+    setEntries(prev=>prev.map(e=>e.socio.id_caif!==socioId?e:{
+      ...e, mesesSel:e.mesesSel.includes(mes)?e.mesesSel.filter(m=>m!==mes):[...e.mesesSel,mes]
+    }))
   }
 
   function cambiarMontoGrupal(socioId, val) {
-    setEntries(prev => prev.map(e =>
-      e.socio.id_caif === socioId ? { ...e, monto: val } : e
-    ))
+    setEntries(prev=>prev.map(e=>e.socio.id_caif===socioId?{...e,monto:val}:e))
   }
 
   async function registrarInd() {
-    if (!socioSel || mesesSel.length === 0) { setAlertInd({ type:'error', msg:'Selecciona al menos un mes.' }); return }
+    if (!socioSel||mesesSel.length===0){setAlertInd({type:'error',msg:'Selecciona al menos un mes.'});return}
     setLoadingPago(true)
     try {
       let nextId = await getNextPagoId()
       const nuevos = []
       for (const mes of mesesSel) {
-        const res = await insertPago({ id_pago: nextId++, id_socio: socioSel.id_caif, periodo: anio*100+mes, fecha_pago: fecha, monto: Number(monto), tipo_pago: metodo, banco: null, num_transacc: numTrans||null, cuenta:'CAIF', anio, mes })
+        const res = await insertPago({id_pago:nextId++,id_socio:socioSel.id_caif,periodo:anio*100+mes,fecha_pago:fecha,monto:Number(monto),tipo_pago:metodo,banco:null,num_transacc:numTrans||null,cuenta:'CAIF',anio,mes})
         nuevos.push(res)
       }
-      setPagosInd(prev => [...prev, ...nuevos])
-      setAlertInd({ type:'success', msg:`✓ ${mesesSel.map(m=>MESES[m-1]).join(', ')} ${anio} — ${formatMoney(monto*mesesSel.length)}` })
+      setPagosInd(prev=>[...prev,...nuevos])
+      setAlertInd({type:'success',msg:`✓ ${mesesSel.map(m=>MESES[m-1]).join(', ')} ${anio} — ${formatMoney(monto*mesesSel.length)}`})
       setMesesSel([]); setNumTrans('')
-    } catch(e) { setAlertInd({ type:'error', msg:'Error: '+e.message }) }
-    finally { setLoadingPago(false); setTimeout(()=>setAlertInd(null),4000) }
+    } catch(e){setAlertInd({type:'error',msg:'Error: '+e.message})}
+    finally{setLoadingPago(false);setTimeout(()=>setAlertInd(null),4000)}
   }
 
   async function registrarGrupal() {
-    const conMeses = entries.filter(e => e.mesesSel.length > 0)
-    if (conMeses.length === 0) { setAlertG({ type:'error', msg:'Selecciona al menos un mes para algún socio.' }); return }
+    const conMeses = entries.filter(e=>e.mesesSel.length>0)
+    if (conMeses.length===0){setAlertG({type:'error',msg:'Selecciona al menos un mes.'});return}
     setLoadingG(true)
     try {
       let nextId = await getNextPagoId()
       let total = 0
       for (const entry of conMeses) {
         for (const mes of entry.mesesSel) {
-          await insertPago({ id_pago: nextId++, id_socio: entry.socio.id_caif, periodo: anioG*100+mes, fecha_pago: fechaG, monto: Number(entry.monto), tipo_pago: metodoG, banco: null, num_transacc: numTransG||null, cuenta:'CAIF', anio:anioG, mes })
+          await insertPago({id_pago:nextId++,id_socio:entry.socio.id_caif,periodo:anioG*100+mes,fecha_pago:fechaG,monto:Number(entry.monto),tipo_pago:metodoG,banco:null,num_transacc:numTransG||null,cuenta:'CAIF',anio:anioG,mes})
           total += Number(entry.monto)
         }
       }
-      const updated = await Promise.all(entries.map(async e => ({ ...e, pagos: await getPagosBySocio(e.socio.id_caif), mesesSel: [] })))
+      // Guardar grupo para sugerencias futuras
+      if (entries.length > 1) {
+        await guardarGrupoPago(entries.map(e=>e.socio.id_caif), fechaG)
+      }
+      const updated = await Promise.all(entries.map(async e=>({...e,pagos:await getPagosBySocio(e.socio.id_caif),mesesSel:[]})))
       setEntries(updated)
-      setAlertG({ type:'success', msg:`✓ Pagos registrados — Total: ${formatMoney(total)}` })
+      setAlertG({type:'success',msg:`✓ Pagos registrados — Total: ${formatMoney(total)}`})
       setNumTransG('')
-    } catch(e) { setAlertG({ type:'error', msg:'Error: '+e.message }) }
-    finally { setLoadingG(false); setTimeout(()=>setAlertG(null),5000) }
+    } catch(e){setAlertG({type:'error',msg:'Error: '+e.message})}
+    finally{setLoadingG(false);setTimeout(()=>setAlertG(null),5000)}
   }
 
   async function eliminarPagoInd(idPago) {
     if (!confirm('¿Eliminar este pago?')) return
     await deletePago(idPago)
-    setPagosInd(prev => prev.filter(p => p.id_pago !== idPago))
+    setPagosInd(prev=>prev.filter(p=>p.id_pago!==idPago))
   }
 
   const pagosAnio = socioSel ? pagosPorSocioAnio(socioSel.id_caif, anio, pagosInd) : []
-  const mesesPagados = pagosAnio.map(p => p.mes)
-  const totalGrupal = entries.reduce((a,e) => a + e.monto*e.mesesSel.length, 0)
-  const totalMesesGrupal = entries.reduce((a,e) => a + e.mesesSel.length, 0)
-  const idsEnGrupo = entries.map(e => e.socio.id_caif)
+  const mesesPagados = pagosAnio.map(p=>p.mes)
+  const totalGrupal = entries.reduce((a,e)=>a+e.monto*e.mesesSel.length,0)
+  const totalMesesGrupal = entries.reduce((a,e)=>a+e.mesesSel.length,0)
+  const idsEnGrupo = entries.map(e=>e.socio.id_caif)
 
   return (
     <div className="content">
@@ -222,15 +232,15 @@ export default function Pagos() {
       </div>
 
       {/* ── INDIVIDUAL ── */}
-      {modo==='individual' && (<>
+      {modo==='individual'&&(<>
         <div className="card">
           <div className="card-title"><i className="ti ti-search"></i>Buscar socio</div>
           <div style={{position:'relative'}}>
             <input type="text" placeholder="Nombre, apellido o ID..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
               style={{width:'100%',padding:'9px 12px',border:'0.5px solid #e2e8f0',borderRadius:8,fontSize:14,fontFamily:'inherit'}}/>
-            {searchLoading && <div className="spinner" style={{position:'absolute',right:10,top:10,width:18,height:18}}></div>}
+            {searchLoading&&<div className="spinner" style={{position:'absolute',right:10,top:10,width:18,height:18}}></div>}
           </div>
-          {resultados.length>0 && (
+          {resultados.length>0&&(
             <div className="tbl-scroll" style={{marginTop:8}}>
               <table className="tbl">
                 <thead><tr><th style={{width:55}}>ID</th><th>Nombre</th><th style={{width:90}}>Tipo</th></tr></thead>
@@ -244,8 +254,7 @@ export default function Pagos() {
             </div>
           )}
         </div>
-
-        {socioSel && (<>
+        {socioSel&&(<>
           <div className="socio-panel">
             <div><h3>{socioSel.nombre_comp}</h3>
               <p>ID {socioSel.id_caif} · RUT {socioSel.rut}-{socioSel.dv} · {socioSel.atleta}{socioSel.apoderado?` · Apoderado: ${socioSel.apoderado}`:''}</p>
@@ -297,7 +306,7 @@ export default function Pagos() {
       </>)}
 
       {/* ── GRUPAL ── */}
-      {modo==='grupal' && (<>
+      {modo==='grupal'&&(<>
         <div className="card">
           <div className="card-title"><i className="ti ti-user-plus"></i>Agregar socios al pago grupal</div>
           <div style={{position:'relative'}}>
@@ -317,6 +326,30 @@ export default function Pagos() {
                   </tr>
                 ))}</tbody>
               </table>
+            </div>
+          )}
+
+          {/* Grupos frecuentes */}
+          {gruposFrecuentes.filter(g=>!g.personas.every(p=>idsEnGrupo.includes(p.id_caif))).length>0&&(
+            <div style={{marginTop:12,background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:8,padding:'10px 14px'}}>
+              <div style={{fontSize:12,fontWeight:600,color:'#1e40af',marginBottom:10}}>
+                <i className="ti ti-history" style={{marginRight:4}}></i>Grupos frecuentes anteriores
+              </div>
+              {gruposFrecuentes.filter(g=>!g.personas.every(p=>idsEnGrupo.includes(p.id_caif))).map((g,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#fff',border:'0.5px solid #bfdbfe',borderRadius:8,padding:'8px 12px',marginBottom:6}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:500,color:'#1e3a5f'}}>
+                      {g.personas.map(p=>p.nombre_comp.split(' ')[0]).join(', ')}
+                    </div>
+                    <div style={{fontSize:11,color:'#64748b'}}>
+                      {g.veces} vez{g.veces!==1?'ces':''} · Último: {g.ultimo_pago ? new Date(g.ultimo_pago).toLocaleDateString('es-CL') : '—'}
+                    </div>
+                  </div>
+                  <button className="btn sm primary" onClick={()=>cargarGrupoFrecuente(g)}>
+                    <i className="ti ti-users"></i>Cargar grupo
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 

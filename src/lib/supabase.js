@@ -104,3 +104,53 @@ export async function getSociosPorApoderado(apoderado, excludeId) {
   if (error) return []
   return data
 }
+
+// ── Grupos de pago frecuentes ─────────────────────────────────────────
+export async function getGruposFrecuentes(socioId) {
+  const { data } = await supabase
+    .from('grupos_pago')
+    .select('*')
+    .eq('socio_id', socioId)
+    .order('veces', { ascending: false })
+    .limit(5)
+  return data || []
+}
+
+export async function guardarGrupoPago(socioIds, fecha) {
+  // Para cada socio del grupo, guarda los otros como su grupo frecuente
+  for (const id of socioIds) {
+    const otrosIds = socioIds.filter(x => x !== id)
+    if (otrosIds.length === 0) continue
+
+    // Buscar si ya existe este grupo exacto para este socio
+    const { data: existing } = await supabase
+      .from('grupos_pago')
+      .select('*')
+      .eq('socio_id', id)
+      .contains('grupo_ids', otrosIds)
+      .limit(1)
+
+    if (existing && existing.length > 0) {
+      // Actualizar contador
+      await supabase
+        .from('grupos_pago')
+        .update({ veces: existing[0].veces + 1, ultimo_pago: fecha })
+        .eq('id', existing[0].id)
+    } else {
+      // Crear nuevo grupo
+      await supabase
+        .from('grupos_pago')
+        .insert([{ socio_id: id, grupo_ids: otrosIds, veces: 1, ultimo_pago: fecha }])
+    }
+  }
+}
+
+export async function getPersonasByIds(ids) {
+  if (!ids || ids.length === 0) return []
+  const { data } = await supabase
+    .from('personas')
+    .select('*')
+    .in('id_caif', ids)
+    .eq('vigente', 1)
+  return data || []
+}
