@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase, insertPersona, updatePersona } from '../lib/supabase'
-import { estadoSocio, mesesAlDia, estadoLabel, MESES } from '../lib/helpers'
+import { estadoSocio, mesesAlDia, estadoLabel, MESES, nombreMostrar } from '../lib/helpers'
 
 const ANIO_ACTUAL = new Date().getFullYear()
 
@@ -21,7 +21,7 @@ export default function Socios({ isAdmin }) {
 
   function emptyForm() {
     return {
-      nombre:'', seg_nombre:'', apellido:'', ap_mat:'', rut:'', dv:'',
+      apodo:'', nombre:'', seg_nombre:'', apellido:'', ap_mat:'', rut:'', dv:'',
       fecha_nac:'', genero:'Masculino', atleta:'Atleta Adulto',
       celular:'', email:'', apoderado:'', vigente:1,
       f_ini_vig:'', f_fin_vig:'', causa_salida:''
@@ -62,7 +62,7 @@ export default function Socios({ isAdmin }) {
     if (socio) {
       setEditando(socio)
       setForm({
-        nombre: socio.nombre || '', seg_nombre: socio.seg_nombre || '',
+        apodo: socio.apodo || '', nombre: socio.nombre || '', seg_nombre: socio.seg_nombre || '',
         apellido: socio.apellido || '', ap_mat: socio.ap_mat || '',
         rut: socio.rut || '', dv: socio.dv || '',
         fecha_nac: socio.fecha_nac || '', genero: socio.genero || 'Masculino',
@@ -91,7 +91,13 @@ export default function Socios({ isAdmin }) {
     }
     setSaving(true)
     try {
-      const nombre_comp = [form.nombre, form.seg_nombre, form.apellido, form.ap_mat].filter(Boolean).join(' ')
+      // Calcular nombre_comp con formato apodo
+      const nombreBase = [form.nombre, form.seg_nombre, form.apellido, form.ap_mat].filter(Boolean).join(' ')
+      const apodoVal = (form.apodo || '').trim()
+      const nombreVal = (form.nombre || '').trim()
+      const nombre_comp = apodoVal && apodoVal.toLowerCase() !== nombreVal.toLowerCase()
+        ? \`\${apodoVal} - \${nombreBase}\`
+        : nombreBase
       const datos = {
         ...form,
         nombre_comp,
@@ -186,8 +192,8 @@ export default function Socios({ isAdmin }) {
                 return (
                   <tr key={s.id_caif} style={{opacity: esInactivo ? 0.7 : 1}}>
                     <td style={{color:'var(--text-3)'}}>{s.id_caif}</td>
-                    <td title={s.nombre_comp}>
-                      {s.nombre_comp}
+                    <td title={nombreMostrar(s)}>
+                      {nombreMostrar(s)}
                       {esInactivo && <span className="badge" style={{marginLeft:6,background:'#f1f5f9',color:'#64748b',fontSize:10}}>Inactivo</span>}
                     </td>
                     <td><span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`}>{s.atleta==='Atleta Niño'?'Niño':'Adulto'}</span></td>
@@ -240,6 +246,7 @@ export default function Socios({ isAdmin }) {
           {/* Tab datos personales */}
           {tabModal === 'datos' && (
             <div className="form-grid">
+              <div className="form-group full"><label>Apodo (nombre que se muestra)</label><input type="text" placeholder="Si es distinto al nombre" {...f('apodo')}/></div>
               <div className="form-group"><label>Nombre *</label><input type="text" {...f('nombre')}/></div>
               <div className="form-group"><label>Segundo nombre</label><input type="text" {...f('seg_nombre')}/></div>
               <div className="form-group"><label>Apellido *</label><input type="text" {...f('apellido')}/></div>

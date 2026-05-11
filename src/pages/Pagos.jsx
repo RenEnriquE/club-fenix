@@ -3,7 +3,7 @@ import {
   searchPersonas, getPagosBySocio, insertPago, deletePago, getNextPagoId,
   getSociosPorApoderado, getGruposFrecuentes, guardarGrupoPago, getPersonasByIds
 } from '../lib/supabase'
-import { MESES, AÑOS, pagosPorSocioAnio, formatMoney } from '../lib/helpers'
+import { MESES, AÑOS, pagosPorSocioAnio, formatMoney, nombreMostrar } from '../lib/helpers'
 
 const CUOTA = 3000
 
@@ -246,7 +246,7 @@ export default function Pagos() {
                 <thead><tr><th style={{width:55}}>ID</th><th>Nombre</th><th style={{width:90}}>Tipo</th></tr></thead>
                 <tbody>{resultados.map(s=>(
                   <tr key={s.id_caif} style={{cursor:'pointer'}} onClick={()=>seleccionarInd(s)} className={socioSel?.id_caif===s.id_caif?'selected':''}>
-                    <td>{s.id_caif}</td><td>{s.nombre_comp}</td>
+                    <td>{s.id_caif}</td><td>{nombreMostrar(s)}</td>
                     <td><span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`}>{s.atleta==='Atleta Niño'?'Niño':'Adulto'}</span></td>
                   </tr>
                 ))}</tbody>
@@ -256,7 +256,7 @@ export default function Pagos() {
         </div>
         {socioSel&&(<>
           <div className="socio-panel">
-            <div><h3>{socioSel.nombre_comp}</h3>
+            <div><h3>{nombreMostrar(socioSel)}</h3>
               <p>ID {socioSel.id_caif} · RUT {socioSel.rut}-{socioSel.dv} · {socioSel.atleta}{socioSel.apoderado?` · Apoderado: ${socioSel.apoderado}`:''}</p>
             </div>
             <span className={`badge ${socioSel.atleta==='Atleta Niño'?'nino':'adulto'}`}>{socioSel.atleta==='Atleta Niño'?'👦 Niño':'👤 Adulto'}</span>
@@ -320,7 +320,7 @@ export default function Pagos() {
                 <thead><tr><th style={{width:55}}>ID</th><th>Nombre</th><th style={{width:90}}>Tipo</th><th style={{width:90}}></th></tr></thead>
                 <tbody>{resultadosG.map(s=>(
                   <tr key={s.id_caif}>
-                    <td>{s.id_caif}</td><td>{s.nombre_comp}</td>
+                    <td>{s.id_caif}</td><td>{nombreMostrar(s)}</td>
                     <td><span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`}>{s.atleta==='Atleta Niño'?'Niño':'Adulto'}</span></td>
                     <td><button className="btn sm primary" onClick={()=>agregarAlGrupo(s)}><i className="ti ti-plus"></i>Agregar</button></td>
                   </tr>

@@ -38,3 +38,17 @@ export function formatMoney(n) {
 export function pagosPorSocioAnio(idSocio, anio, pagos) {
   return pagos.filter(p => p.id_socio === idSocio && p.anio === anio)
 }
+
+// Formato de nombre para mostrar
+// Si apodo != nombre: "Apodo - Nombre SegNombre Apellido ApMat"
+// Si apodo == nombre: "Nombre SegNombre Apellido ApMat"
+export function nombreMostrar(s) {
+  if (!s) return ''
+  const nombreComp = [s.nombre, s.seg_nombre, s.apellido, s.ap_mat].filter(Boolean).join(' ')
+  const apodo = (s.apodo || '').trim()
+  const nombre = (s.nombre || '').trim()
+  if (apodo && apodo.toLowerCase() !== nombre.toLowerCase()) {
+    return `${apodo} - ${nombreComp}`
+  }
+  return nombreComp
+}

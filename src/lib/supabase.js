@@ -43,8 +43,12 @@ export async function getPersonas({ soloVigentes = false } = {}) {
 export async function searchPersonas(term) {
   const isNum = !isNaN(term) && term.trim() !== ''
   let q = supabase.from('personas').select('*').eq('vigente', 1).order('nombre_comp').limit(30)
-  if (isNum) q = q.or(`nombre_comp.ilike.%${term}%,apodo.ilike.%${term}%,id_caif.eq.${term}`)
-  else q = q.or(`nombre_comp.ilike.%${term}%,apodo.ilike.%${term}%`)
+  const t = term.trim()
+  if (isNum) {
+    q = q.or(`nombre_comp.ilike.%${t}%,apodo.ilike.%${t}%,nombre.ilike.%${t}%,seg_nombre.ilike.%${t}%,apellido.ilike.%${t}%,ap_mat.ilike.%${t}%,id_caif.eq.${t}`)
+  } else {
+    q = q.or(`nombre_comp.ilike.%${t}%,apodo.ilike.%${t}%,nombre.ilike.%${t}%,seg_nombre.ilike.%${t}%,apellido.ilike.%${t}%,ap_mat.ilike.%${t}%`)
+  }
   const { data, error } = await q
   if (error) throw error
   return data
