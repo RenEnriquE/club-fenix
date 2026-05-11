@@ -108,14 +108,14 @@ export default function App() {
           <button className={`nav-btn ${page==='dashboard'?'active':''}`} onClick={() => setPage('dashboard')}>
             <i className="ti ti-layout-dashboard"></i>Dashboard
           </button>
+          <button className={`nav-btn ${page==='socios'?'active':''}`} onClick={() => setPage('socios')}>
+            <i className="ti ti-users"></i>Socios
+          </button>
           {isAdmin && (
             <button className={`nav-btn ${page==='pagos'?'active':''}`} onClick={() => setPage('pagos')}>
               <i className="ti ti-cash"></i>Pagos
             </button>
           )}
-          <button className={`nav-btn ${page==='socios'?'active':''}`} onClick={() => setPage('socios')}>
-            <i className="ti ti-users"></i>Socios
-          </button>
           <button className={`nav-btn ${page==='comite'?'active':''}`} onClick={() => setPage('comite')}>
             <i className="ti ti-report"></i>Comité
           </button>
