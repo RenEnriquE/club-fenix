@@ -19,7 +19,7 @@ export default function Dashboard() {
     const anio = new Date().getFullYear()
 
     Promise.all([
-      supabase.from('personas').select('id_caif,nombre_comp,atleta').eq('vigente', 1),
+      supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac').eq('vigente', 1),
       supabase.from('pagos').select('id_socio,mes,monto,anio').eq('anio', anio)
     ]).then(([resP, resPg]) => {
       setPersonas(resP.data || [])
@@ -64,6 +64,24 @@ export default function Dashboard() {
     .filter(p => estadoSocio(p.id_caif, pagos) !== 'al-dia')
     .sort((a,b) => mesesPendientes(b.id_caif, pagos) - mesesPendientes(a.id_caif, pagos))
     .slice(0, 8)
+
+
+  // Cumpleaños del mes
+  const mesActual2 = new Date().getMonth() + 1
+  const DIAS_SEMANA = ['dom','lun','mar','mié','jue','vie','sáb']
+  const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+  const cumpleaneros = personas
+    .filter(p => {
+      if (!p.fecha_nac) return false
+      const mes = new Date(p.fecha_nac + 'T12:00:00').getMonth() + 1
+      return mes === mesActual2
+    })
+    .map(p => {
+      const fn = new Date(p.fecha_nac + 'T12:00:00')
+      return { ...p, dia: fn.getDate(), diaSemana: DIAS_SEMANA[fn.getDay()] }
+    })
+    .sort((a, b) => a.dia - b.dia)
 
   return (
     <div className="content">
@@ -124,6 +142,46 @@ export default function Dashboard() {
             })
         }
       </div>
+
+      {cumpleaneros.length > 0 && (
+        <div className="card" style={{
+          background:'linear-gradient(135deg,#fff9f0 0%,#fff0f5 50%,#f0f5ff 100%)',
+          border:'0.5px solid #fde68a',position:'relative',overflow:'hidden'
+        }}>
+          {/* Decoración fondo */}
+          <div style={{position:'absolute',top:8,right:16,fontSize:40,opacity:.08,userSelect:'none'}}>🎂</div>
+          <div style={{position:'absolute',bottom:8,left:16,fontSize:30,opacity:.06,userSelect:'none'}}>🎈</div>
+
+          <div style={{textAlign:'center',marginBottom:16}}>
+            <div style={{fontSize:12,letterSpacing:2,color:'#92400e',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>🎉 Cumpleaños Socios CAIF 🎉</div>
+            <div style={{fontSize:18,fontWeight:700,color:'#1a5e3a'}}>
+              {MESES_ES[mesActual2-1]} · {anioActual}
+            </div>
+          </div>
+
+          <div style={{display:'flex',flexDirection:'column',gap:3}}>
+            {cumpleaneros.map(s => (
+              <div key={s.id_caif} style={{
+                display:'flex',justifyContent:'space-between',alignItems:'center',
+                padding:'6px 12px',borderRadius:8,
+                background:'rgba(255,255,255,.7)',
+                borderLeft:`3px solid ${s.atleta==='Atleta Niño'?'#a78bfa':'#6ee7b7'}`,
+                fontSize:13
+              }}>
+                <span style={{fontWeight:500,color:'#1e293b'}}>{s.nombre_comp}</span>
+                <span style={{color:'#64748b',fontSize:12,fontWeight:500}}>
+                  {s.diaSemana} {String(s.dia).padStart(2,'0')}/{String(mesActual2).padStart(2,'0')}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{textAlign:'center',marginTop:12,fontSize:11,color:'#94a3b8'}}>
+            {cumpleaneros.length} cumpleaños este mes
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
