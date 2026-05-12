@@ -52,20 +52,17 @@ export default function Comite() {
   useEffect(() => {
     setLoading(true)
     setPagos([]) // clear pagos while loading to avoid stale data
-    // Fetch all years in range with high limit to avoid Supabase 1000-row default
     const anioDesde = Math.floor(desde / 100)
     const anioHasta = Math.floor(hasta / 100)
     const anios = []
     for (let a = anioDesde; a <= anioHasta; a++) anios.push(a)
 
-    // Fetch each year separately to avoid row limits
     Promise.all([
       supabase.from('personas').select('id_caif,nombre_comp,rut,dv,atleta,vigente,fecha_nac').order('nombre_comp'),
-      ...anios.map(a => supabase.from('pagos').select('id_socio,periodo,mes,anio,monto').eq('anio', a).limit(5000))
-    ]).then(([resP, ...resPagos]) => {
+      supabase.from('pagos').select('id_socio,periodo,mes,anio,monto').in('anio', anios)
+    ]).then(([resP, resPg]) => {
       setPersonas(resP.data || [])
-      // Merge all years and filter client-side to exact period range
-      const allPagos = resPagos.flatMap(r => r.data || [])
+      const allPagos = resPg.data || []
       const filtered = allPagos.filter(p => Number(p.periodo) >= desde && Number(p.periodo) <= hasta)
       setPagos(filtered)
       setLoading(false)
@@ -180,11 +177,11 @@ export default function Comite() {
                   <th style={{width:110}}>RUT</th>
                   <th style={{width:50}}>Tipo</th>
                   {columnas.map(col=>(
-                    <th key={col.periodo} style={{width:52,textAlign:'right',whiteSpace:'nowrap'}}>
+                    <th key={col.periodo} style={{width:68,textAlign:'right',whiteSpace:'nowrap'}}>
                       {col.label}
                     </th>
                   ))}
-                  <th style={{width:80,textAlign:'right',fontWeight:700,background:'#f0fdf4',color:'#16a34a'}}>
+                  <th style={{width:90,textAlign:'right',fontWeight:700,background:'#f0fdf4',color:'#16a34a'}}>
                     Total
                   </th>
                 </tr>
@@ -211,8 +208,8 @@ export default function Comite() {
                       {columnas.map(col => {
                         const pago = pagosSocio.find(pg => Number(pg.periodo) === col.periodo)
                         return (
-                          <td key={col.periodo} style={{textAlign:'right',color: pago ? '#16a34a' : '#e2e8f0'}}>
-                            {pago ? `$${(pago.monto/1000).toFixed(0)}k` : '—'}
+                          <td key={col.periodo} style={{textAlign:'right',color: pago ? '#16a34a' : '#e2e8f0',fontSize:11}}>
+                            {pago ? formatMoney(pago.monto) : '—'}
                           </td>
                         )
                       })}
@@ -228,8 +225,8 @@ export default function Comite() {
                     TOTAL PERÍODO
                   </td>
                   {totalesCols.map((t,i) => (
-                    <td key={i} style={{textAlign:'right',color:t>0?'#16a34a':'var(--text-3)'}}>
-                      {t > 0 ? `$${(t/1000).toFixed(0)}k` : '—'}
+                    <td key={i} style={{textAlign:'right',color:t>0?'#16a34a':'var(--text-3)',fontWeight:600,fontSize:10}}>
+                      {t > 0 ? formatMoney(t) : '—'}
                     </td>
                   ))}
                   <td style={{textAlign:'right',color:'#16a34a',background:'#dcfce7'}}>
