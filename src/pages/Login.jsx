@@ -1,20 +1,21 @@
 import { useState } from 'react'
-import { signIn } from '../lib/supabase'
+import { login } from '../lib/auth'
 
-export default function Login() {
+export default function Login({ onLogin }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      await signIn(email, password)
+      const session = login(email, password)
+      onLogin(session)
     } catch (err) {
-      setError('Credenciales incorrectas. Intenta nuevamente.')
+      setError('Email o contraseña incorrectos.')
     } finally {
       setLoading(false)
     }
@@ -33,28 +34,20 @@ export default function Login() {
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{marginBottom:12}}>
             <label>Correo electrónico</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="correo@ejemplo.com"
-              required
-              autoFocus
-            />
+            <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
+              placeholder="correo@ejemplo.com" required autoFocus/>
           </div>
           <div className="form-group" style={{marginBottom:20}}>
             <label>Contraseña</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
+            <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
+              placeholder="••••••••" required/>
           </div>
-          {error && <div className="alert error"><i className="ti ti-alert-circle"></i>{error}</div>}
-          <button className="btn primary" type="submit" disabled={loading} style={{width:'100%',justifyContent:'center',marginTop:8}}>
-            {loading ? <><div className="spinner" style={{width:16,height:16,borderWidth:2}}></div>Ingresando...</> : <><i className="ti ti-login"></i>Ingresar</>}
+          {error && <div className="alert error" style={{marginBottom:12}}><i className="ti ti-alert-circle"></i>{error}</div>}
+          <button className="btn primary" type="submit" disabled={loading}
+            style={{width:'100%',justifyContent:'center'}}>
+            {loading
+              ? <><div className="spinner" style={{width:16,height:16,borderWidth:2}}></div>Ingresando...</>
+              : <><i className="ti ti-login"></i>Ingresar</>}
           </button>
         </form>
       </div>
