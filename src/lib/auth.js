@@ -1,17 +1,15 @@
-// Sistema de autenticación simple y robusto
-// Sin dependencia de Supabase Auth
-
+// Sistema de autenticación simple
 const USERS = [
-  { email: 'renenrique@gmail.com', password: 'Xktkil', role: 'admin' },
-  { email: 'contactoclubcaif@gmail.com', password: 'comiteFenix', role: 'comite' },
+  { email: 'renenrique@gmail.com', password: 'Fenix2024', role: 'admin' },
+  { email: 'contactoclubcaif@gmail.com', password: 'Comite2024', role: 'comite' },
 ]
 
 const SESSION_KEY = 'fenix-session'
 
 export function login(email, password) {
-  const user = USERS.find(u => 
-    u.email.toLowerCase() === email.toLowerCase().trim() && 
-    u.password === password
+  const user = USERS.find(u =>
+    u.email.toLowerCase() === email.toLowerCase().trim() &&
+    u.password === password.trim()
   )
   if (!user) throw new Error('Credenciales incorrectas')
   const session = { email: user.email, role: user.role, ts: Date.now() }
@@ -28,7 +26,6 @@ export function getSession() {
     const raw = localStorage.getItem(SESSION_KEY)
     if (!raw) return null
     const session = JSON.parse(raw)
-    // Sesión válida por 30 días
     if (Date.now() - session.ts > 30 * 24 * 60 * 60 * 1000) {
       localStorage.removeItem(SESSION_KEY)
       return null
