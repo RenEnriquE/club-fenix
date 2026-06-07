@@ -237,8 +237,8 @@ export default function Comite() {
             </table>
           </div>
           <div style={{fontSize:11,color:'var(--text-3)',marginTop:8,textAlign:'center'}}>
-            ← Desliza horizontalmente para ver todos los meses →
-          </div>
+  Desliza horizontalmente para ver todos los meses
+</div>
         )}
       </div>
     </div>
