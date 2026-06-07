@@ -1,6 +1,6 @@
 // Sistema de autenticación simple
 const USERS = [
-  { email: 'renenrique@gmail.com', password: 'Fenix2024', role: 'admin' },
+  { email: 'renenrique@gmail.com', password: 'Xktkil', role: 'admin' },
   { email: 'contactoclubcaif@gmail.com', password: 'Comite2024', role: 'comite' },
 ]
 
