@@ -1,8 +1,7 @@
-// Sistema de autenticacion - Club Atletico Independencia Fenix
-// Actualizado: contrasena admin cambiada
+// Sistema de autenticacion - Club Atletico Independencia Fenix v2
 const USERS = [
-  { email: 'renenrique@gmail.com', password: 'Xktkil', role: 'admin' },
-  { email: 'contactoclubcaif@gmail.com', password: 'Comite2024', role: 'comite' },
+  { email: 'renenrique@gmail.com', password: 'fenix123', role: 'admin' },
+  { email: 'contactoclubcaif@gmail.com', password: 'comite123', role: 'comite' },
 ]
 
 const SESSION_KEY = 'fenix-session'
