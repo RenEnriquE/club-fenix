@@ -237,10 +237,16 @@ export default function Comite() {
               </tbody>
             </table>
           </div>
+<<<<<<< HEAD
           <p style={{fontSize:11,color:'var(--text-3)',marginTop:8,textAlign:'center'}}>
             Desliza horizontalmente para ver todos los meses
           </p>
           </>
+=======
+          <div style={{fontSize:11,color:'var(--text-3)',marginTop:8,textAlign:'center'}}>
+  Desliza horizontalmente para ver todos los meses
+</div>
+>>>>>>> bcbb566e8b61eace57f9946046228ad720f39672
         )}
       </div>
     </div>
