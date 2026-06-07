@@ -2,8 +2,8 @@
 // Sin dependencia de Supabase Auth
 
 const USERS = [
-  { email: 'renenrique@gmail.com', password: 'admin2024Fenix!', role: 'admin' },
-  { email: 'contactoclubcaif@gmail.com', password: 'comite2024Fenix!', role: 'comite' },
+  { email: 'renenrique@gmail.com', password: 'Xktkil', role: 'admin' },
+  { email: 'contactoclubcaif@gmail.com', password: 'comiteFenix', role: 'comite' },
 ]
 
 const SESSION_KEY = 'fenix-session'
