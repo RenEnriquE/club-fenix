@@ -168,6 +168,7 @@ export default function Comite() {
             El rango seleccionado tiene {columnas.length} meses. Selecciona un rango de máximo 24 meses para mejor visualización.
           </div>
         ) : (
+          <>
           <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch',borderRadius:8,border:'0.5px solid #e2e8f0'}}>
             <table className="tbl" style={{fontSize:11,minWidth:`${360 + columnas.length * 54}px`}}>
               <thead>
@@ -236,9 +237,10 @@ export default function Comite() {
               </tbody>
             </table>
           </div>
-          <div style={{fontSize:11,color:'var(--text-3)',marginTop:8,textAlign:'center'}}>
-            ← Desliza horizontalmente para ver todos los meses →
-          </div>
+          <p style={{fontSize:11,color:'var(--text-3)',marginTop:8,textAlign:'center'}}>
+            Desliza horizontalmente para ver todos los meses
+          </p>
+          </>
         )}
       </div>
     </div>
