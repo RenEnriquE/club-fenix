@@ -48,65 +48,6 @@ function SocioGrupal({ entry, anio, onRemove, onToggleMes, onChangeMonto }) {
       )}
     </div>
 
-      {/* Modal edicion pago */}
-      {pagoEditando && (
-        <div className="modal-bg open" onClick={e => e.target === e.currentTarget && cerrarEdicion()}>
-          <div className="modal">
-            <div className="modal-header">
-              <h2>Editar pago #{pagoEditando.id_pago}</h2>
-              <button className="modal-close" onClick={cerrarEdicion}>&times;</button>
-            </div>
-            <div style={{fontSize:12,color:'var(--text-3)',marginBottom:16}}>
-              Socio: <strong>{socioSel?.nombre_comp}</strong>
-            </div>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Mes</label>
-                <select value={editMes} onChange={e=>setEditMes(Number(e.target.value))}>
-                  {MESES.map((m,i)=><option key={i+1} value={i+1}>{m}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Fecha de pago</label>
-                <input type="date" value={editFecha} onChange={e=>setEditFecha(e.target.value)}/>
-              </div>
-              <div className="form-group">
-                <label>Monto ($)</label>
-                <input type="number" value={editMonto} onChange={e=>setEditMonto(e.target.value)}/>
-              </div>
-              <div className="form-group">
-                <label>Metodo</label>
-                <select value={editMetodo} onChange={e=>setEditMetodo(e.target.value)}>
-                  <option>Transferencia</option>
-                  <option>Efectivo</option>
-                  <option>Cheque</option>
-                </select>
-              </div>
-              <div className="form-group full">
-                <label>Actividad</label>
-                <select value={editActividad} onChange={e=>setEditActividad(e.target.value)}>
-                  {actividades.map(a=><option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>)}
-                </select>
-              </div>
-              {editMetodo==='Transferencia' && (
-                <div className="form-group full">
-                  <label>N transaccion</label>
-                  <input type="text" value={editNumTrans} onChange={e=>setEditNumTrans(e.target.value)} placeholder="Opcional"/>
-                </div>
-              )}
-            </div>
-            {alertEdit && <div className={`alert ${alertEdit.type}`} style={{marginBottom:12}}>{alertEdit.msg}</div>}
-            <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:8}}>
-              <button className="btn" onClick={cerrarEdicion}>Cancelar</button>
-              <button className="btn primary" onClick={guardarEdicion} disabled={savingEdit}>
-                {savingEdit
-                  ? <><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Guardando...</>
-                  : <><i className="ti ti-check"></i>Guardar cambios</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
   )
 }
 
@@ -638,5 +579,65 @@ export default function Pagos() {
         )}
       </>)}
     </div>
+
+{/* Modal edicion pago */}
+      {pagoEditando && (
+        <div className="modal-bg open" onClick={e => e.target === e.currentTarget && cerrarEdicion()}>
+          <div className="modal">
+            <div className="modal-header">
+              <h2>Editar pago #{pagoEditando.id_pago}</h2>
+              <button className="modal-close" onClick={cerrarEdicion}>&times;</button>
+            </div>
+            <div style={{fontSize:12,color:'var(--text-3)',marginBottom:16}}>
+              Socio: <strong>{socioSel?.nombre_comp}</strong>
+            </div>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Mes</label>
+                <select value={editMes} onChange={e=>setEditMes(Number(e.target.value))}>
+                  {MESES.map((m,i)=><option key={i+1} value={i+1}>{m}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Fecha de pago</label>
+                <input type="date" value={editFecha} onChange={e=>setEditFecha(e.target.value)}/>
+              </div>
+              <div className="form-group">
+                <label>Monto ($)</label>
+                <input type="number" value={editMonto} onChange={e=>setEditMonto(e.target.value)}/>
+              </div>
+              <div className="form-group">
+                <label>Metodo</label>
+                <select value={editMetodo} onChange={e=>setEditMetodo(e.target.value)}>
+                  <option>Transferencia</option>
+                  <option>Efectivo</option>
+                  <option>Cheque</option>
+                </select>
+              </div>
+              <div className="form-group full">
+                <label>Actividad</label>
+                <select value={editActividad} onChange={e=>setEditActividad(e.target.value)}>
+                  {actividades.map(a=><option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>)}
+                </select>
+              </div>
+              {editMetodo==='Transferencia' && (
+                <div className="form-group full">
+                  <label>N transaccion</label>
+                  <input type="text" value={editNumTrans} onChange={e=>setEditNumTrans(e.target.value)} placeholder="Opcional"/>
+                </div>
+              )}
+            </div>
+            {alertEdit && <div className={`alert ${alertEdit.type}`} style={{marginBottom:12}}>{alertEdit.msg}</div>}
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:8}}>
+              <button className="btn" onClick={cerrarEdicion}>Cancelar</button>
+              <button className="btn primary" onClick={guardarEdicion} disabled={savingEdit}>
+                {savingEdit
+                  ? <><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Guardando...</>
+                  : <><i className="ti ti-check"></i>Guardar cambios</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   )
 }
