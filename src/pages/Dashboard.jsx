@@ -114,7 +114,7 @@ export default function Dashboard() {
   // Cumpleaneros
   const cumpleaneros = personas
     .filter(p => { if(!p.fecha_nac) return false; return new Date(p.fecha_nac+'T12:00:00-04:00').getMonth()+1===mesActual })
-    .map(p => { const fn=new Date(p.fecha_nac+'T12:00:00-04:00'); return {...p,dia:fn.getDate(),diaSemana:DIAS_SEMANA[fn.getDay()]} })
+    .map(p => { const fn=new Date(p.fecha_nac+'T12:00:00-04:00'); const mes=String(fn.getMonth()+1).padStart(2,'0'); const dia=String(fn.getDate()).padStart(2,'0'); const fnAnio=new Date(anio+'-'+mes+'-'+dia+'T12:00:00-04:00'); return {...p,dia:fn.getDate(),diaSemana:DIAS_SEMANA[fnAnio.getDay()]} })
     .sort((a,b)=>a.dia-b.dia)
 
   const statItems = [
