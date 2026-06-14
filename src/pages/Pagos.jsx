@@ -423,7 +423,7 @@ export default function Pagos() {
               <div className="tbl-wrap"><table className="tbl">
                 <thead><tr><th style={{width:90}}>Mes</th><th style={{width:100}}>Fecha</th><th style={{width:90}}>Monto</th><th style={{width:110}}>Metodo</th><th>Actividad</th><th>N Trans.</th><th style={{width:60}}></th></tr></thead>
                 <tbody>
-                  {pagosAnio.sort((a,b)=>a.mes-b.mes).map(p=>{
+                  {pagosAnio.sort((a,b)=>new Date(b.fecha_pago||0)-new Date(a.fecha_pago||0)).map(p=>{
                     const nomAct = actividades.find(a=>a.id_actividad===Number(p.id_actividad))?.nombre || 'Cuotas'
                     const esCuota = Number(p.id_actividad) === 0
                     return (
