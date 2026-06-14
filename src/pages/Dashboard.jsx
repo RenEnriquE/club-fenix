@@ -98,7 +98,7 @@ export default function Dashboard() {
   const hoy = new Date()
   const calcEdad = fn => {
     if (!fn) return null
-    const d = new Date(fn+'T12:00:00')
+    const d = new Date(fn+'T12:00:00-04:00')
     let e = hoy.getFullYear()-d.getFullYear()
     const m = hoy.getMonth()-d.getMonth()
     if (m<0||(m===0&&hoy.getDate()<d.getDate())) e--
@@ -113,8 +113,8 @@ export default function Dashboard() {
 
   // Cumpleaneros
   const cumpleaneros = personas
-    .filter(p => { if(!p.fecha_nac) return false; return new Date(p.fecha_nac+'T12:00:00').getMonth()+1===mesActual })
-    .map(p => { const fn=new Date(p.fecha_nac+'T12:00:00'); return {...p,dia:fn.getDate(),diaSemana:DIAS_SEMANA[fn.getDay()]} })
+    .filter(p => { if(!p.fecha_nac) return false; return new Date(p.fecha_nac+'T12:00:00-04:00').getMonth()+1===mesActual })
+    .map(p => { const fn=new Date(p.fecha_nac+'T12:00:00-04:00'); return {...p,dia:fn.getDate(),diaSemana:DIAS_SEMANA[fn.getDay()]} })
     .sort((a,b)=>a.dia-b.dia)
 
   const statItems = [
