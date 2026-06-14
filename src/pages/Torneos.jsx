@@ -571,7 +571,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                         )}
                       </td>
                       <td>
-                        <div style={{display:'flex',gap:4'}}>
+                        <div style={{display:'flex',gap:4}}>
                           {!insc.pagado && (
                             <button className="btn sm primary" style={{fontSize:11,padding:'3px 8px'}} onClick={()=>setRegistrandoPago(insc)}>
                               <i className="ti ti-cash"></i>Pago
