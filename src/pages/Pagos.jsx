@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import {
   searchPersonas, getPagosBySocio, insertPago, deletePago, getNextPagoId,
-  getSociosPorApoderado, getGruposFrecuentes, guardarGrupoPago, getPersonasByIds
+  getSociosPorApoderado, getGruposFrecuentes, guardarGrupoPago, getPersonasByIds,
+  getActividades
 } from '../lib/supabase'
-import { MESES, AÑOS, pagosPorSocioAnio, formatMoney, nombreMostrar } from '../lib/helpers'
+import { MESES, ANOS, pagosPorSocioAnio, formatMoney, nombreMostrar } from '../lib/helpers'
 
 const CUOTA = 3000
 
@@ -41,7 +42,7 @@ function SocioGrupal({ entry, anio, onRemove, onToggleMes, onChangeMonto }) {
       </div>
       {mesesSel.length>0&&(
         <div style={{marginTop:8,fontSize:12,color:'#1a5e3a',fontWeight:500}}>
-          → {mesesSel.map(m=>MESES[m-1]).join(', ')} · {formatMoney(monto*mesesSel.length)}
+          {mesesSel.map(m=>MESES[m-1]).join(', ')} · {formatMoney(monto*mesesSel.length)}
         </div>
       )}
     </div>
@@ -50,6 +51,7 @@ function SocioGrupal({ entry, anio, onRemove, onToggleMes, onChangeMonto }) {
 
 export default function Pagos() {
   const [modo, setModo] = useState('individual')
+  const [actividades, setActividades] = useState([])
 
   // Individual
   const [busqueda, setBusqueda] = useState('')
@@ -62,6 +64,7 @@ export default function Pagos() {
   const [monto, setMonto] = useState(CUOTA)
   const [metodo, setMetodo] = useState('Transferencia')
   const [numTrans, setNumTrans] = useState('')
+  const [actividadInd, setActividadInd] = useState(0)
   const [alertInd, setAlertInd] = useState(null)
   const [loadingPago, setLoadingPago] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
@@ -72,13 +75,19 @@ export default function Pagos() {
   const [searchLoadingG, setSearchLoadingG] = useState(false)
   const [entries, setEntries] = useState([])
   const [sugeridos, setSugeridos] = useState([])
-  const [gruposFrecuentes, setGruposFrecuentes] = useState([]) // [{grupo_ids, veces, ultimo_pago, personas}]
+  const [gruposFrecuentes, setGruposFrecuentes] = useState([])
   const [anioG, setAnioG] = useState(new Date().getFullYear())
   const [fechaG, setFechaG] = useState(new Date().toISOString().split('T')[0])
   const [metodoG, setMetodoG] = useState('Transferencia')
   const [numTransG, setNumTransG] = useState('')
+  const [actividadG, setActividadG] = useState(0)
   const [alertG, setAlertG] = useState(null)
   const [loadingG, setLoadingG] = useState(false)
+
+  // Cargar actividades al montar
+  useEffect(() => {
+    getActividades().then(setActividades).catch(() => setActividades([]))
+  }, [])
 
   useEffect(() => {
     if (busqueda.length < 2) { setResultados([]); return }
@@ -103,6 +112,16 @@ export default function Pagos() {
     return () => clearTimeout(t)
   }, [busqGrupal, entries, sugeridos])
 
+  // Al cambiar actividad individual: ajustar monto por defecto
+  useEffect(() => {
+    setMonto(Number(actividadInd) === 0 ? CUOTA : 0)
+  }, [actividadInd])
+
+  // Al cambiar actividad grupal: resetear monto de cada entry
+  useEffect(() => {
+    setEntries(prev => prev.map(e => ({ ...e, monto: Number(actividadG) === 0 ? CUOTA : 0 })))
+  }, [actividadG])
+
   async function seleccionarInd(s) {
     setSocioSel(s); setMesesSel([]); setBusqueda(''); setResultados([])
     setPagosInd(await getPagosBySocio(s.id_caif))
@@ -113,17 +132,13 @@ export default function Pagos() {
     if (esSugerido) setSugeridos(prev=>prev.filter(x=>x.id_caif!==s.id_caif))
     const pagos = await getPagosBySocio(s.id_caif)
     setEntries(prev => {
-      const nuevos = [...prev, {socio:s, pagos, mesesSel:[], monto:CUOTA}]
-      // Si es el primer socio, buscar sugerencias
-      if (prev.length === 0) {
-        cargarSugerencias(s)
-      }
+      const nuevos = [...prev, {socio:s, pagos, mesesSel:[], monto: Number(actividadG) === 0 ? CUOTA : 0}]
+      if (prev.length === 0) cargarSugerencias(s)
       return nuevos
     })
   }
 
   async function cargarSugerencias(s) {
-    // 1. Grupos frecuentes
     const grupos = await getGruposFrecuentes(s.id_caif)
     if (grupos.length > 0) {
       const gruposConPersonas = await Promise.all(
@@ -134,7 +149,6 @@ export default function Pagos() {
       )
       setGruposFrecuentes(gruposConPersonas.filter(g => g.personas.length > 0))
     }
-    // 2. Sugeridos por apoderado
     if (s.apoderado) {
       const familia = await getSociosPorApoderado(s.apoderado, s.id_caif)
       if (familia.length > 0) setSugeridos(familia)
@@ -147,7 +161,7 @@ export default function Pagos() {
     for (const persona of grupo.personas) {
       if (!entries.find(e=>e.socio.id_caif===persona.id_caif)) {
         const pagos = await getPagosBySocio(persona.id_caif)
-        setEntries(prev => [...prev, {socio:persona, pagos, mesesSel:[], monto:CUOTA}])
+        setEntries(prev => [...prev, {socio:persona, pagos, mesesSel:[], monto: Number(actividadG) === 0 ? CUOTA : 0}])
       }
     }
   }
@@ -177,11 +191,25 @@ export default function Pagos() {
       let nextId = await getNextPagoId()
       const nuevos = []
       for (const mes of mesesSel) {
-        const res = await insertPago({id_pago:nextId++,id_socio:socioSel.id_caif,periodo:anio*100+mes,fecha_pago:fecha,monto:Number(monto),tipo_pago:metodo,banco:null,num_transacc:numTrans||null,cuenta:'CAIF',anio,mes})
+        const res = await insertPago({
+          id_pago: nextId++,
+          id_socio: socioSel.id_caif,
+          periodo: anio*100+mes,
+          fecha_pago: fecha,
+          monto: Number(monto),
+          tipo_pago: metodo,
+          banco: null,
+          num_transacc: numTrans||null,
+          cuenta: 'CAIF',
+          anio,
+          mes,
+          id_actividad: Number(actividadInd)
+        })
         nuevos.push(res)
       }
       setPagosInd(prev=>[...prev,...nuevos])
-      setAlertInd({type:'success',msg:`✓ ${mesesSel.map(m=>MESES[m-1]).join(', ')} ${anio} — ${formatMoney(monto*mesesSel.length)}`})
+      const nomAct = actividades.find(a=>a.id_actividad===Number(actividadInd))?.nombre || 'Cuotas'
+      setAlertInd({type:'success',msg:`&#10003; ${mesesSel.map(m=>MESES[m-1]).join(', ')} ${anio} [${nomAct}] - ${formatMoney(monto*mesesSel.length)}`})
       setMesesSel([]); setNumTrans('')
     } catch(e){setAlertInd({type:'error',msg:'Error: '+e.message})}
     finally{setLoadingPago(false);setTimeout(()=>setAlertInd(null),4000)}
@@ -196,24 +224,37 @@ export default function Pagos() {
       let total = 0
       for (const entry of conMeses) {
         for (const mes of entry.mesesSel) {
-          await insertPago({id_pago:nextId++,id_socio:entry.socio.id_caif,periodo:anioG*100+mes,fecha_pago:fechaG,monto:Number(entry.monto),tipo_pago:metodoG,banco:null,num_transacc:numTransG||null,cuenta:'CAIF',anio:anioG,mes})
+          await insertPago({
+            id_pago: nextId++,
+            id_socio: entry.socio.id_caif,
+            periodo: anioG*100+mes,
+            fecha_pago: fechaG,
+            monto: Number(entry.monto),
+            tipo_pago: metodoG,
+            banco: null,
+            num_transacc: numTransG||null,
+            cuenta: 'CAIF',
+            anio: anioG,
+            mes,
+            id_actividad: Number(actividadG)
+          })
           total += Number(entry.monto)
         }
       }
-      // Guardar grupo para sugerencias futuras
       if (entries.length > 1) {
         await guardarGrupoPago(entries.map(e=>e.socio.id_caif), fechaG)
       }
       const updated = await Promise.all(entries.map(async e=>({...e,pagos:await getPagosBySocio(e.socio.id_caif),mesesSel:[]})))
       setEntries(updated)
-      setAlertG({type:'success',msg:`✓ Pagos registrados — Total: ${formatMoney(total)}`})
+      const nomAct = actividades.find(a=>a.id_actividad===Number(actividadG))?.nombre || 'Cuotas'
+      setAlertG({type:'success',msg:`&#10003; Pagos registrados [${nomAct}] - Total: ${formatMoney(total)}`})
       setNumTransG('')
     } catch(e){setAlertG({type:'error',msg:'Error: '+e.message})}
     finally{setLoadingG(false);setTimeout(()=>setAlertG(null),5000)}
   }
 
   async function eliminarPagoInd(idPago) {
-    if (!confirm('¿Eliminar este pago?')) return
+    if (!confirm('Eliminar este pago?')) return
     await deletePago(idPago)
     setPagosInd(prev=>prev.filter(p=>p.id_pago!==idPago))
   }
@@ -224,6 +265,9 @@ export default function Pagos() {
   const totalMesesGrupal = entries.reduce((a,e)=>a+e.mesesSel.length,0)
   const idsEnGrupo = entries.map(e=>e.socio.id_caif)
 
+  const esCuotaInd = Number(actividadInd) === 0
+  const esCuotaG = Number(actividadG) === 0
+
   return (
     <div className="content">
       <div style={{display:'flex',gap:8,marginBottom:16}}>
@@ -231,7 +275,7 @@ export default function Pagos() {
         <button className={`btn ${modo==='grupal'?'primary':''}`} onClick={()=>setModo('grupal')}><i className="ti ti-users"></i>Pago grupal</button>
       </div>
 
-      {/* ── INDIVIDUAL ── */}
+      {/* INDIVIDUAL */}
       {modo==='individual'&&(<>
         <div className="card">
           <div className="card-title"><i className="ti ti-search"></i>Buscar socio</div>
@@ -247,57 +291,106 @@ export default function Pagos() {
                 <tbody>{resultados.map(s=>(
                   <tr key={s.id_caif} style={{cursor:'pointer'}} onClick={()=>seleccionarInd(s)} className={socioSel?.id_caif===s.id_caif?'selected':''}>
                     <td>{s.id_caif}</td><td>{nombreMostrar(s)}</td>
-                    <td><span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`}>{s.atleta==='Atleta Niño'?'Niño':'Adulto'}</span></td>
+                    <td><span className={`badge ${s.atleta==='Atleta Ni\u00f1o'?'nino':'adulto'}`}>{s.atleta==='Atleta Ni\u00f1o'?'Ni\u00f1o':'Adulto'}</span></td>
                   </tr>
                 ))}</tbody>
               </table>
             </div>
           )}
         </div>
+
         {socioSel&&(<>
           <div className="socio-panel">
             <div><h3>{nombreMostrar(socioSel)}</h3>
               <p>ID {socioSel.id_caif} · RUT {socioSel.rut}-{socioSel.dv} · {socioSel.atleta}{socioSel.apoderado?` · Apoderado: ${socioSel.apoderado}`:''}</p>
             </div>
-            <span className={`badge ${socioSel.atleta==='Atleta Niño'?'nino':'adulto'}`}>{socioSel.atleta==='Atleta Niño'?'👦 Niño':'👤 Adulto'}</span>
+            <span className={`badge ${socioSel.atleta==='Atleta Ni\u00f1o'?'nino':'adulto'}`}>{socioSel.atleta==='Atleta Ni\u00f1o'?'&#128102; Ni\u00f1o':'&#128100; Adulto'}</span>
           </div>
+
           <div className="card">
             <div className="card-title"><i className="ti ti-calendar-check"></i>Registrar pago</div>
-            <div className="year-tabs">{AÑOS.map(a=><button key={a} className={`year-tab ${a===anio?'active':''}`} onClick={()=>{setAnio(a);setMesesSel([])}}>{a}</button>)}</div>
-            <p style={{fontSize:12,color:'var(--text-3)',marginBottom:8}}>Verde = pagado · Selecciona los meses a registrar</p>
-            <div className="mes-grid">{MESES.map((m,i)=>{const n=i+1,pg=mesesPagados.includes(n),sel=mesesSel.includes(n);return(
-              <button key={n} className={`mes-btn${pg?' pagado':''}${sel?' sel':''}`} disabled={pg}
-                onClick={()=>!pg&&setMesesSel(prev=>prev.includes(n)?prev.filter(x=>x!==n):[...prev,n])}>{m.substring(0,3)}</button>
-            )})}</div>
-            <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-end'}}>
+
+            {/* Selector de actividad */}
+            <div className="form-group" style={{marginBottom:14}}>
+              <label style={{fontWeight:600}}>Tipo de pago / Actividad</label>
+              <select value={actividadInd} onChange={e=>setActividadInd(e.target.value)}
+                style={{padding:'7px 10px',border:`1.5px solid ${esCuotaInd?'#e2e8f0':'#f59e0b'}`,borderRadius:8,fontSize:13,fontFamily:'inherit',background:esCuotaInd?'#fff':'#fffbeb',fontWeight:esCuotaInd?'normal':'600',color:esCuotaInd?'inherit':'#92400e'}}>
+                {actividades.map(a=>(
+                  <option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Selector de año solo para cuotas */}
+            {esCuotaInd && (
+              <>
+                <div className="year-tabs">{ANOS.map(a=><button key={a} className={`year-tab ${a===anio?'active':''}`} onClick={()=>{setAnio(a);setMesesSel([])}}>{a}</button>)}</div>
+                <p style={{fontSize:12,color:'var(--text-3)',marginBottom:8}}>Verde = pagado &middot; Selecciona los meses a registrar</p>
+                <div className="mes-grid">{MESES.map((m,i)=>{const n=i+1,pg=mesesPagados.includes(n),sel=mesesSel.includes(n);return(
+                  <button key={n} className={`mes-btn${pg?' pagado':''}${sel?' sel':''}`} disabled={pg}
+                    onClick={()=>!pg&&setMesesSel(prev=>prev.includes(n)?prev.filter(x=>x!==n):[...prev,n])}>{m.substring(0,3)}</button>
+                )})}</div>
+              </>
+            )}
+
+            {/* Para actividades no-cuota: selector de mes simplificado (solo el periodo) */}
+            {!esCuotaInd && (
+              <>
+                <p style={{fontSize:12,color:'#92400e',marginBottom:8,background:'#fffbeb',padding:'6px 10px',borderRadius:6,border:'0.5px solid #fde68a'}}>
+                  <i className="ti ti-info-circle" style={{marginRight:4}}></i>
+                  Selecciona el mes del periodo al que corresponde este pago
+                </p>
+                <div className="year-tabs">{ANOS.map(a=><button key={a} className={`year-tab ${a===anio?'active':''}`} onClick={()=>{setAnio(a);setMesesSel([])}}>{a}</button>)}</div>
+                <div className="mes-grid">{MESES.map((m,i)=>{const n=i+1,sel=mesesSel.includes(n);return(
+                  <button key={n} className={`mes-btn${sel?' sel':''}`}
+                    onClick={()=>setMesesSel(prev=>prev.includes(n)?prev.filter(x=>x!==n):[...prev,n])}>{m.substring(0,3)}</button>
+                )})}</div>
+              </>
+            )}
+
+            <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-end',marginTop:12}}>
               <div className="form-group" style={{flex:'1',minWidth:150}}><label>Fecha de pago</label><input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}/></div>
               <div className="form-group" style={{flex:'1',minWidth:120}}><label>Monto por mes ($)</label><input type="number" value={monto} onChange={e=>setMonto(e.target.value)}/></div>
-              <div className="form-group" style={{flex:'1',minWidth:140}}><label>Método</label>
+              <div className="form-group" style={{flex:'1',minWidth:140}}><label>Metodo</label>
                 <select value={metodo} onChange={e=>setMetodo(e.target.value)}><option>Transferencia</option><option>Efectivo</option><option>Cheque</option></select>
               </div>
-              {metodo==='Transferencia'&&<div className="form-group" style={{flex:'1',minWidth:140}}><label>N° transacción</label><input type="text" value={numTrans} onChange={e=>setNumTrans(e.target.value)} placeholder="Opcional"/></div>}
+              {metodo==='Transferencia'&&<div className="form-group" style={{flex:'1',minWidth:140}}><label>N transaccion</label><input type="text" value={numTrans} onChange={e=>setNumTrans(e.target.value)} placeholder="Opcional"/></div>}
               <button className="btn primary" onClick={registrarInd} disabled={loadingPago||mesesSel.length===0} style={{marginBottom:1}}>
                 {loadingPago?<><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Guardando...</>:<><i className="ti ti-check"></i>Registrar {mesesSel.length>0?`(${mesesSel.length})`:''}</>}
               </button>
             </div>
-            {alertInd&&<div className={`alert ${alertInd.type}`}>{alertInd.msg}</div>}
+            {alertInd&&<div className={`alert ${alertInd.type}`} dangerouslySetInnerHTML={{__html:alertInd.msg}}></div>}
           </div>
+
           <div className="card">
-            <div className="card-title"><i className="ti ti-history"></i>Historial — {anio}</div>
+            <div className="card-title"><i className="ti ti-history"></i>Historial &mdash; {anio}</div>
             {pagosAnio.length===0?<div className="empty"><i className="ti ti-calendar-x"></i>Sin pagos en {anio}</div>:(
               <div className="tbl-wrap"><table className="tbl">
-                <thead><tr><th style={{width:90}}>Mes</th><th style={{width:100}}>Fecha</th><th style={{width:90}}>Monto</th><th style={{width:110}}>Método</th><th>N° Trans.</th><th style={{width:60}}></th></tr></thead>
+                <thead><tr><th style={{width:90}}>Mes</th><th style={{width:100}}>Fecha</th><th style={{width:90}}>Monto</th><th style={{width:110}}>Metodo</th><th>Actividad</th><th>N Trans.</th><th style={{width:60}}></th></tr></thead>
                 <tbody>
-                  {pagosAnio.sort((a,b)=>a.mes-b.mes).map(p=>(
-                    <tr key={p.id_pago}><td>{MESES[p.mes-1]}</td><td>{p.fecha_pago||'—'}</td>
-                      <td style={{color:'var(--success)',fontWeight:500}}>{formatMoney(p.monto)}</td>
-                      <td>{p.tipo_pago}</td><td>{p.num_transacc||'—'}</td>
-                      <td><button className="btn sm danger" onClick={()=>eliminarPagoInd(p.id_pago)}><i className="ti ti-trash"></i></button></td>
-                    </tr>
-                  ))}
+                  {pagosAnio.sort((a,b)=>a.mes-b.mes).map(p=>{
+                    const nomAct = actividades.find(a=>a.id_actividad===Number(p.id_actividad))?.nombre || 'Cuotas'
+                    const esCuota = Number(p.id_actividad) === 0
+                    return (
+                      <tr key={p.id_pago}>
+                        <td>{MESES[p.mes-1]}</td>
+                        <td>{p.fecha_pago||'&#8212;'}</td>
+                        <td style={{color:'var(--success)',fontWeight:500}}>{formatMoney(p.monto)}</td>
+                        <td>{p.tipo_pago}</td>
+                        <td>
+                          {esCuota
+                            ? <span style={{fontSize:11,color:'#64748b'}}>Cuotas</span>
+                            : <span style={{fontSize:11,fontWeight:600,color:'#92400e',background:'#fffbeb',padding:'2px 6px',borderRadius:4,border:'0.5px solid #fde68a'}}>{nomAct}</span>
+                          }
+                        </td>
+                        <td>{p.num_transacc||'&#8212;'}</td>
+                        <td><button className="btn sm danger" onClick={()=>eliminarPagoInd(p.id_pago)}><i className="ti ti-trash"></i></button></td>
+                      </tr>
+                    )
+                  })}
                   <tr><td colSpan={2} style={{fontWeight:600}}>Total {anio}</td>
                     <td style={{fontWeight:600,color:'var(--success)'}}>{formatMoney(pagosAnio.reduce((a,p)=>a+p.monto,0))}</td>
-                    <td colSpan={3}></td></tr>
+                    <td colSpan={4}></td></tr>
                 </tbody>
               </table></div>
             )}
@@ -305,7 +398,7 @@ export default function Pagos() {
         </>)}
       </>)}
 
-      {/* ── GRUPAL ── */}
+      {/* GRUPAL */}
       {modo==='grupal'&&(<>
         <div className="card">
           <div className="card-title"><i className="ti ti-user-plus"></i>Agregar socios al pago grupal</div>
@@ -321,7 +414,7 @@ export default function Pagos() {
                 <tbody>{resultadosG.map(s=>(
                   <tr key={s.id_caif}>
                     <td>{s.id_caif}</td><td>{nombreMostrar(s)}</td>
-                    <td><span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`}>{s.atleta==='Atleta Niño'?'Niño':'Adulto'}</span></td>
+                    <td><span className={`badge ${s.atleta==='Atleta Ni\u00f1o'?'nino':'adulto'}`}>{s.atleta==='Atleta Ni\u00f1o'?'Ni\u00f1o':'Adulto'}</span></td>
                     <td><button className="btn sm primary" onClick={()=>agregarAlGrupo(s)}><i className="ti ti-plus"></i>Agregar</button></td>
                   </tr>
                 ))}</tbody>
@@ -342,7 +435,7 @@ export default function Pagos() {
                       {g.personas.map(p=>p.nombre_comp.split(' ')[0]).join(', ')}
                     </div>
                     <div style={{fontSize:11,color:'#64748b'}}>
-                      {g.veces} vez{g.veces!==1?'ces':''} · Último: {g.ultimo_pago ? new Date(g.ultimo_pago).toLocaleDateString('es-CL') : '—'}
+                      {g.veces} vez{g.veces!==1?'ces':''} &middot; Ultimo: {g.ultimo_pago ? new Date(g.ultimo_pago).toLocaleDateString('es-CL') : '&#8212;'}
                     </div>
                   </div>
                   <button className="btn sm primary" onClick={()=>cargarGrupoFrecuente(g)}>
@@ -357,15 +450,15 @@ export default function Pagos() {
           {sugeridos.filter(s=>!idsEnGrupo.includes(s.id_caif)).length>0&&(
             <div style={{marginTop:12,background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'10px 14px'}}>
               <div style={{fontSize:12,fontWeight:600,color:'#92400e',marginBottom:8}}>
-                <i className="ti ti-users" style={{marginRight:4}}></i>Grupo familiar detectado — ¿agregar también?
+                <i className="ti ti-users" style={{marginRight:4}}></i>Grupo familiar detectado &#8212; agregar tambien?
               </div>
               <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
                 {sugeridos.filter(s=>!idsEnGrupo.includes(s.id_caif)).map(s=>(
                   <div key={s.id_caif} style={{display:'flex',alignItems:'center',gap:8,background:'#fff',border:'0.5px solid #fde68a',borderRadius:8,padding:'6px 10px'}}>
                     <span style={{fontSize:13,fontWeight:500}}>{s.nombre_comp}</span>
-                    <span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`} style={{fontSize:10}}>{s.atleta==='Atleta Niño'?'Niño':'Adulto'}</span>
+                    <span className={`badge ${s.atleta==='Atleta Ni\u00f1o'?'nino':'adulto'}`} style={{fontSize:10}}>{s.atleta==='Atleta Ni\u00f1o'?'Ni\u00f1o':'Adulto'}</span>
                     <button className="btn sm primary" style={{padding:'3px 8px'}} onClick={()=>agregarAlGrupo(s,true)}><i className="ti ti-plus"></i>Agregar</button>
-                    <button style={{background:'none',border:'none',cursor:'pointer',color:'#94a3b8',fontSize:14}} onClick={()=>setSugeridos(prev=>prev.filter(x=>x.id_caif!==s.id_caif))}>✕</button>
+                    <button style={{background:'none',border:'none',cursor:'pointer',color:'#94a3b8',fontSize:14}} onClick={()=>setSugeridos(prev=>prev.filter(x=>x.id_caif!==s.id_caif))}>x</button>
                   </div>
                 ))}
               </div>
@@ -376,25 +469,37 @@ export default function Pagos() {
         {entries.length>0&&(<>
           <div className="card">
             <div className="card-title"><i className="ti ti-calendar-check"></i>Seleccionar meses por socio</div>
-            <div className="year-tabs">{AÑOS.map(a=><button key={a} className={`year-tab ${a===anioG?'active':''}`} onClick={()=>{setAnioG(a);setEntries(prev=>prev.map(e=>({...e,mesesSel:[]})))}}>{a}</button>)}</div>
+            <div className="year-tabs">{ANOS.map(a=><button key={a} className={`year-tab ${a===anioG?'active':''}`} onClick={()=>{setAnioG(a);setEntries(prev=>prev.map(e=>({...e,mesesSel:[]})))}}>{a}</button>)}</div>
             {entries.map(entry=>(
               <SocioGrupal key={entry.socio.id_caif} entry={entry} anio={anioG}
                 onRemove={removerDelGrupo} onToggleMes={toggleMesGrupal} onChangeMonto={cambiarMontoGrupal}/>
             ))}
           </div>
+
           <div className="card">
             <div className="card-title"><i className="ti ti-receipt"></i>Datos del pago</div>
             <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-end'}}>
+              {/* Selector de actividad grupal */}
+              <div className="form-group" style={{flex:'1',minWidth:200}}>
+                <label style={{fontWeight:600}}>Tipo de pago / Actividad</label>
+                <select value={actividadG} onChange={e=>setActividadG(e.target.value)}
+                  style={{padding:'7px 10px',border:`1.5px solid ${esCuotaG?'#e2e8f0':'#f59e0b'}`,borderRadius:8,fontSize:13,fontFamily:'inherit',background:esCuotaG?'#fff':'#fffbeb',fontWeight:esCuotaG?'normal':'600',color:esCuotaG?'inherit':'#92400e'}}>
+                  {actividades.map(a=>(
+                    <option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>
+                  ))}
+                </select>
+              </div>
               <div className="form-group" style={{flex:'1',minWidth:150}}><label>Fecha de pago</label><input type="date" value={fechaG} onChange={e=>setFechaG(e.target.value)}/></div>
-              <div className="form-group" style={{flex:'1',minWidth:140}}><label>Método</label>
+              <div className="form-group" style={{flex:'1',minWidth:140}}><label>Metodo</label>
                 <select value={metodoG} onChange={e=>setMetodoG(e.target.value)}><option>Transferencia</option><option>Efectivo</option><option>Cheque</option></select>
               </div>
-              {metodoG==='Transferencia'&&<div className="form-group" style={{flex:'1',minWidth:140}}><label>N° transacción</label><input type="text" value={numTransG} onChange={e=>setNumTransG(e.target.value)} placeholder="Opcional"/></div>}
+              {metodoG==='Transferencia'&&<div className="form-group" style={{flex:'1',minWidth:140}}><label>N transaccion</label><input type="text" value={numTransG} onChange={e=>setNumTransG(e.target.value)} placeholder="Opcional"/></div>}
             </div>
             {totalMesesGrupal>0&&(
               <div style={{background:'#e8f5ee',border:'1px solid #a7f3d0',borderRadius:8,padding:'10px 14px',marginTop:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                 <span style={{fontSize:13,color:'#1a5e3a'}}>
                   <strong>{totalMesesGrupal}</strong> mes{totalMesesGrupal!==1?'es':''} para <strong>{entries.filter(e=>e.mesesSel.length>0).length}</strong> socio{entries.filter(e=>e.mesesSel.length>0).length!==1?'s':''}
+                  {!esCuotaG&&<span style={{marginLeft:8,fontSize:11,fontWeight:600,color:'#92400e',background:'#fffbeb',padding:'2px 8px',borderRadius:4,border:'0.5px solid #fde68a'}}>{actividades.find(a=>a.id_actividad===Number(actividadG))?.nombre}</span>}
                 </span>
                 <span style={{fontWeight:700,fontSize:16,color:'#1a5e3a'}}>{formatMoney(totalGrupal)}</span>
               </div>
@@ -405,7 +510,7 @@ export default function Pagos() {
                   :<><i className="ti ti-check"></i>Registrar {totalMesesGrupal>0?`${totalMesesGrupal} pagos`:''}</>}
               </button>
             </div>
-            {alertG&&<div className={`alert ${alertG.type}`}>{alertG.msg}</div>}
+            {alertG&&<div className={`alert ${alertG.type}`} dangerouslySetInnerHTML={{__html:alertG.msg}}></div>}
           </div>
         </>)}
 
