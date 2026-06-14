@@ -397,8 +397,18 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
   }
 
   async function desinscribir(insc) {
-    if (insc.pagado) { alert('No se puede eliminar: el atleta ya tiene pago registrado.'); return }
-    if (!confirm('Eliminar inscripcion?')) return
+    const persona = personas.find(p => p.id_caif === insc.id_socio)
+    const nombre = persona?.nombre_comp || 'este atleta'
+    if (insc.pagado) {
+      const confirmar = confirm(`${nombre} ya tiene pago registrado por ${formatMoney(edicion.valor_atleta)}. Se eliminara la inscripcion Y el pago. Confirmar?`)
+      if (!confirmar) return
+      // Eliminar pago de la tabla pagos
+      if (insc.id_pago) {
+        await supabase.from('pagos').delete().eq('id_pago', insc.id_pago)
+      }
+    } else {
+      if (!confirm(`Eliminar inscripcion de ${nombre}?`)) return
+    }
     await supabase.from('inscripciones_torneo').delete().eq('id_inscripcion', insc.id_inscripcion)
     cargar()
   }
@@ -577,11 +587,9 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                               <i className="ti ti-cash"></i>Pago
                             </button>
                           )}
-                          {!insc.pagado && (
-                            <button className="btn sm danger" onClick={()=>desinscribir(insc)} style={{padding:'3px 6px'}}>
-                              <i className="ti ti-trash"></i>
-                            </button>
-                          )}
+                          <button className="btn sm danger" onClick={()=>desinscribir(insc)} style={{padding:'3px 6px'}} title={insc.pagado?'Eliminar inscripcion y pago':'Eliminar inscripcion'}>
+                            <i className="ti ti-trash"></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
