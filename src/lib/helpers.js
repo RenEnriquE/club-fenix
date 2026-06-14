@@ -6,7 +6,7 @@ export function estadoSocio(idSocio, pagos) {
   const hoy = new Date()
   const mesActual = hoy.getMonth() + 1
   const anioActual = hoy.getFullYear()
-  const pagosSocio = pagos.filter(p => p.id_socio === idSocio && p.anio === anioActual)
+  const pagosSocio = pagos.filter(p => p.id_socio === idSocio && p.anio === anioActual && Number(p.id_actividad) === 0)
   const mesesPagados = pagosSocio.map(p => p.mes)
   const mesesEsperados = Array.from({ length: mesActual }, (_, i) => i + 1)
   const pagados = mesesEsperados.filter(m => mesesPagados.includes(m))
@@ -19,12 +19,12 @@ export function mesesPendientes(idSocio, pagos) {
   const hoy = new Date()
   const mesActual = hoy.getMonth() + 1
   const anioActual = hoy.getFullYear()
-  const mesesPagados = pagos.filter(p => p.id_socio === idSocio && p.anio === anioActual).map(p => p.mes)
+  const mesesPagados = pagos.filter(p => p.id_socio === idSocio && p.anio === anioActual && Number(p.id_actividad) === 0).map(p => p.mes)
   return Array.from({ length: mesActual }, (_, i) => i + 1).filter(m => !mesesPagados.includes(m)).length
 }
 
 export function mesesAlDia(idSocio, anio, pagos) {
-  return pagos.filter(p => p.id_socio === idSocio && p.anio === anio).length
+  return pagos.filter(p => p.id_socio === idSocio && p.anio === anio && Number(p.id_actividad) === 0).length
 }
 
 export function estadoLabel(estado) {

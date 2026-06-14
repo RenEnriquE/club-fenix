@@ -11,7 +11,7 @@ const CUOTA = 3000
 
 function SocioGrupal({ entry, anio, onRemove, onToggleMes, onChangeMonto }) {
   const { socio, pagos, mesesSel, monto } = entry
-  const mesesPagados = pagosPorSocioAnio(socio.id_caif, anio, pagos).map(p => p.mes)
+  const mesesPagados = pagosPorSocioAnio(socio.id_caif, anio, pagos).filter(p=>Number(p.id_actividad)===0).map(p => p.mes)
   return (
     <div style={{border:'0.5px solid #e2e8f0',borderRadius:10,padding:'1rem',marginBottom:10,background:'#fafafa'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
@@ -315,7 +315,7 @@ export default function Pagos() {
   }
 
   const pagosAnio = socioSel ? pagosPorSocioAnio(socioSel.id_caif, anio, pagosInd) : []
-  const mesesPagados = pagosAnio.map(p=>p.mes)
+  const mesesPagados = pagosAnio.filter(p=>Number(p.id_actividad)===0).map(p=>p.mes)
   const totalGrupal = entries.reduce((a,e)=>a+e.monto*e.mesesSel.length,0)
   const totalMesesGrupal = entries.reduce((a,e)=>a+e.mesesSel.length,0)
   const idsEnGrupo = entries.map(e=>e.socio.id_caif)
