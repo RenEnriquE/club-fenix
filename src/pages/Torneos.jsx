@@ -344,6 +344,8 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
   const [alert, setAlert] = useState(null)
   const [editObs, setEditObs] = useState(null)
   const [obsTemp, setObsTemp] = useState('')
+  const [editFechaPago, setEditFechaPago] = useState(null)
+  const [fechaPagoTemp, setFechaPagoTemp] = useState('')
 
   useEffect(() => { cargar() }, [edicion])
 
@@ -455,6 +457,16 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
     finally { setSaving(false) }
   }
 
+  async function guardarFechaPago(insc) {
+    if (!fechaPagoTemp) return
+    // Actualizar fecha en tabla pagos
+    if (insc.id_pago) {
+      await supabase.from('pagos').update({ fecha_pago: fechaPagoTemp }).eq('id_pago', insc.id_pago)
+    }
+    setEditFechaPago(null)
+    cargar()
+  }
+
   async function guardarObs(insc) {
     await supabase.from('inscripciones_torneo').update({ obs: obsTemp }).eq('id_inscripcion', insc.id_inscripcion)
     setEditObs(null)
@@ -561,10 +573,21 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                           : <span style={{fontSize:11,color:'#dc2626',fontWeight:600,background:'#fef2f2',padding:'2px 8px',borderRadius:4,border:'0.5px solid #fecaca'}}>Pendiente</span>
                         }
                       </td>
-                      <td style={{color:'var(--text-3)',fontSize:11}}>
+                      <td style={{fontSize:11}}>
                         {insc.pagado ? (
-                          // Buscar fecha del pago
-                          <FechaPago idPago={insc.id_pago} />
+                          editFechaPago === insc.id_inscripcion ? (
+                            <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                              <input type="date" value={fechaPagoTemp} onChange={e=>setFechaPagoTemp(e.target.value)}
+                                style={{padding:'3px 6px',border:'0.5px solid #e2e8f0',borderRadius:4,fontSize:11,fontFamily:'inherit',width:130}}/>
+                              <button className="btn sm primary" onClick={()=>guardarFechaPago(insc)} style={{padding:'3px 6px'}}><i className="ti ti-check"></i></button>
+                              <button className="btn sm" onClick={()=>setEditFechaPago(null)} style={{padding:'3px 6px'}}><i className="ti ti-x"></i></button>
+                            </div>
+                          ) : (
+                            <span onClick={()=>{setEditFechaPago(insc.id_inscripcion);setFechaPagoTemp('');}} style={{cursor:'pointer',color:'var(--text-3)',display:'flex',alignItems:'center',gap:4}} title="Editar fecha">
+                              <FechaPago idPago={insc.id_pago} onLoad={f=>setFechaPagoTemp(prev=>editFechaPago===insc.id_inscripcion?f:prev)} />
+                              <i className="ti ti-pencil" style={{fontSize:10,opacity:0.5}}></i>
+                            </span>
+                          )
                         ) : '—'}
                       </td>
                       <td>
@@ -675,12 +698,16 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
 }
 
 // Componente auxiliar para mostrar fecha de pago
-function FechaPago({ idPago }) {
+function FechaPago({ idPago, onLoad }) {
   const [fecha, setFecha] = useState(null)
   useEffect(() => {
     if (!idPago) return
     supabase.from('pagos').select('fecha_pago').eq('id_pago', idPago).single()
-      .then(({ data }) => setFecha(data?.fecha_pago || null))
+      .then(({ data }) => {
+        const f = data?.fecha_pago || null
+        setFecha(f)
+        if (onLoad && f) onLoad(f)
+      })
   }, [idPago])
   return fecha || '—'
 }
