@@ -578,9 +578,8 @@ export default function Pagos() {
           <div className="card"><div className="empty"><i className="ti ti-users"></i>Busca y agrega los socios que comparten este pago</div></div>
         )}
       </>)}
-    </div>
 
-{/* Modal edicion pago */}
+      {/* Modal edicion pago */}
       {pagoEditando && (
         <div className="modal-bg open" onClick={e => e.target === e.currentTarget && cerrarEdicion()}>
           <div className="modal">
@@ -639,5 +638,6 @@ export default function Pagos() {
           </div>
         </div>
       )}
+    </div>
   )
 }
