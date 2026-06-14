@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Pagos from './pages/Pagos'
 import Socios from './pages/Socios'
 import Comite from './pages/Comite'
+import Actividades from './pages/Actividades'
 
 export default function App() {
   const [session, setSession] = useState(() => getSession())
@@ -24,19 +25,22 @@ export default function App() {
     ),
     socios: <Socios isAdmin={isAdmin} />,
     comite: <Comite />,
+    actividades: isAdmin ? <Actividades /> : (
+      <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
+    ),
   }
 
   return (
     <div>
-      {/* TOPBAR: marca + salir */}
+      {/* TOPBAR */}
       <div style={{background:'#1a5e3a',padding:'10px 1rem',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:100,boxShadow:'0 2px 8px rgba(0,0,0,.15)'}}>
         <div>
-          <div style={{color:'#fff',fontWeight:600,fontSize:14,lineHeight:1.2}}>Club Atlético Independencia Fénix</div>
-          <div style={{color:'rgba(255,255,255,.65)',fontSize:11}}>Sistema de gestión de cuotas</div>
+          <div style={{color:'#fff',fontWeight:600,fontSize:14,lineHeight:1.2}}>Club Atletico Independencia Fenix</div>
+          <div style={{color:'rgba(255,255,255,.65)',fontSize:11}}>Sistema de gestion de cuotas</div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <span style={{background:'rgba(255,255,255,.15)',color:'#fff',fontSize:11,padding:'3px 8px',borderRadius:6}}>
-            {isAdmin ? 'Admin' : 'Comité'}
+            {isAdmin ? 'Admin' : 'Comite'}
           </span>
           <button onClick={handleLogout} style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,color:'#fff',cursor:'pointer',fontSize:12,display:'flex',alignItems:'center',gap:5,padding:'6px 10px',fontFamily:'inherit'}}>
             <i className="ti ti-logout"></i>Salir
@@ -44,13 +48,14 @@ export default function App() {
         </div>
       </div>
 
-      {/* NAV: botones de navegación en fila separada */}
+      {/* NAV */}
       <div style={{background:'#155233',padding:'6px 8px',display:'flex',gap:4,overflowX:'auto',WebkitOverflowScrolling:'touch',position:'sticky',top:51,zIndex:99,boxShadow:'0 2px 4px rgba(0,0,0,.1)'}}>
         {[
           {key:'dashboard', icon:'ti-layout-dashboard', label:'Dashboard'},
           {key:'socios', icon:'ti-users', label:'Socios'},
           ...(isAdmin ? [{key:'pagos', icon:'ti-cash', label:'Pagos'}] : []),
-          {key:'comite', icon:'ti-report', label:'Comité'},
+          {key:'comite', icon:'ti-report', label:'Comite'},
+          ...(isAdmin ? [{key:'actividades', icon:'ti-category', label:'Actividades'}] : []),
         ].map(btn => (
           <button key={btn.key}
             onClick={() => setPage(btn.key)}
