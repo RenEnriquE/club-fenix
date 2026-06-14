@@ -4,7 +4,7 @@ import {
   getSociosPorApoderado, getGruposFrecuentes, guardarGrupoPago, getPersonasByIds,
   getActividades
 } from '../lib/supabase'
-import { MESES, ANOS, pagosPorSocioAnio, formatMoney, nombreMostrar } from '../lib/helpers'
+import { MESES, A\u00d1OS, pagosPorSocioAnio, formatMoney, nombreMostrar } from '../lib/helpers'
 
 const CUOTA = 3000
 
@@ -324,7 +324,7 @@ export default function Pagos() {
             {/* Selector de año solo para cuotas */}
             {esCuotaInd && (
               <>
-                <div className="year-tabs">{ANOS.map(a=><button key={a} className={`year-tab ${a===anio?'active':''}`} onClick={()=>{setAnio(a);setMesesSel([])}}>{a}</button>)}</div>
+                <div className="year-tabs">{AÑOS.map(a=><button key={a} className={`year-tab ${a===anio?'active':''}`} onClick={()=>{setAnio(a);setMesesSel([])}}>{a}</button>)}</div>
                 <p style={{fontSize:12,color:'var(--text-3)',marginBottom:8}}>Verde = pagado &middot; Selecciona los meses a registrar</p>
                 <div className="mes-grid">{MESES.map((m,i)=>{const n=i+1,pg=mesesPagados.includes(n),sel=mesesSel.includes(n);return(
                   <button key={n} className={`mes-btn${pg?' pagado':''}${sel?' sel':''}`} disabled={pg}
@@ -340,7 +340,7 @@ export default function Pagos() {
                   <i className="ti ti-info-circle" style={{marginRight:4}}></i>
                   Selecciona el mes del periodo al que corresponde este pago
                 </p>
-                <div className="year-tabs">{ANOS.map(a=><button key={a} className={`year-tab ${a===anio?'active':''}`} onClick={()=>{setAnio(a);setMesesSel([])}}>{a}</button>)}</div>
+                <div className="year-tabs">{AÑOS.map(a=><button key={a} className={`year-tab ${a===anio?'active':''}`} onClick={()=>{setAnio(a);setMesesSel([])}}>{a}</button>)}</div>
                 <div className="mes-grid">{MESES.map((m,i)=>{const n=i+1,sel=mesesSel.includes(n);return(
                   <button key={n} className={`mes-btn${sel?' sel':''}`}
                     onClick={()=>setMesesSel(prev=>prev.includes(n)?prev.filter(x=>x!==n):[...prev,n])}>{m.substring(0,3)}</button>
@@ -469,7 +469,7 @@ export default function Pagos() {
         {entries.length>0&&(<>
           <div className="card">
             <div className="card-title"><i className="ti ti-calendar-check"></i>Seleccionar meses por socio</div>
-            <div className="year-tabs">{ANOS.map(a=><button key={a} className={`year-tab ${a===anioG?'active':''}`} onClick={()=>{setAnioG(a);setEntries(prev=>prev.map(e=>({...e,mesesSel:[]})))}}>{a}</button>)}</div>
+            <div className="year-tabs">{AÑOS.map(a=><button key={a} className={`year-tab ${a===anioG?'active':''}`} onClick={()=>{setAnioG(a);setEntries(prev=>prev.map(e=>({...e,mesesSel:[]})))}}>{a}</button>)}</div>
             {entries.map(entry=>(
               <SocioGrupal key={entry.socio.id_caif} entry={entry} anio={anioG}
                 onRemove={removerDelGrupo} onToggleMes={toggleMesGrupal} onChangeMonto={cambiarMontoGrupal}/>
