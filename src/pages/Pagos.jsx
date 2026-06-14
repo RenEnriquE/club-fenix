@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import {
   searchPersonas, getPagosBySocio, insertPago, deletePago, getNextPagoId,
   getSociosPorApoderado, getGruposFrecuentes, guardarGrupoPago, getPersonasByIds,
-  getActividades
+  getActividades,
+  supabase
 } from '../lib/supabase'
 import { MESES, A\u00d1OS, pagosPorSocioAnio, formatMoney, nombreMostrar } from '../lib/helpers'
 
@@ -46,6 +47,66 @@ function SocioGrupal({ entry, anio, onRemove, onToggleMes, onChangeMonto }) {
         </div>
       )}
     </div>
+
+      {/* Modal edicion pago */}
+      {pagoEditando && (
+        <div className="modal-bg open" onClick={e => e.target === e.currentTarget && cerrarEdicion()}>
+          <div className="modal">
+            <div className="modal-header">
+              <h2>Editar pago #{pagoEditando.id_pago}</h2>
+              <button className="modal-close" onClick={cerrarEdicion}>&times;</button>
+            </div>
+            <div style={{fontSize:12,color:'var(--text-3)',marginBottom:16}}>
+              Socio: <strong>{socioSel?.nombre_comp}</strong>
+            </div>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Mes</label>
+                <select value={editMes} onChange={e=>setEditMes(Number(e.target.value))}>
+                  {MESES.map((m,i)=><option key={i+1} value={i+1}>{m}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Fecha de pago</label>
+                <input type="date" value={editFecha} onChange={e=>setEditFecha(e.target.value)}/>
+              </div>
+              <div className="form-group">
+                <label>Monto ($)</label>
+                <input type="number" value={editMonto} onChange={e=>setEditMonto(e.target.value)}/>
+              </div>
+              <div className="form-group">
+                <label>Metodo</label>
+                <select value={editMetodo} onChange={e=>setEditMetodo(e.target.value)}>
+                  <option>Transferencia</option>
+                  <option>Efectivo</option>
+                  <option>Cheque</option>
+                </select>
+              </div>
+              <div className="form-group full">
+                <label>Actividad</label>
+                <select value={editActividad} onChange={e=>setEditActividad(e.target.value)}>
+                  {actividades.map(a=><option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>)}
+                </select>
+              </div>
+              {editMetodo==='Transferencia' && (
+                <div className="form-group full">
+                  <label>N transaccion</label>
+                  <input type="text" value={editNumTrans} onChange={e=>setEditNumTrans(e.target.value)} placeholder="Opcional"/>
+                </div>
+              )}
+            </div>
+            {alertEdit && <div className={`alert ${alertEdit.type}`} style={{marginBottom:12}}>{alertEdit.msg}</div>}
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:8}}>
+              <button className="btn" onClick={cerrarEdicion}>Cancelar</button>
+              <button className="btn primary" onClick={guardarEdicion} disabled={savingEdit}>
+                {savingEdit
+                  ? <><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Guardando...</>
+                  : <><i className="ti ti-check"></i>Guardar cambios</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   )
 }
 
@@ -68,6 +129,16 @@ export default function Pagos() {
   const [alertInd, setAlertInd] = useState(null)
   const [loadingPago, setLoadingPago] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
+  // Modal edicion pago
+  const [pagoEditando, setPagoEditando] = useState(null)
+  const [editFecha, setEditFecha] = useState('')
+  const [editMonto, setEditMonto] = useState('')
+  const [editMetodo, setEditMetodo] = useState('')
+  const [editNumTrans, setEditNumTrans] = useState('')
+  const [editActividad, setEditActividad] = useState(0)
+  const [editMes, setEditMes] = useState(1)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [alertEdit, setAlertEdit] = useState(null)
 
   // Grupal
   const [busqGrupal, setBusqGrupal] = useState('')
@@ -253,6 +324,49 @@ export default function Pagos() {
     finally{setLoadingG(false);setTimeout(()=>setAlertG(null),5000)}
   }
 
+  function abrirEdicion(p) {
+    setPagoEditando(p)
+    setEditFecha(p.fecha_pago || '')
+    setEditMonto(p.monto)
+    setEditMetodo(p.tipo_pago || 'Transferencia')
+    setEditNumTrans(p.num_transacc || '')
+    setEditActividad(Number(p.id_actividad) || 0)
+    setEditMes(p.mes)
+    setAlertEdit(null)
+  }
+
+  function cerrarEdicion() {
+    setPagoEditando(null)
+    setAlertEdit(null)
+  }
+
+  async function guardarEdicion() {
+    if (!editFecha) { setAlertEdit({ type: 'error', msg: 'La fecha es obligatoria.' }); return }
+    if (!editMonto || Number(editMonto) <= 0) { setAlertEdit({ type: 'error', msg: 'El monto debe ser mayor a 0.' }); return }
+    setSavingEdit(true)
+    try {
+      const { error } = await supabase.from('pagos').update({
+          fecha_pago: editFecha,
+          monto: Number(editMonto),
+          tipo_pago: editMetodo,
+          num_transacc: editNumTrans || null,
+          id_actividad: Number(editActividad),
+          mes: Number(editMes),
+          periodo: pagoEditando.anio * 100 + Number(editMes),
+        }).eq('id_pago', pagoEditando.id_pago)
+      if (error) throw error
+      setPagosInd(prev => prev.map(p => p.id_pago === pagoEditando.id_pago
+        ? { ...p, fecha_pago: editFecha, monto: Number(editMonto), tipo_pago: editMetodo, num_transacc: editNumTrans || null, id_actividad: Number(editActividad), mes: Number(editMes), periodo: pagoEditando.anio * 100 + Number(editMes) }
+        : p
+      ))
+      cerrarEdicion()
+    } catch(e) {
+      setAlertEdit({ type: 'error', msg: 'Error: ' + e.message })
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   async function eliminarPagoInd(idPago) {
     if (!confirm('Eliminar este pago?')) return
     await deletePago(idPago)
@@ -304,7 +418,7 @@ export default function Pagos() {
             <div><h3>{nombreMostrar(socioSel)}</h3>
               <p>ID {socioSel.id_caif} · RUT {socioSel.rut}-{socioSel.dv} · {socioSel.atleta}{socioSel.apoderado?` · Apoderado: ${socioSel.apoderado}`:''}</p>
             </div>
-            <span className={`badge ${socioSel.atleta==='Atleta Ni\u00f1o'?'nino':'adulto'}`}>{socioSel.atleta==='Atleta Ni\u00f1o'?'&#128102; Ni\u00f1o':'&#128100; Adulto'}</span>
+            <span className={`badge ${socioSel.atleta==='Atleta Ni\u00f1o'?'nino':'adulto'}`}>{socioSel.atleta==='Atleta Niño'?'👦 Niño':'👤 Adulto'}</span>
           </div>
 
           <div className="card">
@@ -384,7 +498,12 @@ export default function Pagos() {
                           }
                         </td>
                         <td>{p.num_transacc||'&#8212;'}</td>
-                        <td><button className="btn sm danger" onClick={()=>eliminarPagoInd(p.id_pago)}><i className="ti ti-trash"></i></button></td>
+                        <td>
+                          <div style={{display:'flex',gap:4}}>
+                            <button className="btn sm" onClick={()=>abrirEdicion(p)} title="Editar"><i className="ti ti-pencil"></i></button>
+                            <button className="btn sm danger" onClick={()=>eliminarPagoInd(p.id_pago)} title="Eliminar"><i className="ti ti-trash"></i></button>
+                          </div>
+                        </td>
                       </tr>
                     )
                   })}
