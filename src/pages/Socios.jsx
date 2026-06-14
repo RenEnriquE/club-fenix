@@ -193,14 +193,11 @@ export default function Socios({ isAdmin }) {
           <table className="tbl">
             <thead>
               <tr>
-                <th style={{width:50}}>ID</th>
-                <th>Nombre completo</th>
-                <th style={{width:80}}>Tipo</th>
-                {filtroVigente !== '0' && <th style={{width:75}}>Estado</th>}
-                {filtroVigente !== '0' && <th style={{width:85}}>Meses {ANIO_ACTUAL}</th>}
-                {filtroVigente === '0' && <th style={{width:100}}>Fecha salida</th>}
-                {filtroVigente === '0' && <th>Causa</th>}
-                {isAdmin && <th style={{width:80}}>Acción</th>}
+                <th style={{width:40}}>ID</th>
+                <th>Nombre</th>
+                <th style={{width:60}}>Tipo</th>
+                {filtroVigente !== '0' && <th style={{width:70}}>Estado</th>}
+                {isAdmin && <th style={{width:55}}></th>}
               </tr>
             </thead>
             <tbody>
