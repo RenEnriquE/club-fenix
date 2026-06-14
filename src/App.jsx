@@ -6,6 +6,7 @@ import Pagos from './pages/Pagos'
 import Socios from './pages/Socios'
 import Comite from './pages/Comite'
 import Actividades from './pages/Actividades'
+import Torneos from './pages/Torneos'
 
 export default function App() {
   const [session, setSession] = useState(() => getSession())
@@ -25,6 +26,9 @@ export default function App() {
     ),
     socios: <Socios isAdmin={isAdmin} />,
     comite: <Comite />,
+    torneos: isAdmin ? <Torneos /> : (
+      <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
+    ),
     actividades: isAdmin ? <Actividades /> : (
       <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
     ),
@@ -55,6 +59,7 @@ export default function App() {
           {key:'socios', icon:'ti-users', label:'Socios'},
           ...(isAdmin ? [{key:'pagos', icon:'ti-cash', label:'Pagos'}] : []),
           {key:'comite', icon:'ti-report', label:'Comite'},
+          ...(isAdmin ? [{key:'torneos', icon:'ti-trophy', label:'Torneos'}] : []),
           ...(isAdmin ? [{key:'actividades', icon:'ti-category', label:'Actividades'}] : []),
         ].map(btn => (
           <button key={btn.key}
