@@ -43,12 +43,12 @@ export default function Egresos() {
     if (mes) q = q.eq('mes', mes)
     // Cargar cuotas con tipo de atleta
     let qc = supabase.from('pagos')
-      .select('id_socio,mes,anio,monto,id_actividad,personas(atleta)')
+      .select('id_socio,mes,anio,monto,id_actividad,fecha_pago,personas(atleta)')
       .eq('anio', anio).eq('id_actividad', 0)
     if (mes) qc = qc.eq('mes', mes)
     // Cargar pagos de torneos (id_actividad=999)
     let qt = supabase.from('pagos')
-      .select('id_socio,mes,anio,monto,id_actividad')
+      .select('id_socio,mes,anio,monto,id_actividad,fecha_pago')
       .eq('anio', anio).eq('id_actividad', 999)
     if (mes) qt = qt.eq('mes', mes)
     const [{ data }, { data: dataCuotas }, { data: dataTorneos }] = await Promise.all([q, qc, qt])
@@ -407,17 +407,22 @@ export default function Egresos() {
                         const grupos = {}
                         cuotas.forEach(p => {
                           const esNino = p.personas?.atleta && p.personas.atleta.includes('Ni')
-                          const key = `${p.mes}-${esNino?'nino':'adulto'}`
-                          if (!grupos[key]) grupos[key] = { mes: p.mes, esNino, monto: 0, cant: 0 }
+                          // Agrupar por mes/anio de fecha_pago real
+                          const fp = p.fecha_pago ? new Date(p.fecha_pago + 'T12:00:00-04:00') : null
+                          const mesPago = fp ? fp.getMonth() + 1 : p.mes
+                          const anioPago = fp ? fp.getFullYear() : p.anio
+                          const key = `${anioPago}-${mesPago}-${esNino?'nino':'adulto'}`
+                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, esNino, monto: 0, cant: 0, fecha: p.fecha_pago }
                           grupos[key].monto += p.monto || 0
                           grupos[key].cant++
                         })
                         return Object.values(grupos).map(g => ({
-                          key: `cuota-${g.mes}-${g.esNino?'nino':'adulto'}`,
-                          fecha: null,
+                          key: `cuota-${g.anio}-${g.mes}-${g.esNino?'nino':'adulto'}`,
+                          fecha: g.fecha,
                           mes: g.mes,
+                          anio: g.anio,
                           tipo: 'ingreso',
-                          item: g.esNino ? `Cuotas Socios Ninos - ${MESES_ES[g.mes-1]}` : `Cuotas Socios Adultos - ${MESES_ES[g.mes-1]}`,
+                          item: g.esNino ? `Cuotas Socios Ninos - ${MESES_ES[g.mes-1]} ${g.anio}` : `Cuotas Socios Adultos - ${MESES_ES[g.mes-1]} ${g.anio}`,
                           categoria: g.esNino ? 'Cuotas Socios Ninos' : 'Cuotas Socios Adultos',
                           monto: g.monto,
                           metodo: '-',
@@ -430,17 +435,21 @@ export default function Egresos() {
                         // Agrupar torneos por mes
                         const grupos = {}
                         torneos.forEach(p => {
-                          const key = `${p.mes}`
-                          if (!grupos[key]) grupos[key] = { mes: p.mes, monto: 0, cant: 0 }
+                          const fp = p.fecha_pago ? new Date(p.fecha_pago + 'T12:00:00-04:00') : null
+                          const mesPago = fp ? fp.getMonth() + 1 : p.mes
+                          const anioPago = fp ? fp.getFullYear() : p.anio
+                          const key = `${anioPago}-${mesPago}`
+                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, monto: 0, cant: 0, fecha: p.fecha_pago }
                           grupos[key].monto += p.monto || 0
                           grupos[key].cant++
                         })
                         return Object.values(grupos).map(g => ({
-                          key: `torneo-${g.mes}`,
-                          fecha: null,
+                          key: `torneo-${g.anio}-${g.mes}`,
+                          fecha: g.fecha,
                           mes: g.mes,
+                          anio: g.anio,
                           tipo: 'ingreso',
-                          item: `Torneos - ${MESES_ES[g.mes-1]}`,
+                          item: `Torneos - ${MESES_ES[g.mes-1]} ${g.anio}`,
                           categoria: 'Torneos',
                           monto: g.monto,
                           metodo: '-',
@@ -455,7 +464,7 @@ export default function Egresos() {
                       return fb - fa
                     }).map(m => (
                       <tr key={m.key}>
-                        <td style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{m.fecha || `${MESES_ES[(m.mes||1)-1].substring(0,3)} ${anio}`}</td>
+                        <td style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{m.fecha ? m.fecha : `${MESES_ES[(m.mes||1)-1].substring(0,3)} ${m.anio||anio}`}</td>
                         <td>
                           <span style={{
                             fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
