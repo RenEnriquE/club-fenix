@@ -100,12 +100,32 @@ export default function Egresos() {
     return { ...cat, ingresos: ing, egresos: egr, saldo: ing - egr, movs: movsCat.length }
   }).filter(c => c.movs > 0)
 
-  // Agrupar por mes para vista mensual
+  // Agrupar por mes para vista mensual (movimientos + cuotas + torneos por fecha_pago)
   const porMes = MESES_ES.map((nombre, i) => {
-    const movsMes = movimientos.filter(m => m.mes === i + 1)
-    const ing = movsMes.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0)
-    const egr = movsMes.filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0)
-    return { mes: i + 1, nombre, ingresos: ing, egresos: egr, saldo: ing - egr, movs: movsMes.length }
+    const mesNum = i + 1
+    // Movimientos manuales filtrados por mes de fecha
+    const movsMes = movimientos.filter(m => {
+      const fp = m.fecha ? new Date(m.fecha + 'T12:00:00-04:00') : null
+      return fp ? fp.getMonth() + 1 === mesNum : m.mes === mesNum
+    })
+    const ingMov = movsMes.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0)
+    const egrMov = movsMes.filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0)
+    // Cuotas por mes de fecha_pago
+    const cuotasMes = cuotas.filter(p => {
+      const fp = p.fecha_pago ? new Date(p.fecha_pago + 'T12:00:00-04:00') : null
+      return fp ? fp.getMonth() + 1 === mesNum : p.mes === mesNum
+    })
+    const ingCuotas = cuotasMes.reduce((a, p) => a + (p.monto || 0), 0)
+    // Torneos por mes de fecha_pago
+    const torneosMes = torneos.filter(p => {
+      const fp = p.fecha_pago ? new Date(p.fecha_pago + 'T12:00:00-04:00') : null
+      return fp ? fp.getMonth() + 1 === mesNum : p.mes === mesNum
+    })
+    const ingTorneos = torneosMes.reduce((a, p) => a + (p.monto || 0), 0)
+    const ing = ingMov + ingCuotas + ingTorneos
+    const egr = egrMov
+    const total = movsMes.length + cuotasMes.length + torneosMes.length
+    return { mes: mesNum, nombre, ingresos: ing, egresos: egr, saldo: ing - egr, movs: total }
   }).filter(m => m.movs > 0)
 
   function abrirNuevaCat() {
@@ -310,6 +330,40 @@ export default function Egresos() {
                           </>
                         )
                       })}
+                      {/* Sin categoria */}
+                      {(() => {
+                        const sinCat = movimientos.filter(m => !m.id_categoria)
+                        const ing = sinCat.filter(m => m.tipo === 'ingreso').reduce((a,m) => a+m.monto, 0)
+                        const egr = sinCat.filter(m => m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
+                        if (sinCat.length === 0) return null
+                        const expandida = catExpandida === 'sin-cat'
+                        return (
+                          <>
+                            <tr onClick={() => setCatExpandida(expandida ? null : 'sin-cat')}
+                              style={{cursor:'pointer',background:'#fffbeb'}}>
+                              <td style={{fontWeight:500,color:'#92400e'}}>
+                                <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>
+                                Sin categoria
+                              </td>
+                              <td style={{textAlign:'right',color:ing>0?'#16a34a':'#94a3b8'}}>{ing>0?formatMoney(ing):'-'}</td>
+                              <td style={{textAlign:'right',color:egr>0?'#dc2626':'#94a3b8'}}>{egr>0?formatMoney(egr):'-'}</td>
+                              <td style={{textAlign:'right',fontWeight:600,color:(ing-egr)>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(ing-egr)}</td>
+                              <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{sinCat.length}</td>
+                            </tr>
+                            {expandida && sinCat.slice().sort((a,b) => new Date(b.fecha||0)-new Date(a.fecha||0)).map(m => (
+                              <tr key={m.id_movimiento} style={{background:'#fffbeb99'}}>
+                                <td style={{paddingLeft:28,color:'var(--text-2)',fontSize:12}}>
+                                  <span style={{color:'#94a3b8',marginRight:6}}>{m.fecha}</span>{m.item}
+                                </td>
+                                <td style={{textAlign:'right',color:'#16a34a',fontSize:12}}>{m.tipo==='ingreso'?formatMoney(m.monto):'-'}</td>
+                                <td style={{textAlign:'right',color:'#dc2626',fontSize:12}}>{m.tipo==='egreso'?formatMoney(m.monto):'-'}</td>
+                                <td style={{textAlign:'right',fontSize:11,color:'#94a3b8'}}>{m.obs||'-'}</td>
+                                <td></td>
+                              </tr>
+                            ))}
+                          </>
+                        )
+                      })()}
                       <tr style={{ background: '#f8fafc', fontWeight: 700, fontSize: 13 }}>
                         <td>TOTAL</td>
                         <td style={{ textAlign: 'right', color: '#16a34a' }}>{formatMoney(totalIngresos)}</td>
