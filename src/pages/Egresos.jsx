@@ -355,32 +355,53 @@ export default function Egresos() {
                         id: m.id_movimiento,
                         raw: m
                       })),
-                      ...cuotas.map(p => ({
-                        key: `cuota-${p.id_socio}-${p.mes}`,
-                        fecha: null,
-                        mes: p.mes,
-                        tipo: 'ingreso',
-                        item: p.personas?.atleta && p.personas.atleta.includes('Ni') ? 'Ingreso Cuota Socio Nino' : 'Ingreso Cuota Socio Adulto',
-                        categoria: p.personas?.atleta && p.personas.atleta.includes('Ni') ? 'Cuotas Socios Ninos' : 'Cuotas Socios Adultos',
-                        monto: p.monto,
-                        metodo: '-',
-                        obs: `${MESES_ES[p.mes-1]} ${p.anio}`,
-                        editable: false,
-                        id: null
-                      })),
-                      ...torneos.map(p => ({
-                        key: `torneo-${p.id_socio}-${p.mes}`,
-                        fecha: null,
-                        mes: p.mes,
-                        tipo: 'ingreso',
-                        item: 'Ingreso Inscripcion Torneo',
-                        categoria: 'Torneos',
-                        monto: p.monto,
-                        metodo: '-',
-                        obs: `${MESES_ES[p.mes-1]} ${p.anio}`,
-                        editable: false,
-                        id: null
-                      }))
+                      ...(() => {
+                        // Agrupar cuotas por mes y tipo
+                        const grupos = {}
+                        cuotas.forEach(p => {
+                          const esNino = p.personas?.atleta && p.personas.atleta.includes('Ni')
+                          const key = `${p.mes}-${esNino?'nino':'adulto'}`
+                          if (!grupos[key]) grupos[key] = { mes: p.mes, esNino, monto: 0, cant: 0 }
+                          grupos[key].monto += p.monto || 0
+                          grupos[key].cant++
+                        })
+                        return Object.values(grupos).map(g => ({
+                          key: `cuota-${g.mes}-${g.esNino?'nino':'adulto'}`,
+                          fecha: null,
+                          mes: g.mes,
+                          tipo: 'ingreso',
+                          item: g.esNino ? `Cuotas Socios Ninos - ${MESES_ES[g.mes-1]}` : `Cuotas Socios Adultos - ${MESES_ES[g.mes-1]}`,
+                          categoria: g.esNino ? 'Cuotas Socios Ninos' : 'Cuotas Socios Adultos',
+                          monto: g.monto,
+                          metodo: '-',
+                          obs: `${g.cant} pago${g.cant!==1?'s':''}`,
+                          editable: false,
+                          id: null
+                        }))
+                      })(),
+                      ...(() => {
+                        // Agrupar torneos por mes
+                        const grupos = {}
+                        torneos.forEach(p => {
+                          const key = `${p.mes}`
+                          if (!grupos[key]) grupos[key] = { mes: p.mes, monto: 0, cant: 0 }
+                          grupos[key].monto += p.monto || 0
+                          grupos[key].cant++
+                        })
+                        return Object.values(grupos).map(g => ({
+                          key: `torneo-${g.mes}`,
+                          fecha: null,
+                          mes: g.mes,
+                          tipo: 'ingreso',
+                          item: `Torneos - ${MESES_ES[g.mes-1]}`,
+                          categoria: 'Torneos',
+                          monto: g.monto,
+                          metodo: '-',
+                          obs: `${g.cant} inscripcion${g.cant!==1?'es':''}`,
+                          editable: false,
+                          id: null
+                        }))
+                      })()
                     ].sort((a,b) => {
                       const fa = a.fecha ? new Date(a.fecha) : new Date(anio, (a.mes||1)-1, 1)
                       const fb = b.fecha ? new Date(b.fecha) : new Date(anio, (b.mes||1)-1, 1)
