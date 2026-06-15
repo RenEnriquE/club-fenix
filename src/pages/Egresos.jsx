@@ -640,47 +640,75 @@ export default function Egresos() {
 }
 
 // ── Modal nuevo/editar movimiento ─────────────────────────────────────
+function itemVacio(tipo, fecha, metodo) {
+  return { tipo, fecha, metodo_pago: metodo, id_categoria: '', item: '', monto: '', num_comprobante: '', obs: '', obs_detalle: '' }
+}
+
 function ModalMovimiento({ movimiento, categorias, anio, onClose, onSaved }) {
   const esNuevo = !movimiento.id_movimiento
-  const [form, setForm] = useState({
-    fecha: movimiento.fecha || new Date().toISOString().split('T')[0],
+
+  // Campos compartidos entre todos los items
+  const [fecha, setFecha] = useState(movimiento.fecha || new Date().toISOString().split('T')[0])
+  const [tipo, setTipo] = useState(movimiento.tipo || 'egreso')
+  const [metodo, setMetodo] = useState(movimiento.metodo_pago || 'Transferencia')
+
+  // Lista de items (para edicion solo hay uno)
+  const [items, setItems] = useState(esNuevo ? [itemVacio(movimiento.tipo||'egreso', movimiento.fecha||new Date().toISOString().split('T')[0], movimiento.metodo_pago||'Transferencia')] : [{
     tipo: movimiento.tipo || 'egreso',
+    fecha: movimiento.fecha || new Date().toISOString().split('T')[0],
+    metodo_pago: movimiento.metodo_pago || 'Transferencia',
     id_categoria: movimiento.id_categoria || '',
     item: movimiento.item || '',
     monto: movimiento.monto || '',
-    metodo_pago: movimiento.metodo_pago || 'Transferencia',
     num_comprobante: movimiento.num_comprobante || '',
     obs: movimiento.obs || '',
     obs_detalle: movimiento.obs_detalle || '',
-  })
+  }])
+
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState(null)
 
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
+  // Sincronizar fecha/tipo/metodo a todos los items
+  function cambiarFecha(v) { setFecha(v); setItems(its => its.map(i => ({...i, fecha: v}))) }
+  function cambiarTipo(v) { setTipo(v); setItems(its => its.map(i => ({...i, tipo: v}))) }
+  function cambiarMetodo(v) { setMetodo(v); setItems(its => its.map(i => ({...i, metodo_pago: v}))) }
+
+  function setItem(idx, k, v) { setItems(its => its.map((it, i) => i === idx ? {...it, [k]: v} : it)) }
+  function agregarItem() { setItems(its => [...its, itemVacio(tipo, fecha, metodo)]) }
+  function quitarItem(idx) { setItems(its => its.filter((_, i) => i !== idx)) }
+
+  const totalMonto = items.reduce((a, it) => a + (Number(it.monto) || 0), 0)
 
   async function guardar() {
-    if (!form.fecha) { setAlert({ type: 'error', msg: 'La fecha es obligatoria.' }); return }
-    if (!form.item.trim()) { setAlert({ type: 'error', msg: 'El item es obligatorio.' }); return }
-    if (!form.monto || Number(form.monto) <= 0) { setAlert({ type: 'error', msg: 'El monto debe ser mayor a 0.' }); return }
-    if (!form.tipo) { setAlert({ type: 'error', msg: 'Selecciona el tipo.' }); return }
-
+    for (let i = 0; i < items.length; i++) {
+      if (!fecha) { setAlert({ type: 'error', msg: 'La fecha es obligatoria.' }); return }
+      if (!items[i].item.trim()) { setAlert({ type: 'error', msg: `Item ${i+1}: la descripcion es obligatoria.` }); return }
+      if (!items[i].monto || Number(items[i].monto) <= 0) { setAlert({ type: 'error', msg: `Item ${i+1}: el monto debe ser mayor a 0.` }); return }
+    }
     setSaving(true)
     try {
-      const payload = {
-        fecha: form.fecha,
-        tipo: form.tipo,
-        id_categoria: form.id_categoria ? Number(form.id_categoria) : null,
-        item: form.item.trim(),
-        monto: Number(form.monto),
-        metodo_pago: form.metodo_pago || null,
-        num_comprobante: form.num_comprobante || null,
-        obs: form.obs || null,
-        obs_detalle: form.obs_detalle || null,
-      }
       if (esNuevo) {
-        await supabase.from('movimientos').insert([payload])
+        const payloads = items.map(it => ({
+          fecha, tipo, metodo_pago: metodo,
+          id_categoria: it.id_categoria ? Number(it.id_categoria) : null,
+          item: it.item.trim(),
+          monto: Number(it.monto),
+          num_comprobante: it.num_comprobante || null,
+          obs: it.obs || null,
+          obs_detalle: it.obs_detalle || null,
+        }))
+        await supabase.from('movimientos').insert(payloads)
       } else {
-        await supabase.from('movimientos').update(payload).eq('id_movimiento', movimiento.id_movimiento)
+        const it = items[0]
+        await supabase.from('movimientos').update({
+          fecha, tipo, metodo_pago: metodo,
+          id_categoria: it.id_categoria ? Number(it.id_categoria) : null,
+          item: it.item.trim(),
+          monto: Number(it.monto),
+          num_comprobante: it.num_comprobante || null,
+          obs: it.obs || null,
+          obs_detalle: it.obs_detalle || null,
+        }).eq('id_movimiento', movimiento.id_movimiento)
       }
       onSaved()
     } catch (e) {
@@ -690,103 +718,126 @@ function ModalMovimiento({ movimiento, categorias, anio, onClose, onSaved }) {
     }
   }
 
-  const catsFiltradas = categorias.filter(c => c.activa && (
-    c.tipo === 'ambos' || c.tipo === form.tipo
-  ))
+  const catsFiltradas = categorias.filter(c => c.activa && (c.tipo === 'ambos' || c.tipo === tipo))
 
   return (
     <div className="modal-bg open" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ width: 'min(640px,95vw)' }}>
+      <div className="modal" style={{ width: 'min(680px,95vw)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
           <h2>{esNuevo ? 'Nuevo movimiento' : 'Editar movimiento'}</h2>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="form-grid">
-          {/* Tipo */}
+        {/* Campos compartidos */}
+        <div className="form-grid" style={{ marginBottom: 16 }}>
           <div className="form-group">
             <label>Tipo *</label>
             <div style={{ display: 'flex', gap: 8 }}>
               {TIPOS.map(t => (
-                <button key={t} onClick={() => set('tipo', t)}
+                <button key={t} onClick={() => cambiarTipo(t)}
                   style={{
                     flex: 1, padding: '8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
-                    border: `1.5px solid ${form.tipo === t ? (t === 'ingreso' ? '#16a34a' : '#dc2626') : '#e2e8f0'}`,
-                    background: form.tipo === t ? (t === 'ingreso' ? '#f0fdf4' : '#fef2f2') : '#f8fafc',
-                    color: form.tipo === t ? (t === 'ingreso' ? '#16a34a' : '#dc2626') : '#64748b',
+                    border: `1.5px solid ${tipo === t ? (t === 'ingreso' ? '#16a34a' : '#dc2626') : '#e2e8f0'}`,
+                    background: tipo === t ? (t === 'ingreso' ? '#f0fdf4' : '#fef2f2') : '#f8fafc',
+                    color: tipo === t ? (t === 'ingreso' ? '#16a34a' : '#dc2626') : '#64748b',
                   }}>
                   {t === 'ingreso' ? 'Ingreso' : 'Egreso'}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Fecha */}
           <div className="form-group">
             <label>Fecha *</label>
-            <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)} />
+            <input type="date" value={fecha} onChange={e => cambiarFecha(e.target.value)} />
           </div>
-
-          {/* Item */}
-          <div className="form-group full">
-            <label>Item / Descripcion *</label>
-            <input value={form.item} onChange={e => set('item', e.target.value)}
-              placeholder="Ej: Remuneracion Coach, Cuotas socios adultos..." />
-          </div>
-
-          {/* Categoria */}
-          <div className="form-group">
-            <label>Categoria</label>
-            <select value={form.id_categoria} onChange={e => set('id_categoria', e.target.value)}>
-              <option value="">Sin categoria</option>
-              {catsFiltradas.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre}</option>)}
-            </select>
-          </div>
-
-          {/* Monto */}
-          <div className="form-group">
-            <label>Monto ($) *</label>
-            <input type="number" value={form.monto} onChange={e => set('monto', e.target.value)} placeholder="0" />
-          </div>
-
-          {/* Metodo */}
           <div className="form-group">
             <label>Metodo de pago</label>
-            <select value={form.metodo_pago} onChange={e => set('metodo_pago', e.target.value)}>
+            <select value={metodo} onChange={e => cambiarMetodo(e.target.value)}>
               {METODOS.map(m => <option key={m}>{m}</option>)}
             </select>
           </div>
-
-          {/* Comprobante */}
-          <div className="form-group">
-            <label>N comprobante</label>
-            <input value={form.num_comprobante} onChange={e => set('num_comprobante', e.target.value)} placeholder="Opcional" />
-          </div>
-
-          {/* Observaciones */}
-          <div className="form-group full">
-            <label>Observaciones</label>
-            <input value={form.obs} onChange={e => set('obs', e.target.value)} placeholder="Ej: Pago remuneracion mensual" />
-          </div>
-
-          {/* Detalle */}
-          <div className="form-group full">
-            <label>Detalle adicional</label>
-            <input value={form.obs_detalle} onChange={e => set('obs_detalle', e.target.value)} placeholder="Opcional" />
-          </div>
         </div>
 
-        {/* Preview monto */}
-        {form.monto > 0 && (
-          <div style={{
-            background: form.tipo === 'ingreso' ? '#f0fdf4' : '#fef2f2',
-            border: `0.5px solid ${form.tipo === 'ingreso' ? '#a7f3d0' : '#fecaca'}`,
-            borderRadius: 8, padding: '10px 14px', marginBottom: 12,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        <div style={{ borderTop: '0.5px solid #e2e8f0', marginBottom: 12 }}></div>
+
+        {/* Lista de items */}
+        {items.map((it, idx) => (
+          <div key={idx} style={{
+            background: '#f8fafc', border: '0.5px solid #e2e8f0', borderRadius: 10,
+            padding: '12px 14px', marginBottom: 10, position: 'relative'
           }}>
-            <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{form.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} a registrar</span>
-            <span style={{ fontWeight: 700, fontSize: 16, color: form.tipo === 'ingreso' ? '#16a34a' : '#dc2626' }}>
-              {form.tipo === 'ingreso' ? '+' : '-'}{formatMoney(Number(form.monto))}
+            {/* Header del item */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                Item {items.length > 1 ? idx + 1 : ''}
+              </span>
+              {items.length > 1 && (
+                <button onClick={() => quitarItem(idx)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 16, padding: '0 4px' }}
+                  title="Quitar item">
+                  <i className="ti ti-x"></i>
+                </button>
+              )}
+            </div>
+
+            <div className="form-grid">
+              <div className="form-group full">
+                <label>Descripcion *</label>
+                <input value={it.item} onChange={e => setItem(idx, 'item', e.target.value)}
+                  placeholder="Ej: Remuneracion Coach, Pago aseo..." autoFocus={idx === items.length - 1 && idx > 0} />
+              </div>
+              <div className="form-group">
+                <label>Categoria</label>
+                <select value={it.id_categoria} onChange={e => setItem(idx, 'id_categoria', e.target.value)}>
+                  <option value="">Sin categoria</option>
+                  {catsFiltradas.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Monto ($) *</label>
+                <input type="number" value={it.monto} onChange={e => setItem(idx, 'monto', e.target.value)} placeholder="0" />
+              </div>
+              <div className="form-group">
+                <label>N comprobante</label>
+                <input value={it.num_comprobante} onChange={e => setItem(idx, 'num_comprobante', e.target.value)} placeholder="Opcional" />
+              </div>
+              <div className="form-group full">
+                <label>Observaciones</label>
+                <input value={it.obs} onChange={e => setItem(idx, 'obs', e.target.value)} placeholder="Opcional" />
+              </div>
+            </div>
+
+            {/* Preview monto item */}
+            {Number(it.monto) > 0 && (
+              <div style={{ marginTop: 8, textAlign: 'right', fontWeight: 700, fontSize: 14,
+                color: tipo === 'ingreso' ? '#16a34a' : '#dc2626' }}>
+                {tipo === 'ingreso' ? '+' : '-'}{formatMoney(Number(it.monto))}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Boton agregar item (solo en nuevo) */}
+        {esNuevo && (
+          <button onClick={agregarItem}
+            style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1.5px dashed #cbd5e1',
+              background: '#f8fafc', color: '#475569', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 13, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <i className="ti ti-plus"></i>Agregar otro item
+          </button>
+        )}
+
+        {/* Total si hay multiples items */}
+        {items.length > 1 && totalMonto > 0 && (
+          <div style={{ background: tipo === 'ingreso' ? '#f0fdf4' : '#fef2f2',
+            border: `0.5px solid ${tipo === 'ingreso' ? '#a7f3d0' : '#fecaca'}`,
+            borderRadius: 8, padding: '10px 14px', marginBottom: 12,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 600 }}>
+              Total {items.length} items
+            </span>
+            <span style={{ fontWeight: 700, fontSize: 18, color: tipo === 'ingreso' ? '#16a34a' : '#dc2626' }}>
+              {tipo === 'ingreso' ? '+' : '-'}{formatMoney(totalMonto)}
             </span>
           </div>
         )}
@@ -798,7 +849,7 @@ function ModalMovimiento({ movimiento, categorias, anio, onClose, onSaved }) {
           <button className="btn primary" onClick={guardar} disabled={saving}>
             {saving
               ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>Guardando...</>
-              : <><i className="ti ti-check"></i>{esNuevo ? 'Registrar' : 'Guardar cambios'}</>
+              : <><i className="ti ti-check"></i>{esNuevo ? `Registrar${items.length > 1 ? ` ${items.length} movimientos` : ''}` : 'Guardar cambios'}</>
             }
           </button>
         </div>
