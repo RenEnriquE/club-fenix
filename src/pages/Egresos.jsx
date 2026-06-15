@@ -420,7 +420,7 @@ export default function Egresos() {
                           const anioPago = fp ? fp.getFullYear() : p.anio
                           const sinFecha = !p.fecha_pago
                           const key = `${anioPago}-${mesPago}-${esNino?'nino':'adulto'}`
-                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, esNino, monto: 0, cant: 0, fecha: p.fecha_pago, sinFecha }
+                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, esNino, monto: 0, cant: 0, fecha: null, sinFecha }
                           grupos[key].monto += p.monto || 0
                           grupos[key].cant++
                         })
@@ -448,7 +448,7 @@ export default function Egresos() {
                           const anioPago = fp ? fp.getFullYear() : p.anio
                           const sinFecha = !p.fecha_pago
                           const key = `${anioPago}-${mesPago}`
-                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, monto: 0, cant: 0, fecha: p.fecha_pago, sinFecha }
+                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, monto: 0, cant: 0, fecha: null, sinFecha }
                           grupos[key].monto += p.monto || 0
                           grupos[key].cant++
                         })
