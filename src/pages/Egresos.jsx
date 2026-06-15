@@ -21,6 +21,7 @@ export default function Egresos() {
   const [loading, setLoading] = useState(true)
   const [editando, setEditando] = useState(null)
   const [alert, setAlert] = useState(null)
+  const [catExpandida, setCatExpandida] = useState(null)
   const [cuotas, setCuotas] = useState([])
   const [torneos, setTorneos] = useState([])
 
@@ -212,21 +213,49 @@ export default function Egresos() {
                           <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{torneos.length}</td>
                         </tr>
                       )}
-                      {porCategoria.map(cat => (
-                        <tr key={cat.id_categoria}>
-                          <td style={{ fontWeight: 500 }}>{cat.nombre}</td>
-                          <td style={{ textAlign: 'right', color: cat.ingresos > 0 ? '#16a34a' : '#94a3b8' }}>
-                            {cat.ingresos > 0 ? formatMoney(cat.ingresos) : '-'}
-                          </td>
-                          <td style={{ textAlign: 'right', color: cat.egresos > 0 ? '#dc2626' : '#94a3b8' }}>
-                            {cat.egresos > 0 ? formatMoney(cat.egresos) : '-'}
-                          </td>
-                          <td style={{ textAlign: 'right', fontWeight: 600, color: cat.saldo >= 0 ? '#1d4ed8' : '#dc2626' }}>
-                            {formatMoney(cat.saldo)}
-                          </td>
-                          <td style={{ textAlign: 'center', color: '#64748b', fontSize: 12 }}>{cat.movs}</td>
-                        </tr>
-                      ))}
+                      {porCategoria.map(cat => {
+                        const expandida = catExpandida === cat.id_categoria
+                        const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria)
+                        return (
+                          <>
+                            <tr key={cat.id_categoria}
+                              onClick={() => setCatExpandida(expandida ? null : cat.id_categoria)}
+                              style={{cursor:'pointer'}}
+                              className="hoverable">
+                              <td style={{ fontWeight: 500 }}>
+                                <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>
+                                {cat.nombre}
+                              </td>
+                              <td style={{ textAlign: 'right', color: cat.ingresos > 0 ? '#16a34a' : '#94a3b8' }}>
+                                {cat.ingresos > 0 ? formatMoney(cat.ingresos) : '-'}
+                              </td>
+                              <td style={{ textAlign: 'right', color: cat.egresos > 0 ? '#dc2626' : '#94a3b8' }}>
+                                {cat.egresos > 0 ? formatMoney(cat.egresos) : '-'}
+                              </td>
+                              <td style={{ textAlign: 'right', fontWeight: 600, color: cat.saldo >= 0 ? '#1d4ed8' : '#dc2626' }}>
+                                {formatMoney(cat.saldo)}
+                              </td>
+                              <td style={{ textAlign: 'center', color: '#64748b', fontSize: 12 }}>{cat.movs}</td>
+                            </tr>
+                            {expandida && movsCat.map(m => (
+                              <tr key={m.id_movimiento} style={{background:'#f8fafc'}}>
+                                <td style={{paddingLeft:28,color:'var(--text-2)',fontSize:12}}>
+                                  <span style={{color:'#94a3b8',marginRight:6}}>{m.fecha}</span>
+                                  {m.item}
+                                </td>
+                                <td style={{textAlign:'right',color:'#16a34a',fontSize:12}}>
+                                  {m.tipo==='ingreso'?formatMoney(m.monto):'-'}
+                                </td>
+                                <td style={{textAlign:'right',color:'#dc2626',fontSize:12}}>
+                                  {m.tipo==='egreso'?formatMoney(m.monto):'-'}
+                                </td>
+                                <td style={{textAlign:'right',fontSize:11,color:'#94a3b8'}}>{m.obs||'-'}</td>
+                                <td></td>
+                              </tr>
+                            ))}
+                          </>
+                        )
+                      })}
                       <tr style={{ background: '#f8fafc', fontWeight: 700, fontSize: 13 }}>
                         <td>TOTAL</td>
                         <td style={{ textAlign: 'right', color: '#16a34a' }}>{formatMoney(totalIngresos)}</td>
