@@ -23,7 +23,7 @@ export default function Egresos() {
   const [alert, setAlert] = useState(null)
   const [modalCat, setModalCat] = useState(false)
   const [editandoCat, setEditandoCat] = useState(null)
-  const [formCat, setFormCat] = useState({ nombre: '', tipo: 'egreso', activa: true })
+  const [formCat, setFormCat] = useState({ nombre: '', tipo: 'egreso', activa: true, orden: 99 })
   const [savingCat, setSavingCat] = useState(false)
   const [catExpandida, setCatExpandida] = useState(null)
   const [cuotas, setCuotas] = useState([])
@@ -33,7 +33,7 @@ export default function Egresos() {
   useEffect(() => { cargar() }, [anio, mes])
 
   async function cargarCategorias() {
-    const { data } = await supabase.from('categorias_movimiento').select('*').order('nombre')
+    const { data } = await supabase.from('categorias_movimiento').select('*').order('orden').order('nombre')
     setCategorias(data || [])
   }
 
@@ -116,7 +116,7 @@ export default function Egresos() {
 
   function abrirEditarCat(cat) {
     setEditandoCat(cat)
-    setFormCat({ nombre: cat.nombre, tipo: cat.tipo, activa: cat.activa })
+    setFormCat({ nombre: cat.nombre, tipo: cat.tipo, activa: cat.activa, orden: cat.orden ?? 99 })
     setModalCat(true)
   }
 
@@ -194,7 +194,7 @@ export default function Egresos() {
             { label: 'Total ingresos', val: formatMoney(totalIngresos), color: '#16a34a', bg: '#f0fdf4', border: '#a7f3d0' },
             { label: 'Total egresos', val: formatMoney(totalEgresos), color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
             { label: 'Saldo', val: formatMoney(saldo), color: saldo >= 0 ? '#1d4ed8' : '#dc2626', bg: saldo >= 0 ? '#eff6ff' : '#fef2f2', border: saldo >= 0 ? '#bfdbfe' : '#fecaca' },
-            { label: 'Movimientos', val: movimientos.length, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
+            { label: 'Movimientos', val: movimientos.length + cuotas.length + torneos.length, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
           ].map((k, i) => (
             <div key={i} style={{ background: k.bg, border: `0.5px solid ${k.border}`, borderRadius: 10, padding: '10px 14px' }}>
               <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>{k.label}</div>
@@ -206,7 +206,7 @@ export default function Egresos() {
 
       {loading ? (
         <div className="loading-center"><div className="spinner"></div></div>
-      ) : movimientos.length === 0 ? (
+      ) : movimientos.length === 0 && cuotas.length === 0 && torneos.length === 0 ? (
         <div className="card"><div className="empty"><i className="ti ti-receipt-off"></i>Sin movimientos en este periodo</div></div>
       ) : (
         <>
@@ -534,6 +534,7 @@ export default function Egresos() {
             <table className="tbl">
               <thead>
                 <tr>
+                  <th style={{ width: 60, textAlign:'center' }}>Orden</th>
                   <th>Nombre</th>
                   <th style={{ width: 90 }}>Tipo</th>
                   <th style={{ width: 90 }}>Estado</th>
@@ -543,6 +544,7 @@ export default function Egresos() {
               <tbody>
                 {categorias.map(cat => (
                   <tr key={cat.id_categoria}>
+                    <td style={{ textAlign:'center', color:'#94a3b8', fontSize:12, fontWeight:600 }}>{cat.orden ?? 99}</td>
                     <td style={{ fontWeight: 500 }}>{cat.nombre}</td>
                     <td>
                       <span style={{
@@ -599,6 +601,12 @@ export default function Egresos() {
                 <option value="ingreso">Ingreso</option>
                 <option value="ambos">Ambos</option>
               </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: 14 }}>
+              <label>Orden de visualizacion</label>
+              <input type="number" value={formCat.orden} onChange={e => setFormCat(f => ({ ...f, orden: Number(e.target.value) }))}
+                placeholder="Ej: 1, 2, 3..." min={1}/>
+              <span style={{fontSize:11,color:'#64748b',marginTop:2,display:'block'}}>Numero menor aparece primero en el resumen</span>
             </div>
             <div className="form-group" style={{ marginBottom: 20 }}>
               <label>Estado</label>
