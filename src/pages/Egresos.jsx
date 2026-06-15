@@ -418,9 +418,8 @@ export default function Egresos() {
                           const fp = p.fecha_pago ? new Date(p.fecha_pago + 'T12:00:00-04:00') : null
                           const mesPago = fp ? fp.getMonth() + 1 : p.mes
                           const anioPago = fp ? fp.getFullYear() : p.anio
-                          const sinFecha = !p.fecha_pago
                           const key = `${anioPago}-${mesPago}-${esNino?'nino':'adulto'}`
-                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, esNino, monto: 0, cant: 0, fecha: null, sinFecha }
+                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, esNino, monto: 0, cant: 0, fecha: null }
                           grupos[key].monto += p.monto || 0
                           grupos[key].cant++
                         })
@@ -430,7 +429,7 @@ export default function Egresos() {
                           mes: g.mes,
                           anio: g.anio,
                           tipo: 'ingreso',
-                          item: g.esNino ? `Cuotas Socios Ninos - ${MESES_ES[g.mes-1]} ${g.anio}${g.sinFecha?' (sin fecha)':''}` : `Cuotas Socios Adultos - ${MESES_ES[g.mes-1]} ${g.anio}${g.sinFecha?' (sin fecha)':''}`,
+                          item: g.esNino ? `Cuotas Socios Ninos - ${MESES_ES[g.mes-1]} ${g.anio}` : `Cuotas Socios Adultos - ${MESES_ES[g.mes-1]} ${g.anio}`,
                           categoria: g.esNino ? 'Cuotas Socios Ninos' : 'Cuotas Socios Adultos',
                           monto: g.monto,
                           metodo: '-',
@@ -446,9 +445,8 @@ export default function Egresos() {
                           const fp = p.fecha_pago ? new Date(p.fecha_pago + 'T12:00:00-04:00') : null
                           const mesPago = fp ? fp.getMonth() + 1 : p.mes
                           const anioPago = fp ? fp.getFullYear() : p.anio
-                          const sinFecha = !p.fecha_pago
                           const key = `${anioPago}-${mesPago}`
-                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, monto: 0, cant: 0, fecha: null, sinFecha }
+                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, monto: 0, cant: 0, fecha: null }
                           grupos[key].monto += p.monto || 0
                           grupos[key].cant++
                         })
@@ -458,7 +456,7 @@ export default function Egresos() {
                           mes: g.mes,
                           anio: g.anio,
                           tipo: 'ingreso',
-                          item: `Torneos - ${MESES_ES[g.mes-1]} ${g.anio}${g.sinFecha?' (sin fecha)':''}`,
+                          item: `Torneos - ${MESES_ES[g.mes-1]} ${g.anio}`,
                           categoria: 'Torneos',
                           monto: g.monto,
                           metodo: '-',
