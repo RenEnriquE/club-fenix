@@ -326,7 +326,7 @@ export default function Egresos() {
                             </span>
                           </td>
                           <td style={{ fontWeight: 500 }}>{m.item}</td>
-                          <td style={{ color: 'var(--text-3)' }}>{cat?.nombre || '-'}</td>
+                          <td style={{ color: cat?.nombre ? 'var(--text-3)' : 'var(--text-2)', fontStyle: cat?.nombre ? 'normal' : 'italic' }}>{cat?.nombre || m.item}</td>
                           <td style={{ textAlign: 'right', fontWeight: 600, color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>
                             {m.tipo === 'ingreso' ? '+' : '-'}{formatMoney(m.monto)}
                           </td>
