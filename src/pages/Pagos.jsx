@@ -424,13 +424,13 @@ export default function Pagos() {
               <div className="tbl-wrap"><table className="tbl">
                 <thead><tr><th style={{width:90}}>Mes</th><th style={{width:100}}>Fecha</th><th style={{width:90}}>Monto</th><th style={{width:110}}>Metodo</th><th>Actividad</th><th>N Trans.</th><th style={{width:60}}></th></tr></thead>
                 <tbody>
-                  {pagosAnio.sort((a,b)=>new Date(b.fecha_pago||0)-new Date(a.fecha_pago||0)).map(p=>{
+                  {pagosAnio.sort((a,b)=>{ const fd=new Date(b.fecha_pago||0)-new Date(a.fecha_pago||0); return fd!==0?fd:b.mes-a.mes }).map(p=>{
                     const nomAct = actividades.find(a=>a.id_actividad===Number(p.id_actividad))?.nombre || 'Cuotas'
                     const esCuota = Number(p.id_actividad) === 0
                     return (
                       <tr key={p.id_pago}>
                         <td>{MESES[p.mes-1]}</td>
-                        <td>{p.fecha_pago||'&#8212;'}</td>
+                        <td>{p.fecha_pago||'—'}</td>
                         <td style={{color:'var(--success)',fontWeight:500}}>{formatMoney(p.monto)}</td>
                         <td>{p.tipo_pago}</td>
                         <td>
@@ -439,7 +439,7 @@ export default function Pagos() {
                             : <span style={{fontSize:11,fontWeight:600,color:'#92400e',background:'#fffbeb',padding:'2px 6px',borderRadius:4,border:'0.5px solid #fde68a'}}>{nomAct}</span>
                           }
                         </td>
-                        <td>{p.num_transacc||'&#8212;'}</td>
+                        <td>{p.num_transacc||'—'}</td>
                         <td>
                           <div style={{display:'flex',gap:4}}>
                             <button className="btn sm" onClick={()=>abrirEdicion(p)} title="Editar"><i className="ti ti-pencil"></i></button>
