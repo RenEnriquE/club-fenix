@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase, insertPersona, updatePersona } from '../lib/supabase'
-import { estadoSocio, mesesAlDia, estadoLabel, MESES, nombreMostrar } from '../lib/helpers'
+import { estadoSocio, mesesAlDia, mesesPendientes, estadoLabel, MESES, nombreMostrar } from '../lib/helpers'
 
 const ANIO_ACTUAL = new Date().getFullYear()
 
@@ -13,6 +13,12 @@ export default function Socios({ isAdmin }) {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroVigente, setFiltroVigente] = useState('1') // '1'=activos, '0'=inactivos, ''=todos
   const [modalOpen, setModalOpen] = useState(false)
+  const [modalReingreso, setModalReingreso] = useState(null) // socio a reingresar
+  const [fechaReingreso, setFechaReingreso] = useState('')
+  const [savingReingreso, setSavingReingreso] = useState(false)
+  const [modalHistorial, setModalHistorial] = useState(null) // socio a ver historial
+  const [historial, setHistorial] = useState([])
+  const [loadingHistorial, setLoadingHistorial] = useState(false)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(emptyForm())
   const [alert, setAlert] = useState(null)
@@ -147,6 +153,51 @@ export default function Socios({ isAdmin }) {
   const activos = personas.filter(p => p.vigente === 1).length
   const inactivos = personas.filter(p => p.vigente !== 1).length
 
+  async function abrirReingreso(socio) {
+    setModalReingreso(socio)
+    setFechaReingreso(new Date().toISOString().split('T')[0])
+  }
+
+  async function confirmarReingreso() {
+    if (!fechaReingreso) return
+    setSavingReingreso(true)
+    try {
+      // 1. Guardar ciclo anterior en historial_vigencia
+      await supabase.from('historial_vigencia').insert([{
+        id_socio: modalReingreso.id_caif,
+        f_inicio: modalReingreso.f_ini_vig || null,
+        f_fin: modalReingreso.f_fin_vig || null,
+        causa_salida: modalReingreso.causa_salida || null
+      }])
+      // 2. Actualizar persona: vigente=1, f_reingreso, limpiar f_fin_vig y causa_salida
+      await supabase.from('personas').update({
+        vigente: 1,
+        f_reingreso: fechaReingreso,
+        f_ini_vig: fechaReingreso,
+        f_fin_vig: null,
+        causa_salida: null
+      }).eq('id_caif', modalReingreso.id_caif)
+      setModalReingreso(null)
+      cargar()
+    } catch(e) {
+      alert('Error: ' + e.message)
+    } finally {
+      setSavingReingreso(false)
+    }
+  }
+
+  async function abrirHistorial(socio) {
+    setModalHistorial(socio)
+    setLoadingHistorial(true)
+    const { data } = await supabase
+      .from('historial_vigencia')
+      .select('*')
+      .eq('id_socio', socio.id_caif)
+      .order('f_inicio', { ascending: false })
+    setHistorial(data || [])
+    setLoadingHistorial(false)
+  }
+
   return (
     <div className="content">
       {/* Filtros */}
@@ -205,7 +256,7 @@ export default function Socios({ isAdmin }) {
               {lista.length === 0 ? (
                 <tr><td colSpan={7} className="empty">Sin resultados</td></tr>
               ) : lista.map(s => {
-                const est = estadoSocio(s.id_caif, pagos)
+                const est = estadoSocio(s.id_caif, pagos, s.atleta, s)
                 const meses = mesesAlDia(s.id_caif, ANIO_ACTUAL, pagos)
                 const esInactivo = s.vigente !== 1
                 return (
@@ -232,7 +283,18 @@ export default function Socios({ isAdmin }) {
                     )}
                     {isAdmin && (
                       <td>
-                        <button className="btn sm" onClick={() => abrirModal(s)}><i className="ti ti-edit"></i>Editar</button>
+                        <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                          <button className="btn sm" onClick={() => abrirModal(s)}><i className="ti ti-edit"></i>Editar</button>
+                          {s.vigente !== 1 && (
+                            <button className="btn sm primary" onClick={() => abrirReingreso(s)} title="Reingresar al club">
+                              <i className="ti ti-user-check"></i>Reingresar
+                            </button>
+                          )}
+                          <button className="btn sm" onClick={() => abrirHistorial(s)} title="Ver historial de vigencia"
+                            style={{color:'#7c3aed',borderColor:'#ddd6fe',background:'#faf5ff'}}>
+                            <i className="ti ti-history"></i>
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -384,6 +446,109 @@ export default function Socios({ isAdmin }) {
         </div>
       )}
 
+    </div>
+  )
+      {/* Modal reingreso */}
+      {modalReingreso && (
+        <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setModalReingreso(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <h2>Reingresar al club</h2>
+              <button className="modal-close" onClick={()=>setModalReingreso(null)}>&times;</button>
+            </div>
+            <div style={{background:'#eff6ff',border:'0.5px solid #bfdbfe',borderRadius:8,padding:'10px 14px',marginBottom:16}}>
+              <div style={{fontWeight:600,fontSize:14}}>{nombreMostrar(modalReingreso)}</div>
+              <div style={{fontSize:12,color:'#64748b',marginTop:2}}>
+                Se guardara el ciclo anterior y se activara el socio desde la fecha de reingreso.
+              </div>
+              {modalReingreso.f_fin_vig && (
+                <div style={{fontSize:12,color:'#64748b',marginTop:4}}>
+                  Fecha de salida registrada: <strong>{new Date(modalReingreso.f_fin_vig).toLocaleDateString('es-CL')}</strong>
+                  {modalReingreso.causa_salida && ` (${modalReingreso.causa_salida})`}
+                </div>
+              )}
+            </div>
+            <div className="form-group" style={{marginBottom:16}}>
+              <label>Fecha de reingreso *</label>
+              <input type="date" value={fechaReingreso} onChange={e=>setFechaReingreso(e.target.value)}/>
+              <span style={{fontSize:11,color:'#64748b',marginTop:4,display:'block'}}>
+                Las cuotas se cobraran desde este mes en adelante.
+              </span>
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn" onClick={()=>setModalReingreso(null)}>Cancelar</button>
+              <button className="btn primary" onClick={confirmarReingreso} disabled={savingReingreso||!fechaReingreso}>
+                {savingReingreso
+                  ? <><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Guardando...</>
+                  : <><i className="ti ti-user-check"></i>Confirmar reingreso</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal historial vigencia */}
+      {modalHistorial && (
+        <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setModalHistorial(null)}>
+          <div className="modal" style={{width:'min(600px,95vw)'}}>
+            <div className="modal-header">
+              <h2>Historial de vigencia</h2>
+              <button className="modal-close" onClick={()=>setModalHistorial(null)}>&times;</button>
+            </div>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>{nombreMostrar(modalHistorial)}</div>
+
+            {/* Ciclo actual */}
+            <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 14px',marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#16a34a',textTransform:'uppercase',marginBottom:4}}>Ciclo actual</div>
+              <div style={{display:'flex',gap:16,fontSize:13,flexWrap:'wrap'}}>
+                <span>Ingreso: <strong>{modalHistorial.f_ini_vig ? new Date(modalHistorial.f_ini_vig).toLocaleDateString('es-CL') : 'Sin fecha'}</strong></span>
+                {modalHistorial.f_reingreso && <span>Reingreso: <strong>{new Date(modalHistorial.f_reingreso).toLocaleDateString('es-CL')}</strong></span>}
+                <span style={{color:modalHistorial.vigente===1?'#16a34a':'#dc2626',fontWeight:600}}>{modalHistorial.vigente===1?'Activo':'Inactivo'}</span>
+              </div>
+            </div>
+
+            {/* Ciclos anteriores */}
+            <div style={{fontWeight:600,fontSize:12,color:'#64748b',marginBottom:8,textTransform:'uppercase'}}>Ciclos anteriores</div>
+            {loadingHistorial ? (
+              <div className="loading-center"><div className="spinner"></div></div>
+            ) : historial.length === 0 ? (
+              <div className="empty" style={{padding:'1rem'}}><i className="ti ti-history"></i>Sin ciclos anteriores registrados</div>
+            ) : (
+              <div className="tbl-wrap">
+                <table className="tbl" style={{fontSize:12}}>
+                  <thead>
+                    <tr>
+                      <th>Fecha ingreso</th>
+                      <th>Fecha salida</th>
+                      <th>Duracion</th>
+                      <th>Causa salida</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historial.map((h,i) => {
+                      const ini = h.f_inicio ? new Date(h.f_inicio) : null
+                      const fin = h.f_fin ? new Date(h.f_fin) : null
+                      const dias = ini && fin ? Math.round((fin-ini)/(1000*60*60*24)) : null
+                      return (
+                        <tr key={i}>
+                          <td>{ini ? ini.toLocaleDateString('es-CL') : '—'}</td>
+                          <td>{fin ? fin.toLocaleDateString('es-CL') : '—'}</td>
+                          <td style={{color:'#64748b'}}>{dias !== null ? `${dias} dias` : '—'}</td>
+                          <td style={{color:'#64748b'}}>{h.causa_salida || '—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div style={{display:'flex',justifyContent:'flex-end',marginTop:16}}>
+              <button className="btn" onClick={()=>setModalHistorial(null)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

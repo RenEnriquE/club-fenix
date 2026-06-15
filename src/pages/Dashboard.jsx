@@ -44,7 +44,7 @@ export default function Dashboard() {
     if (!cached) setLoading(true)
     else setRefreshing(true)
     Promise.all([
-      supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero').eq('vigente', 1),
+      supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero,f_ini_vig,f_reingreso').eq('vigente', 1),
       supabase.from('pagos').select('id_socio,mes,monto,anio,id_actividad').eq('anio', anio)
     ]).then(([resP, resPg]) => {
       const p = resP.data || []
@@ -83,15 +83,15 @@ export default function Dashboard() {
 
   // KPIs - excluir apoderados
   const atletasSolos = personas.filter(p => p.atleta !== 'Apoderado')
-  const alDia = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos) === 'al-dia').length
-  const morosos = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos) === 'moroso').length
-  const parcial = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos) === 'parcial').length
+  const alDia = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos, p.atleta, p) === 'al-dia').length
+  const morosos = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos, p.atleta, p) === 'moroso').length
+  const parcial = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos, p.atleta, p) === 'parcial').length
   const ingTotal = pagos.reduce((a,p) => a+(p.monto||0), 0)
   const ingrMes = MESES_SHORT.map((_,i) => pagos.filter(p=>p.mes===i+1).reduce((a,p)=>a+(p.monto||0),0))
 
   // Morosos
   const morososList = atletasSolos
-    .filter(p => estadoSocio(p.id_caif,pagos) !== 'al-dia')
+    .filter(p => estadoSocio(p.id_caif,pagos,p.atleta,p) !== 'al-dia')
     .sort((a,b) => mesesPendientes(b.id_caif,pagos)-mesesPendientes(a.id_caif,pagos))
     .slice(0,8)
 
@@ -197,8 +197,8 @@ export default function Dashboard() {
           {morososList.length===0
             ? <div className="empty"><i className="ti ti-circle-check"></i>Todos al dia</div>
             : morososList.map(s => {
-                const pend=mesesPendientes(s.id_caif,pagos)
-                const estado=estadoSocio(s.id_caif,pagos)
+                const pend=mesesPendientes(s.id_caif,pagos,s)
+                const estado=estadoSocio(s.id_caif,pagos,s.atleta,s)
                 return (
                   <div className="moroso-row" key={s.id_caif}>
                     <span className="moroso-name">{s.nombre_comp}</span>
