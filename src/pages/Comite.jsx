@@ -406,8 +406,8 @@ export default function Comite() {
                               </td>
                               <td style={{color:'var(--text-3)',fontSize:11,whiteSpace:'nowrap'}}>{s.rut}{s.dv?`-${s.dv}`:''}</td>
                               <td>
-                                <span className={`badge ${s.atleta==='Atleta Nino'?'nino':'adulto'}`} style={{fontSize:9}}>
-                                  {s.atleta==='Atleta Nino'?'N':'A'}
+                                <span className={`badge ${s.atleta&&s.atleta.includes('Ni')?'nino':'adulto'}`} style={{fontSize:9}}>
+                                  {s.atleta&&s.atleta.includes('Ni')?'N':'A'}
                                 </span>
                               </td>
                               {columnas.map(col => {
