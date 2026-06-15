@@ -129,7 +129,7 @@ export default function Comite() {
         s.id_caif,
         s.nombre_comp,
         `${s.rut}${s.dv?'-'+s.dv:''}`,
-        s.fecha_nac || '',
+        s.fecha_nac ? s.fecha_nac.split('-').reverse().join('-') : '',
         calcEdadExcel(s.fecha_nac),
         s.atleta&&s.atleta.includes('Ni')?'Nino':'Adulto',
         s.vigente===1?'Vigente':'Inactivo',
