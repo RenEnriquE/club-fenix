@@ -13,7 +13,7 @@ function generarAnios() {
 }
 
 export default function Egresos() {
-  const [vista, setVista] = useState('resumen') // 'resumen' | 'detalle' | 'nuevo'
+  const [vista, setVista] = useState('resumen') // 'resumen' | 'detalle' | 'categorias'
   const [anio, setAnio] = useState(new Date().getFullYear())
   const [mes, setMes] = useState(null) // null = todos
   const [movimientos, setMovimientos] = useState([])
@@ -21,6 +21,10 @@ export default function Egresos() {
   const [loading, setLoading] = useState(true)
   const [editando, setEditando] = useState(null)
   const [alert, setAlert] = useState(null)
+  const [modalCat, setModalCat] = useState(false)
+  const [editandoCat, setEditandoCat] = useState(null)
+  const [formCat, setFormCat] = useState({ nombre: '', tipo: 'egreso', activa: true })
+  const [savingCat, setSavingCat] = useState(false)
   const [catExpandida, setCatExpandida] = useState(null)
   const [cuotas, setCuotas] = useState([])
   const [torneos, setTorneos] = useState([])
@@ -97,6 +101,48 @@ export default function Egresos() {
     return { mes: i + 1, nombre, ingresos: ing, egresos: egr, saldo: ing - egr, movs: movsMes.length }
   }).filter(m => m.movs > 0)
 
+  function abrirNuevaCat() {
+    setEditandoCat(null)
+    setFormCat({ nombre: '', tipo: 'egreso', activa: true })
+    setModalCat(true)
+  }
+
+  function abrirEditarCat(cat) {
+    setEditandoCat(cat)
+    setFormCat({ nombre: cat.nombre, tipo: cat.tipo, activa: cat.activa })
+    setModalCat(true)
+  }
+
+  async function guardarCat() {
+    if (!formCat.nombre.trim()) { mostrarAlert('error', 'El nombre es obligatorio.'); return }
+    setSavingCat(true)
+    try {
+      if (editandoCat) {
+        await supabase.from('categorias_movimiento').update(formCat).eq('id_categoria', editandoCat.id_categoria)
+      } else {
+        await supabase.from('categorias_movimiento').insert([formCat])
+      }
+      setModalCat(false)
+      cargarCategorias()
+      mostrarAlert('success', editandoCat ? 'Categoria actualizada.' : 'Categoria creada.')
+    } catch(e) { mostrarAlert('error', 'Error: ' + e.message) }
+    finally { setSavingCat(false) }
+  }
+
+  async function toggleActivaCat(cat) {
+    await supabase.from('categorias_movimiento').update({ activa: !cat.activa }).eq('id_categoria', cat.id_categoria)
+    cargarCategorias()
+  }
+
+  async function eliminarCat(cat) {
+    const { count } = await supabase.from('movimientos').select('*', { count: 'exact', head: true }).eq('id_categoria', cat.id_categoria)
+    if (count > 0) { mostrarAlert('error', `No se puede eliminar: tiene ${count} movimiento${count!==1?'s':''} asociado${count!==1?'s':''}.`); return }
+    if (!confirm(`Eliminar "${cat.nombre}"?`)) return
+    await supabase.from('categorias_movimiento').delete().eq('id_categoria', cat.id_categoria)
+    cargarCategorias()
+    mostrarAlert('success', 'Categoria eliminada.')
+  }
+
   return (
     <div className="content">
       {/* Header */}
@@ -118,6 +164,7 @@ export default function Egresos() {
             {[
               { key: 'resumen', icon: 'ti-chart-bar', label: 'Resumen' },
               { key: 'detalle', icon: 'ti-list', label: 'Detalle' },
+              { key: 'categorias', icon: 'ti-tag', label: 'Categorias' },
             ].map(t => (
               <button key={t.key} className={`btn ${vista === t.key ? 'primary' : ''}`}
                 onClick={() => setVista(t.key)} style={{ fontSize: 12, padding: '6px 12px' }}>
@@ -456,7 +503,105 @@ export default function Egresos() {
         </>
       )}
 
-      {/* Modal nuevo / editar */}
+      {/* VISTA CATEGORIAS */}
+      {!loading && vista === 'categorias' && (
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div className="card-title" style={{ marginBottom: 0 }}>
+              <i className="ti ti-tag"></i>Categorias de movimientos
+            </div>
+            <button className="btn primary" onClick={abrirNuevaCat} style={{ fontSize: 12 }}>
+              <i className="ti ti-plus"></i>Nueva categoria
+            </button>
+          </div>
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th style={{ width: 90 }}>Tipo</th>
+                  <th style={{ width: 90 }}>Estado</th>
+                  <th style={{ width: 110 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {categorias.map(cat => (
+                  <tr key={cat.id_categoria}>
+                    <td style={{ fontWeight: 500 }}>{cat.nombre}</td>
+                    <td>
+                      <span style={{
+                        fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600,
+                        background: cat.tipo === 'ingreso' ? '#f0fdf4' : cat.tipo === 'egreso' ? '#fef2f2' : '#eff6ff',
+                        color: cat.tipo === 'ingreso' ? '#16a34a' : cat.tipo === 'egreso' ? '#dc2626' : '#1d4ed8',
+                        border: `0.5px solid ${cat.tipo === 'ingreso' ? '#a7f3d0' : cat.tipo === 'egreso' ? '#fecaca' : '#bfdbfe'}`
+                      }}>
+                        {cat.tipo === 'ingreso' ? 'Ingreso' : cat.tipo === 'egreso' ? 'Egreso' : 'Ambos'}
+                      </span>
+                    </td>
+                    <td>
+                      <button onClick={() => toggleActivaCat(cat)} style={{
+                        background: cat.activa ? '#f0fdf4' : '#f8fafc',
+                        border: `0.5px solid ${cat.activa ? '#a7f3d0' : '#e2e8f0'}`,
+                        borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600,
+                        color: cat.activa ? '#16a34a' : '#94a3b8', cursor: 'pointer', fontFamily: 'inherit'
+                      }}>
+                        {cat.activa ? 'Activa' : 'Inactiva'}
+                      </button>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn sm" onClick={() => abrirEditarCat(cat)}><i className="ti ti-pencil"></i></button>
+                        <button className="btn sm danger" onClick={() => eliminarCat(cat)}><i className="ti ti-trash"></i></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal nueva / editar categoria */}
+      {modalCat && (
+        <div className="modal-bg open" onClick={e => e.target === e.currentTarget && setModalCat(false)}>
+          <div className="modal">
+            <div className="modal-header">
+              <h2>{editandoCat ? 'Editar categoria' : 'Nueva categoria'}</h2>
+              <button className="modal-close" onClick={() => setModalCat(false)}>&times;</button>
+            </div>
+            <div className="form-group" style={{ marginBottom: 14 }}>
+              <label>Nombre *</label>
+              <input value={formCat.nombre} onChange={e => setFormCat(f => ({ ...f, nombre: e.target.value }))}
+                placeholder="Ej: Limpieza / Articulos de aseo" autoFocus
+                onKeyDown={e => e.key === 'Enter' && guardarCat()} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 14 }}>
+              <label>Tipo</label>
+              <select value={formCat.tipo} onChange={e => setFormCat(f => ({ ...f, tipo: e.target.value }))}>
+                <option value="egreso">Egreso</option>
+                <option value="ingreso">Ingreso</option>
+                <option value="ambos">Ambos</option>
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: 20 }}>
+              <label>Estado</label>
+              <select value={formCat.activa} onChange={e => setFormCat(f => ({ ...f, activa: e.target.value === 'true' }))}>
+                <option value="true">Activa</option>
+                <option value="false">Inactiva</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={() => setModalCat(false)}>Cancelar</button>
+              <button className="btn primary" onClick={guardarCat} disabled={savingCat}>
+                {savingCat ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>Guardando...</> : <><i className="ti ti-check"></i>{editandoCat ? 'Guardar' : 'Crear'}</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal nuevo / editar movimiento */}
       {editando !== null && (
         <ModalMovimiento
           movimiento={editando}
