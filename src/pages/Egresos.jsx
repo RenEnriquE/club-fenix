@@ -22,6 +22,7 @@ export default function Egresos() {
   const [editando, setEditando] = useState(null)
   const [alert, setAlert] = useState(null)
   const [cuotas, setCuotas] = useState([])
+  const [torneos, setTorneos] = useState([])
 
   useEffect(() => { cargarCategorias() }, [])
   useEffect(() => { cargar() }, [anio, mes])
@@ -40,9 +41,15 @@ export default function Egresos() {
       .select('id_socio,mes,anio,monto,id_actividad,personas(atleta)')
       .eq('anio', anio).eq('id_actividad', 0)
     if (mes) qc = qc.eq('mes', mes)
-    const [{ data }, { data: dataCuotas }] = await Promise.all([q, qc])
+    // Cargar pagos de torneos (id_actividad=999)
+    let qt = supabase.from('pagos')
+      .select('id_socio,mes,anio,monto,id_actividad')
+      .eq('anio', anio).eq('id_actividad', 999)
+    if (mes) qt = qt.eq('mes', mes)
+    const [{ data }, { data: dataCuotas }, { data: dataTorneos }] = await Promise.all([q, qc, qt])
     setMovimientos(data || [])
     setCuotas(dataCuotas || [])
+    setTorneos(dataTorneos || [])
     setLoading(false)
   }
 
@@ -58,6 +65,9 @@ export default function Egresos() {
     cargar()
   }
 
+  // Calculos torneos
+  const totalTorneos = torneos.reduce((a, p) => a + (p.monto || 0), 0)
+
   // Calculos cuotas
   const cuotasAdultos = cuotas.filter(p => p.personas?.atleta === 'Atleta Adulto')
   const cuotasNinos = cuotas.filter(p => p.personas?.atleta && p.personas.atleta.includes('Ni'))
@@ -66,7 +76,7 @@ export default function Egresos() {
   const totalCuotas = totalCuotasAdultos + totalCuotasNinos
 
   // Calculos resumen
-  const totalIngresos = movimientos.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0) + totalCuotas
+  const totalIngresos = movimientos.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0) + totalCuotas + totalTorneos
   const totalEgresos = movimientos.filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0)
   const saldo = totalIngresos - totalEgresos
 
@@ -189,6 +199,19 @@ export default function Egresos() {
                           <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{cuotasNinos.length}</td>
                         </tr>
                       )}
+                      {/* Torneos */}
+                      {totalTorneos > 0 && (
+                        <tr style={{background:'#fff7ed'}}>
+                          <td style={{fontWeight:500,color:'#c2410c'}}>
+                            <i className="ti ti-trophy" style={{marginRight:6,fontSize:12}}></i>
+                            Torneos
+                          </td>
+                          <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{formatMoney(totalTorneos)}</td>
+                          <td style={{textAlign:'right',color:'#94a3b8'}}>-</td>
+                          <td style={{textAlign:'right',fontWeight:600,color:'#1d4ed8'}}>{formatMoney(totalTorneos)}</td>
+                          <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{torneos.length}</td>
+                        </tr>
+                      )}
                       {porCategoria.map(cat => (
                         <tr key={cat.id_categoria}>
                           <td style={{ fontWeight: 500 }}>{cat.nombre}</td>
@@ -209,7 +232,7 @@ export default function Egresos() {
                         <td style={{ textAlign: 'right', color: '#16a34a' }}>{formatMoney(totalIngresos)}</td>
                         <td style={{ textAlign: 'right', color: '#dc2626' }}>{formatMoney(totalEgresos)}</td>
                         <td style={{ textAlign: 'right', color: saldo >= 0 ? '#1d4ed8' : '#dc2626' }}>{formatMoney(saldo)}</td>
-                        <td style={{ textAlign: 'center', color: '#64748b' }}>{movimientos.length + cuotas.length}</td>
+                        <td style={{ textAlign: 'center', color: '#64748b' }}>{movimientos.length + cuotas.length + torneos.length}</td>
                       </tr>
                     </tbody>
                   </table>
