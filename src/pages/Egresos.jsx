@@ -339,41 +339,85 @@ export default function Egresos() {
                     </tr>
                   </thead>
                   <tbody>
-                    {movimientos.map(m => {
-                      const cat = categorias.find(c => c.id_categoria === m.id_categoria)
-                      return (
-                        <tr key={m.id_movimiento}>
-                          <td style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{m.fecha}</td>
-                          <td>
-                            <span style={{
-                              fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
-                              background: m.tipo === 'ingreso' ? '#f0fdf4' : '#fef2f2',
-                              color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626',
-                              border: `0.5px solid ${m.tipo === 'ingreso' ? '#a7f3d0' : '#fecaca'}`
-                            }}>
-                              {m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
-                            </span>
-                          </td>
-                          <td style={{ fontWeight: 500 }}>{m.item}</td>
-                          <td style={{ color: cat?.nombre ? 'var(--text-3)' : 'var(--text-2)', fontStyle: cat?.nombre ? 'normal' : 'italic' }}>{cat?.nombre || m.item}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 600, color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>
-                            {m.tipo === 'ingreso' ? '+' : '-'}{formatMoney(m.monto)}
-                          </td>
-                          <td style={{ color: 'var(--text-3)' }}>{m.metodo_pago || '-'}</td>
-                          <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-3)' }}
-                            title={[m.obs, m.obs_detalle].filter(Boolean).join(' - ')}>
-                            {[m.obs, m.obs_detalle].filter(Boolean).join(' - ') || '-'}
-                          </td>
-                          <td>
+                    {/* Combinar movimientos + cuotas + torneos, ordenados por fecha desc */}
+                    {[
+                      ...movimientos.map(m => ({
+                        key: `mov-${m.id_movimiento}`,
+                        fecha: m.fecha,
+                        mes: m.mes,
+                        tipo: m.tipo,
+                        item: m.item,
+                        categoria: categorias.find(c => c.id_categoria === m.id_categoria)?.nombre || m.item,
+                        monto: m.monto,
+                        metodo: m.metodo_pago,
+                        obs: [m.obs, m.obs_detalle].filter(Boolean).join(' - ') || '-',
+                        editable: true,
+                        id: m.id_movimiento,
+                        raw: m
+                      })),
+                      ...cuotas.map(p => ({
+                        key: `cuota-${p.id_socio}-${p.mes}`,
+                        fecha: null,
+                        mes: p.mes,
+                        tipo: 'ingreso',
+                        item: p.personas?.atleta && p.personas.atleta.includes('Ni') ? 'Ingreso Cuota Socio Nino' : 'Ingreso Cuota Socio Adulto',
+                        categoria: p.personas?.atleta && p.personas.atleta.includes('Ni') ? 'Cuotas Socios Ninos' : 'Cuotas Socios Adultos',
+                        monto: p.monto,
+                        metodo: '-',
+                        obs: `${MESES_ES[p.mes-1]} ${p.anio}`,
+                        editable: false,
+                        id: null
+                      })),
+                      ...torneos.map(p => ({
+                        key: `torneo-${p.id_socio}-${p.mes}`,
+                        fecha: null,
+                        mes: p.mes,
+                        tipo: 'ingreso',
+                        item: 'Ingreso Inscripcion Torneo',
+                        categoria: 'Torneos',
+                        monto: p.monto,
+                        metodo: '-',
+                        obs: `${MESES_ES[p.mes-1]} ${p.anio}`,
+                        editable: false,
+                        id: null
+                      }))
+                    ].sort((a,b) => {
+                      const fa = a.fecha ? new Date(a.fecha) : new Date(anio, (a.mes||1)-1, 1)
+                      const fb = b.fecha ? new Date(b.fecha) : new Date(anio, (b.mes||1)-1, 1)
+                      return fb - fa
+                    }).map(m => (
+                      <tr key={m.key}>
+                        <td style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{m.fecha || `${MESES_ES[(m.mes||1)-1].substring(0,3)} ${anio}`}</td>
+                        <td>
+                          <span style={{
+                            fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+                            background: m.tipo === 'ingreso' ? '#f0fdf4' : '#fef2f2',
+                            color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626',
+                            border: `0.5px solid ${m.tipo === 'ingreso' ? '#a7f3d0' : '#fecaca'}`
+                          }}>
+                            {m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 500 }}>{m.item}</td>
+                        <td style={{ color: 'var(--text-3)' }}>{m.categoria}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600, color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>
+                          {m.tipo === 'ingreso' ? '+' : '-'}{formatMoney(m.monto)}
+                        </td>
+                        <td style={{ color: 'var(--text-3)' }}>{m.metodo}</td>
+                        <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-3)' }}
+                          title={m.obs}>{m.obs}</td>
+                        <td>
+                          {m.editable && (
                             <div style={{ display: 'flex', gap: 4 }}>
-                              <button className="btn sm" onClick={() => setEditando(m)} title="Editar"><i className="ti ti-pencil"></i></button>
-                              <button className="btn sm danger" onClick={() => eliminar(m.id_movimiento)} title="Eliminar"><i className="ti ti-trash"></i></button>
+                              <button className="btn sm" onClick={() => setEditando(m.raw)} title="Editar"><i className="ti ti-pencil"></i></button>
+                              <button className="btn sm danger" onClick={() => eliminar(m.id)} title="Eliminar"><i className="ti ti-trash"></i></button>
                             </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                    {/* Totales */}
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {/* --- linea que reemplaza el map original --- */}
+                                        {/* Totales */}
                     <tr style={{ background: '#f8fafc', fontWeight: 700, fontSize: 13 }}>
                       <td colSpan={4}>TOTAL</td>
                       <td style={{ textAlign: 'right' }}>
