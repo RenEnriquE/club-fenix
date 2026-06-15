@@ -32,7 +32,7 @@ export default function Socios({ isAdmin }) {
       apodo:'', nombre:'', seg_nombre:'', apellido:'', ap_mat:'', rut:'', dv:'',
       fecha_nac:'', genero:'Masculino', atleta:'Atleta Adulto',
       celular:'', email:'', apoderado:'', vigente:1,
-      f_ini_vig:'', f_fin_vig:'', causa_salida:''
+      f_ini_vig:'', f_fin_vig:'', causa_salida:'', f_reingreso:''
     }
   }
 
@@ -93,7 +93,8 @@ export default function Socios({ isAdmin }) {
         vigente: socio.vigente ?? 1,
         f_ini_vig: socio.f_ini_vig || '',
         f_fin_vig: socio.f_fin_vig || '',
-        causa_salida: socio.causa_salida || ''
+        causa_salida: socio.causa_salida || '',
+        f_reingreso: socio.f_reingreso || ''
       })
     } else {
       setEditando(null)
@@ -126,6 +127,7 @@ export default function Socios({ isAdmin }) {
         f_fin_vig: form.f_fin_vig || null,
         causa_salida: form.causa_salida || null,
         f_ini_vig: form.f_ini_vig || null,
+        f_reingreso: form.f_reingreso || null,
       }
       if (editando) {
         await updatePersona(editando.id_caif, datos)
@@ -356,22 +358,57 @@ export default function Socios({ isAdmin }) {
                   <option value={0}>Inactivo</option>
                 </select>
               </div>
-              <div className="form-group"><label>Fecha de ingreso</label><input type="date" {...f('f_ini_vig')}/></div>
-              <div className="form-group"><label>Fecha de salida</label><input type="date" {...f('f_fin_vig')}/></div>
-              <div className="form-group"><label>Causa de salida</label>
-                <select {...f('causa_salida')}>
-                  <option value="">— Sin especificar —</option>
+
+              {/* Fecha de ingreso con alerta si esta vacia */}
+              <div className="form-group">
+                <label style={{display:'flex',alignItems:'center',gap:6}}>
+                  Fecha de ingreso
+                  {!form.f_ini_vig && <span style={{fontSize:10,background:'#fffbeb',color:'#92400e',padding:'1px 6px',borderRadius:4,border:'0.5px solid #fde68a',fontWeight:600}}>Sin fecha</span>}
+                </label>
+                <input type="date" {...f('f_ini_vig')}
+                  style={{border:`1.5px solid ${!form.f_ini_vig?'#f59e0b':'#e2e8f0'}`,borderRadius:8,padding:'8px 10px',fontSize:13,fontFamily:'inherit',background:!form.f_ini_vig?'#fffbeb':'#fff'}}/>
+              </div>
+
+              {/* Fecha de salida con alerta si inactivo y vacia */}
+              <div className="form-group">
+                <label style={{display:'flex',alignItems:'center',gap:6}}>
+                  Fecha de salida
+                  {form.vigente===0 && !form.f_fin_vig && <span style={{fontSize:10,background:'#fef2f2',color:'#dc2626',padding:'1px 6px',borderRadius:4,border:'0.5px solid #fecaca',fontWeight:600}}>Requerida</span>}
+                </label>
+                <input type="date" {...f('f_fin_vig')}
+                  style={{border:`1.5px solid ${form.vigente===0&&!form.f_fin_vig?'#dc2626':'#e2e8f0'}`,borderRadius:8,padding:'8px 10px',fontSize:13,fontFamily:'inherit',background:form.vigente===0&&!form.f_fin_vig?'#fef2f2':'#fff'}}/>
+              </div>
+
+              {/* Causa de salida con alerta si inactivo y vacia */}
+              <div className="form-group">
+                <label style={{display:'flex',alignItems:'center',gap:6}}>
+                  Causa de salida
+                  {form.vigente===0 && !form.causa_salida && <span style={{fontSize:10,background:'#fef2f2',color:'#dc2626',padding:'1px 6px',borderRadius:4,border:'0.5px solid #fecaca',fontWeight:600}}>Requerida</span>}
+                </label>
+                <select {...f('causa_salida')}
+                  style={{border:`1.5px solid ${form.vigente===0&&!form.causa_salida?'#dc2626':'#e2e8f0'}`,borderRadius:8,padding:'8px 10px',fontSize:13,fontFamily:'inherit',background:form.vigente===0&&!form.causa_salida?'#fef2f2':'#fff'}}>
+                  <option value="">Sin especificar</option>
                   <option>Decision propia</option>
                   <option>Inf Favio</option>
                   <option>Expulsado</option>
                   <option>Traslado</option>
-                  <option>Económica</option>
+                  <option>Economica</option>
                   <option>Otra</option>
                 </select>
               </div>
               {form.causa_salida === 'Otra' && (
                 <div className="form-group full"><label>Especificar causa</label><input type="text" {...f('causa_salida')}/></div>
               )}
+
+              {/* Fecha de reingreso (solo lectura si existe, editable si es necesario) */}
+              <div className="form-group">
+                <label style={{display:'flex',alignItems:'center',gap:6}}>
+                  Fecha de reingreso
+                  {form.f_reingreso && <span style={{fontSize:10,background:'#f0fdf4',color:'#16a34a',padding:'1px 6px',borderRadius:4,border:'0.5px solid #a7f3d0',fontWeight:600}}>Reingresado</span>}
+                </label>
+                <input type="date" {...f('f_reingreso')}
+                  style={{border:'1.5px solid #e2e8f0',borderRadius:8,padding:'8px 10px',fontSize:13,fontFamily:'inherit'}}/>
+              </div>
 
               {/* Resumen de pagos del socio */}
               {editando && (
