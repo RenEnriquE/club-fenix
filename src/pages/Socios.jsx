@@ -74,7 +74,7 @@ export default function Socios({ isAdmin }) {
     const matchQ = !q || nc.includes(q) || String(p.id_caif).includes(q)
     const matchT = !filtroTipo || p.atleta === filtroTipo
     const matchV = filtroVigente === '' || String(p.vigente) === filtroVigente
-    const est = estadoSocio(p.id_caif, pagos)
+    const est = estadoSocio(p.id_caif, pagos, p.atleta, p)
     const matchE = !filtroEstado || est === filtroEstado
     return matchQ && matchT && matchV && matchE
   })
@@ -277,7 +277,7 @@ export default function Socios({ isAdmin }) {
                     )}
                     {filtroVigente === '0' && (
                       <td style={{color:'var(--text-2)',fontSize:12}}>
-                        {s.f_fin_vig ? new Date(s.f_fin_vig).toLocaleDateString('es-CL') : '—'}
+                        {s.f_fin_vig ? new Date(s.f_fin_vig+'T12:00:00-04:00').toLocaleDateString('es-CL') : '—'}
                       </td>
                     )}
                     {filtroVigente === '0' && (
@@ -417,7 +417,8 @@ export default function Socios({ isAdmin }) {
                   <div style={{background:'#f8fafc',border:'0.5px solid #e2e8f0',borderRadius:8,padding:'10px 12px',fontSize:13}}>
                     {(() => {
                       const m = mesesAlDia(editando.id_caif, ANIO_ACTUAL, pagos)
-                      const est = estadoSocio(editando.id_caif, pagos)
+                      const personaConForm = {...editando, f_reingreso: form.f_reingreso||editando.f_reingreso, f_ini_vig: form.f_ini_vig||editando.f_ini_vig}
+                      const est = estadoSocio(editando.id_caif, pagos, editando.atleta, personaConForm)
                       return (
                         <div style={{display:'flex',gap:12,alignItems:'center'}}>
                           <span className={`badge ${est}`}>{estadoLabel(est)}</span>
@@ -469,8 +470,8 @@ export default function Socios({ isAdmin }) {
                       <td>{s.id_caif}</td>
                       <td>{s.nombre_comp}</td>
                       <td><span className={`badge ${s.vigente===1?'al-dia':'moroso'}`}>{s.vigente===1?'Activo':'Inactivo'}</span></td>
-                      <td style={{fontSize:11}}>{s.f_ini_vig ? new Date(s.f_ini_vig).toLocaleDateString('es-CL') : '—'}</td>
-                      <td style={{fontSize:11}}>{s.f_fin_vig ? new Date(s.f_fin_vig).toLocaleDateString('es-CL') : '—'}</td>
+                      <td style={{fontSize:11}}>{s.f_ini_vig ? new Date(s.f_ini_vig+'T12:00:00-04:00').toLocaleDateString('es-CL') : '—'}</td>
+                      <td style={{fontSize:11}}>{s.f_fin_vig ? new Date(s.f_fin_vig+'T12:00:00-04:00').toLocaleDateString('es-CL') : '—'}</td>
                     </tr>
                   ))}</tbody>
                 </table>
@@ -538,8 +539,8 @@ export default function Socios({ isAdmin }) {
             <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 14px',marginBottom:12}}>
               <div style={{fontSize:11,fontWeight:600,color:'#16a34a',textTransform:'uppercase',marginBottom:4}}>Ciclo actual</div>
               <div style={{display:'flex',gap:16,fontSize:13,flexWrap:'wrap'}}>
-                <span>Ingreso: <strong>{modalHistorial.f_ini_vig ? new Date(modalHistorial.f_ini_vig).toLocaleDateString('es-CL') : 'Sin fecha'}</strong></span>
-                {modalHistorial.f_reingreso && <span>Reingreso: <strong>{new Date(modalHistorial.f_reingreso).toLocaleDateString('es-CL')}</strong></span>}
+                <span>Ingreso: <strong>{modalHistorial.f_ini_vig ? new Date(modalHistorial.f_ini_vig+'T12:00:00-04:00').toLocaleDateString('es-CL') : 'Sin fecha'}</strong></span>
+                {modalHistorial.f_reingreso && <span>Reingreso: <strong>{new Date(modalHistorial.f_reingreso+'T12:00:00-04:00').toLocaleDateString('es-CL')}</strong></span>}
                 <span style={{color:modalHistorial.vigente===1?'#16a34a':'#dc2626',fontWeight:600}}>{modalHistorial.vigente===1?'Activo':'Inactivo'}</span>
               </div>
             </div>
@@ -563,8 +564,8 @@ export default function Socios({ isAdmin }) {
                   </thead>
                   <tbody>
                     {historial.map((h,i) => {
-                      const ini = h.f_inicio ? new Date(h.f_inicio) : null
-                      const fin = h.f_fin ? new Date(h.f_fin) : null
+                      const ini = h.f_inicio ? new Date(h.f_inicio+'T12:00:00-04:00') : null
+                      const fin = h.f_fin ? new Date(h.f_fin+'T12:00:00-04:00') : null
                       const dias = ini && fin ? Math.round((fin-ini)/(1000*60*60*24)) : null
                       return (
                         <tr key={i}>
