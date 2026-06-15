@@ -63,7 +63,7 @@ export default function Comite() {
     for (let a = anioDesde; a <= anioHasta; a++) anios.push(a)
 
     Promise.all([
-      supabase.from('personas').select('id_caif,nombre_comp,rut,dv,atleta,vigente').order('nombre_comp'),
+      supabase.from('personas').select('id_caif,nombre_comp,rut,dv,atleta,vigente,fecha_nac').order('nombre_comp'),
       supabase.from('pagos').select('id_socio,periodo,mes,anio,monto,id_actividad').in('anio', anios)
     ]).then(([resP, resPg]) => {
       setPersonas(resP.data || [])
@@ -120,7 +120,8 @@ export default function Comite() {
 
     // Construir datos para cada hoja
     // Hoja 1: Detalle por socio
-    const encabezados = ['ID','Nombre','RUT','Tipo','Vigente',...columnas.map(c=>c.label),'Total']
+    const calcEdadExcel = fn => { if(!fn) return ''; const d=new Date(fn+'T12:00:00-04:00'); const hoy=new Date(); let e=hoy.getFullYear()-d.getFullYear(); const m=hoy.getMonth()-d.getMonth(); if(m<0||(m===0&&hoy.getDate()<d.getDate())) e--; return e }
+    const encabezados = ['ID','Nombre','RUT','Fecha Nac','Edad','Tipo','Vigente',...columnas.map(c=>c.label),'Total']
     const filas = lista.map(s => {
       const pagosSocio = pagosFiltrados.filter(pg => Number(pg.id_socio) === Number(s.id_caif))
       const totalSocio = pagosSocio.reduce((a,p) => a+(p.monto||0), 0)
@@ -128,7 +129,9 @@ export default function Comite() {
         s.id_caif,
         s.nombre_comp,
         `${s.rut}${s.dv?'-'+s.dv:''}`,
-        s.atleta==='Atleta Nino'?'Nino':'Adulto',
+        s.fecha_nac || '',
+        calcEdadExcel(s.fecha_nac),
+        s.atleta&&s.atleta.includes('Ni')?'Nino':'Adulto',
         s.vigente===1?'Vigente':'Inactivo',
         ...columnas.map(col => {
           const pago = pagosSocio.find(pg => Number(pg.periodo) === col.periodo)
@@ -138,7 +141,7 @@ export default function Comite() {
       ]
     })
     // Fila totales
-    const filaTotales = ['','TOTAL PERIODO','','','', ...totalesCols, totalGeneral]
+    const filaTotales = ['','TOTAL PERIODO','','','','','', ...totalesCols, totalGeneral]
     const datosDetalle = [encabezados, ...filas, filaTotales]
 
     // Hoja 2: Resumen por actividad
@@ -155,7 +158,7 @@ export default function Comite() {
       const ws1 = XLSX.utils.aoa_to_sheet(datosDetalle)
       // Ancho de columnas
       ws1['!cols'] = [
-        {wch:6},{wch:35},{wch:14},{wch:8},{wch:10},
+        {wch:6},{wch:35},{wch:14},{wch:12},{wch:6},{wch:8},{wch:10},
         ...columnas.map(()=>({wch:9})),
         {wch:12}
       ]

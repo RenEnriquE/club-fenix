@@ -53,7 +53,7 @@ export default function Socios({ isAdmin }) {
     try {
       const [resP, resPg] = await Promise.all([
         supabase.from('personas').select('*').order('id_caif', { ascending: false }),
-        supabase.from('pagos').select('id_socio,mes,anio,monto').eq('anio', ANIO_ACTUAL)
+        supabase.from('pagos').select('id_socio,mes,anio,monto,id_actividad').eq('anio', ANIO_ACTUAL)
       ])
       setPersonas(resP.data || [])
       setPagos(resPg.data || [])
