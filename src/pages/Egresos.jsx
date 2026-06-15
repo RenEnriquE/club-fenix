@@ -42,15 +42,22 @@ export default function Egresos() {
     let q = supabase.from('movimientos').select('*').eq('anio', anio).order('fecha').order('id_movimiento')
     if (mes) q = q.eq('mes', mes)
     // Cargar cuotas con tipo de atleta
+    // Filtrar cuotas y torneos por año/mes de fecha_pago (no del mes de la cuota)
+    const fechaDesde = mes ? `${anio}-${String(mes).padStart(2,'0')}-01` : `${anio}-01-01`
+    const fechaHasta = mes
+      ? new Date(anio, mes, 0).toISOString().split('T')[0]  // ultimo dia del mes
+      : `${anio}-12-31`
     let qc = supabase.from('pagos')
       .select('id_socio,mes,anio,monto,id_actividad,fecha_pago,personas(atleta)')
-      .eq('anio', anio).eq('id_actividad', 0)
-    if (mes) qc = qc.eq('mes', mes)
+      .eq('id_actividad', 0)
+      .gte('fecha_pago', fechaDesde)
+      .lte('fecha_pago', fechaHasta)
     // Cargar pagos de torneos (id_actividad=999)
     let qt = supabase.from('pagos')
       .select('id_socio,mes,anio,monto,id_actividad,fecha_pago')
-      .eq('anio', anio).eq('id_actividad', 999)
-    if (mes) qt = qt.eq('mes', mes)
+      .eq('id_actividad', 999)
+      .gte('fecha_pago', fechaDesde)
+      .lte('fecha_pago', fechaHasta)
     const [{ data }, { data: dataCuotas }, { data: dataTorneos }] = await Promise.all([q, qc, qt])
     setMovimientos(data || [])
     setCuotas(dataCuotas || [])
@@ -411,8 +418,9 @@ export default function Egresos() {
                           const fp = p.fecha_pago ? new Date(p.fecha_pago + 'T12:00:00-04:00') : null
                           const mesPago = fp ? fp.getMonth() + 1 : p.mes
                           const anioPago = fp ? fp.getFullYear() : p.anio
+                          const sinFecha = !p.fecha_pago
                           const key = `${anioPago}-${mesPago}-${esNino?'nino':'adulto'}`
-                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, esNino, monto: 0, cant: 0, fecha: p.fecha_pago }
+                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, esNino, monto: 0, cant: 0, fecha: p.fecha_pago, sinFecha }
                           grupos[key].monto += p.monto || 0
                           grupos[key].cant++
                         })
@@ -422,7 +430,7 @@ export default function Egresos() {
                           mes: g.mes,
                           anio: g.anio,
                           tipo: 'ingreso',
-                          item: g.esNino ? `Cuotas Socios Ninos - ${MESES_ES[g.mes-1]} ${g.anio}` : `Cuotas Socios Adultos - ${MESES_ES[g.mes-1]} ${g.anio}`,
+                          item: g.esNino ? `Cuotas Socios Ninos - ${MESES_ES[g.mes-1]} ${g.anio}${g.sinFecha?' (sin fecha)':''}` : `Cuotas Socios Adultos - ${MESES_ES[g.mes-1]} ${g.anio}${g.sinFecha?' (sin fecha)':''}`,
                           categoria: g.esNino ? 'Cuotas Socios Ninos' : 'Cuotas Socios Adultos',
                           monto: g.monto,
                           metodo: '-',
@@ -438,8 +446,9 @@ export default function Egresos() {
                           const fp = p.fecha_pago ? new Date(p.fecha_pago + 'T12:00:00-04:00') : null
                           const mesPago = fp ? fp.getMonth() + 1 : p.mes
                           const anioPago = fp ? fp.getFullYear() : p.anio
+                          const sinFecha = !p.fecha_pago
                           const key = `${anioPago}-${mesPago}`
-                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, monto: 0, cant: 0, fecha: p.fecha_pago }
+                          if (!grupos[key]) grupos[key] = { mes: mesPago, anio: anioPago, monto: 0, cant: 0, fecha: p.fecha_pago, sinFecha }
                           grupos[key].monto += p.monto || 0
                           grupos[key].cant++
                         })
@@ -449,7 +458,7 @@ export default function Egresos() {
                           mes: g.mes,
                           anio: g.anio,
                           tipo: 'ingreso',
-                          item: `Torneos - ${MESES_ES[g.mes-1]} ${g.anio}`,
+                          item: `Torneos - ${MESES_ES[g.mes-1]} ${g.anio}${g.sinFecha?' (sin fecha)':''}`,
                           categoria: 'Torneos',
                           monto: g.monto,
                           metodo: '-',
