@@ -105,7 +105,8 @@ export default function Pagos() {
     if (busqueda.length < 2) { setResultados([]); return }
     setSearchLoading(true)
     const t = setTimeout(async () => {
-      setResultados(await searchPersonas(busqueda))
+      const todos = await searchPersonas(busqueda)
+      setResultados(todos.filter(s => s.atleta !== 'Apoderado'))
       setSearchLoading(false)
     }, 300)
     return () => clearTimeout(t)
@@ -118,7 +119,7 @@ export default function Pagos() {
     const idsS = sugeridos.map(s=>s.id_caif)
     const t = setTimeout(async () => {
       const data = await searchPersonas(busqGrupal)
-      setResultadosG(data.filter(s=>!ids.includes(s.id_caif)&&!idsS.includes(s.id_caif)))
+      setResultadosG(data.filter(s=>!ids.includes(s.id_caif)&&!idsS.includes(s.id_caif)&&s.atleta!=='Apoderado'))
       setSearchLoadingG(false)
     }, 300)
     return () => clearTimeout(t)

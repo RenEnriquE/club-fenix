@@ -2,7 +2,8 @@ export const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','
 export const MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 export const AÑOS = [2024, 2025, 2026]
 
-export function estadoSocio(idSocio, pagos) {
+export function estadoSocio(idSocio, pagos, atleta) {
+  if (atleta === 'Apoderado') return 'al-dia'
   const hoy = new Date()
   const mesActual = hoy.getMonth() + 1
   const anioActual = hoy.getFullYear()

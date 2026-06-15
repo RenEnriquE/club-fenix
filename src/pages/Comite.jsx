@@ -78,7 +78,8 @@ export default function Comite() {
   const lista = personas.filter(p => {
     const matchV = filtroVigente === '' || String(p.vigente) === filtroVigente
     const matchT = !filtroTipo || p.atleta === filtroTipo
-    return matchV && matchT
+    const noApoderado = p.atleta !== 'Apoderado'
+    return matchV && matchT && noApoderado
   })
 
   // Pagos filtrados por actividad para vista cuotas (multiples)
@@ -222,9 +223,10 @@ export default function Comite() {
             <label>Tipo</label>
             <select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)}
               style={{padding:'7px 10px',border:'0.5px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
-              <option value="">Todos</option>
+              <option value="">Todos (excl. apoderados)</option>
               <option value="Atleta Adulto">Adultos</option>
               <option value="Atleta Nino">Ninos</option>
+              <option value="Apoderado">Solo apoderados</option>
             </select>
           </div>
           {!loading && (

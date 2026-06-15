@@ -81,15 +81,16 @@ export default function Dashboard() {
     </div>
   )
 
-  // KPIs
-  const alDia = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'al-dia').length
-  const morosos = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'moroso').length
-  const parcial = personas.filter(p => estadoSocio(p.id_caif, pagos) === 'parcial').length
+  // KPIs - excluir apoderados
+  const atletasSolos = personas.filter(p => p.atleta !== 'Apoderado')
+  const alDia = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos) === 'al-dia').length
+  const morosos = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos) === 'moroso').length
+  const parcial = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos) === 'parcial').length
   const ingTotal = pagos.reduce((a,p) => a+(p.monto||0), 0)
   const ingrMes = MESES_SHORT.map((_,i) => pagos.filter(p=>p.mes===i+1).reduce((a,p)=>a+(p.monto||0),0))
 
   // Morosos
-  const morososList = personas
+  const morososList = atletasSolos
     .filter(p => estadoSocio(p.id_caif,pagos) !== 'al-dia')
     .sort((a,b) => mesesPendientes(b.id_caif,pagos)-mesesPendientes(a.id_caif,pagos))
     .slice(0,8)
@@ -105,7 +106,7 @@ export default function Dashboard() {
     return e
   }
   const adultos = personas.filter(p=>p.atleta==='Atleta Adulto').length
-  const ninos = personas.filter(p=>p.atleta==='Atleta Nino').length
+  const ninos = personas.filter(p=>p.atleta&&p.atleta.includes('Ni')).length
   const mujeres = personas.filter(p=>(p.genero||'').toLowerCase().includes('fem')).length
   const hombres = personas.filter(p=>(p.genero||'').toLowerCase().includes('masc')).length
   const masters = personas.filter(p=>{ const e=calcEdad(p.fecha_nac); return e!==null&&e>=40 }).length
@@ -136,7 +137,7 @@ export default function Dashboard() {
       {/* KPIs */}
       <div className="kpi-grid">
         {[
-          {label:'Total socios activos', val:personas.length, sub:'vigentes', icon:'ti-users', cls:''},
+          {label:'Total socios activos', val:atletasSolos.length, sub:'vigentes', icon:'ti-users', cls:''},
           {label:'Al dia', val:alDia, sub:`cuota ${anio} al corriente`, icon:'ti-circle-check', cls:'green'},
           {label:'Morosos', val:morosos, sub:`sin pago en ${anio}`, icon:'ti-alert-circle', cls:'red'},
           {label:'Pago parcial', val:parcial, sub:'meses pendientes', icon:'ti-clock', cls:'amber'},

@@ -157,6 +157,7 @@ export default function Socios({ isAdmin }) {
             <option value="">Todos los tipos</option>
             <option value="Atleta Adulto">Adultos</option>
             <option value="Atleta Niño">Niños</option>
+            <option value="Apoderado">Apoderados</option>
           </select>
           <select value={filtroVigente} onChange={e=>setFiltroVigente(e.target.value)}>
             <option value="1">Activos ({activos})</option>
@@ -214,7 +215,7 @@ export default function Socios({ isAdmin }) {
                       {nombreMostrar(s)}
                       {esInactivo && <span className="badge" style={{marginLeft:6,background:'#f1f5f9',color:'#64748b',fontSize:10}}>Inactivo</span>}
                     </td>
-                    <td><span className={`badge ${s.atleta==='Atleta Niño'?'nino':'adulto'}`}>{s.atleta==='Atleta Niño'?'Niño':'Adulto'}</span></td>
+                    <td><span className={`badge ${s.atleta==='Atleta Niño'?'nino':s.atleta==='Apoderado'?'':'adulto'}`} style={s.atleta==='Apoderado'?{background:'#f1f5f9',color:'#475569'}:{}}>{s.atleta==='Atleta Niño'?'Niño':s.atleta==='Apoderado'?'Apod':'Adulto'}</span></td>
                     {filtroVigente !== '0' && <td><span className={`badge ${est}`}>{estadoLabel(est)}</span></td>}
                     {filtroVigente !== '0' && (
                       <td style={{color:meses>=(new Date().getMonth()+1)?'var(--success)':'var(--warning)',fontWeight:500}}>
@@ -276,7 +277,7 @@ export default function Socios({ isAdmin }) {
                 <select {...f('genero')}><option>Masculino</option><option>Femenino</option><option>Otro</option></select>
               </div>
               <div className="form-group"><label>Tipo de atleta</label>
-                <select {...f('atleta')}><option>Atleta Adulto</option><option>Atleta Niño</option></select>
+                <select {...f('atleta')}><option>Atleta Adulto</option><option>Atleta Niño</option><option>Apoderado</option></select>
               </div>
               <div className="form-group"><label>Celular</label><input type="text" {...f('celular')}/></div>
               <div className="form-group full"><label>Email</label><input type="email" {...f('email')}/></div>
