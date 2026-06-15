@@ -446,8 +446,7 @@ export default function Socios({ isAdmin }) {
         </div>
       )}
 
-    </div>
-  )
+
       {/* Modal reingreso */}
       {modalReingreso && (
         <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setModalReingreso(null)}>
