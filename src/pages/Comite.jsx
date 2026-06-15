@@ -43,7 +43,7 @@ export default function Comite() {
   const [hasta, setHasta] = useState(defaultHasta)
   const [filtroVigente, setFiltroVigente] = useState('1')
   const [filtroTipo, setFiltroTipo] = useState('')
-  const [filtroActividad, setFiltroActividad] = useState('todas')
+  const [filtroActividades, setFiltroActividades] = useState(['0'])
   const [vistaActiva, setVistaActiva] = useState('cuotas') // 'cuotas' | 'actividades'
   const [personas, setPersonas] = useState([])
   const [pagos, setPagos] = useState([])
@@ -81,10 +81,10 @@ export default function Comite() {
     return matchV && matchT
   })
 
-  // Pagos filtrados por actividad para vista cuotas
-  const pagosFiltrados = filtroActividad === 'todas'
+  // Pagos filtrados por actividad para vista cuotas (multiples)
+  const pagosFiltrados = filtroActividades.length === 0
     ? pagos
-    : pagos.filter(p => String(p.id_actividad) === String(filtroActividad))
+    : pagos.filter(p => filtroActividades.includes(String(p.id_actividad)))
 
   const totalesCols = columnas.map(col =>
     lista.reduce((sum, p) => {
@@ -96,6 +96,7 @@ export default function Comite() {
   const totalSocios = lista.length
   const sociosConPago = lista.filter(p => pagosFiltrados.some(pg => Number(pg.id_socio) === Number(p.id_caif))).length
   const ingTotalRango = pagosFiltrados.filter(pg => lista.some(p => Number(p.id_caif) === Number(pg.id_socio))).reduce((a,p) => a+(p.monto||0), 0)
+  const nombresActividadesSel = filtroActividades.map(id => actividades.find(a => String(a.id_actividad) === id)?.nombre || '').filter(Boolean)
 
   // Resumen por actividad (para la vista de actividades)
   const resumenActividades = actividades.map(act => {
@@ -258,21 +259,39 @@ export default function Comite() {
                 </div>
               ) : (
                 <div>
-                  {/* Filtro actividad inline */}
-                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-                    <label style={{fontSize:12,color:'var(--text-3)',whiteSpace:'nowrap'}}>Filtrar por actividad:</label>
-                    <select value={filtroActividad} onChange={e=>setFiltroActividad(e.target.value)}
-                      style={{padding:'5px 10px',border:'0.5px solid #e2e8f0',borderRadius:8,fontSize:12,fontFamily:'inherit',background:'#fff'}}>
-                      <option value="todas">Todas</option>
-                      {actividades.map(a=>(
-                        <option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>
-                      ))}
-                    </select>
-                    {filtroActividad !== 'todas' && (
-                      <span style={{fontSize:11,color:'#92400e',background:'#fffbeb',padding:'3px 8px',borderRadius:4,border:'0.5px solid #fde68a',fontWeight:600}}>
-                        Mostrando: {actividades.find(a=>String(a.id_actividad)===String(filtroActividad))?.nombre}
-                        &nbsp;&middot;&nbsp;{formatMoney(ingTotalRango)}
-                      </span>
+                  {/* Filtro actividades multiple */}
+                  <div style={{marginBottom:12}}>
+                    <label style={{fontSize:12,color:'var(--text-3)',fontWeight:600,display:'block',marginBottom:6}}>Actividades a mostrar:</label>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                      {actividades.map(a => {
+                        const sel = filtroActividades.includes(String(a.id_actividad))
+                        return (
+                          <button key={a.id_actividad}
+                            onClick={() => setFiltroActividades(prev =>
+                              prev.includes(String(a.id_actividad))
+                                ? prev.filter(x => x !== String(a.id_actividad))
+                                : [...prev, String(a.id_actividad)]
+                            )}
+                            style={{
+                              padding:'4px 12px', borderRadius:999, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
+                              background: sel ? (a.id_actividad===0?'#1a5e3a':'#92400e') : '#f8fafc',
+                              color: sel ? '#fff' : '#64748b',
+                              border: `1.5px solid ${sel ? (a.id_actividad===0?'#1a5e3a':'#f59e0b') : '#e2e8f0'}`,
+                            }}>
+                            {a.nombre}
+                          </button>
+                        )
+                      })}
+                      <button onClick={() => setFiltroActividades(actividades.map(a=>String(a.id_actividad)))}
+                        style={{padding:'4px 12px',borderRadius:999,fontSize:12,cursor:'pointer',fontFamily:'inherit',background:'#f1f5f9',color:'#475569',border:'1.5px solid #e2e8f0',fontWeight:500}}>
+                        Todas
+                      </button>
+                    </div>
+                    {filtroActividades.length > 0 && (
+                      <div style={{marginTop:6,fontSize:11,color:'#64748b'}}>
+                        Mostrando: <strong>{nombresActividadesSel.join(', ')}</strong>
+                        &nbsp;&middot;&nbsp;<strong style={{color:'#1a5e3a'}}>{formatMoney(ingTotalRango)}</strong>
+                      </div>
                     )}
                   </div>
 
