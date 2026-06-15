@@ -111,6 +111,83 @@ export default function Comite() {
     .filter(pg => lista.some(p => Number(p.id_caif) === Number(pg.id_socio)))
     .reduce((a, p) => a + (p.monto || 0), 0)
 
+  function exportarExcel() {
+    // Generar nombre de archivo con fecha y hora
+    const ahora = new Date()
+    const pad = n => String(n).padStart(2,'0')
+    const nombre = `Cuotas_CAIF_${ahora.getFullYear()}${pad(ahora.getMonth()+1)}${pad(ahora.getDate())}_${pad(ahora.getHours())}${pad(ahora.getMinutes())}.xlsx`
+
+    // Construir datos para cada hoja
+    // Hoja 1: Detalle por socio
+    const encabezados = ['ID','Nombre','RUT','Tipo','Vigente',...columnas.map(c=>c.label),'Total']
+    const filas = lista.map(s => {
+      const pagosSocio = pagosFiltrados.filter(pg => Number(pg.id_socio) === Number(s.id_caif))
+      const totalSocio = pagosSocio.reduce((a,p) => a+(p.monto||0), 0)
+      return [
+        s.id_caif,
+        s.nombre_comp,
+        `${s.rut}${s.dv?'-'+s.dv:''}`,
+        s.atleta==='Atleta Nino'?'Nino':'Adulto',
+        s.vigente===1?'Vigente':'Inactivo',
+        ...columnas.map(col => {
+          const pago = pagosSocio.find(pg => Number(pg.periodo) === col.periodo)
+          return pago ? pago.monto : 0
+        }),
+        totalSocio
+      ]
+    })
+    // Fila totales
+    const filaTotales = ['','TOTAL PERIODO','','','', ...totalesCols, totalGeneral]
+    const datosDetalle = [encabezados, ...filas, filaTotales]
+
+    // Hoja 2: Resumen por actividad
+    const encabResumen = ['Actividad','Registros','Socios','Total']
+    const filasResumen = resumenActividades.map(act => [act.nombre, act.cantidad, act.sociosUnicos, act.total])
+    filasResumen.push(['TOTAL GENERAL','','',totalTodasActividades])
+    const datosResumen = [encabResumen, ...filasResumen]
+
+    // Crear workbook con SheetJS (importado via CDN en index.html como XLSX)
+    import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs').then(XLSX => {
+      const wb = XLSX.utils.book_new()
+
+      // Hoja detalle
+      const ws1 = XLSX.utils.aoa_to_sheet(datosDetalle)
+      // Ancho de columnas
+      ws1['!cols'] = [
+        {wch:6},{wch:35},{wch:14},{wch:8},{wch:10},
+        ...columnas.map(()=>({wch:9})),
+        {wch:12}
+      ]
+      XLSX.utils.book_append_sheet(wb, ws1, 'Cuotas por socio')
+
+      // Hoja resumen
+      const ws2 = XLSX.utils.aoa_to_sheet(datosResumen)
+      ws2['!cols'] = [{wch:30},{wch:12},{wch:10},{wch:14}]
+      XLSX.utils.book_append_sheet(wb, ws2, 'Resumen actividades')
+
+      // Hoja KPIs
+      const periodo = `${MESES_ES[Math.floor(desde/100)%100===0?0:(desde%100)-1]} ${Math.floor(desde/100)} - ${MESES_ES[Math.floor(hasta/100)%100===0?0:(hasta%100)-1]} ${Math.floor(hasta/100)}`
+      const datosKpi = [
+        ['Informe Cuotas CAIF'],
+        ['Periodo', periodo],
+        ['Generado', new Date().toLocaleString('es-CL')],
+        ['Actividades', nombresActividadesSel.join(', ') || 'Todas'],
+        [],
+        ['Indicador','Valor'],
+        ['Total socios en rango', totalSocios],
+        ['Socios con pago', sociosConPago],
+        ['Socios sin pago', totalSocios - sociosConPago],
+        ['Total recaudado', totalTodasActividades],
+        ['Total filtrado', ingTotalRango],
+      ]
+      const ws3 = XLSX.utils.aoa_to_sheet(datosKpi)
+      ws3['!cols'] = [{wch:25},{wch:40}]
+      XLSX.utils.book_append_sheet(wb, ws3, 'Resumen')
+
+      XLSX.writeFile(wb, nombre)
+    })
+  }
+
   return (
     <div className="content">
       <div className="card">
@@ -178,18 +255,23 @@ export default function Comite() {
 
         {/* Tabs de vista */}
         {!loading && (
-          <div style={{display:'flex',gap:8,marginBottom:16}}>
-            <button
-              className={`btn ${vistaActiva==='cuotas'?'primary':''}`}
-              onClick={()=>setVistaActiva('cuotas')}
-              style={{fontSize:12}}>
-              <i className="ti ti-table"></i>Cuotas por socio
-            </button>
-            <button
-              className={`btn ${vistaActiva==='actividades'?'primary':''}`}
-              onClick={()=>setVistaActiva('actividades')}
-              style={{fontSize:12}}>
-              <i className="ti ti-chart-bar"></i>Resumen por actividad
+          <div style={{display:'flex',gap:8,marginBottom:16,justifyContent:'space-between',flexWrap:'wrap'}}>
+            <div style={{display:'flex',gap:8}}>
+              <button
+                className={`btn ${vistaActiva==='cuotas'?'primary':''}`}
+                onClick={()=>setVistaActiva('cuotas')}
+                style={{fontSize:12}}>
+                <i className="ti ti-table"></i>Cuotas por socio
+              </button>
+              <button
+                className={`btn ${vistaActiva==='actividades'?'primary':''}`}
+                onClick={()=>setVistaActiva('actividades')}
+                style={{fontSize:12}}>
+                <i className="ti ti-chart-bar"></i>Resumen por actividad
+              </button>
+            </div>
+            <button className="btn" onClick={exportarExcel} style={{fontSize:12,color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
+              <i className="ti ti-file-spreadsheet"></i>Exportar Excel
             </button>
           </div>
         )}
