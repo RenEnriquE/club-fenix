@@ -291,7 +291,7 @@ export default function Egresos() {
                               </td>
                               <td style={{ textAlign: 'center', color: '#64748b', fontSize: 12 }}>{cat.movs}</td>
                             </tr>
-                            {expandida && movsCat.map(m => (
+                            {expandida && movsCat.slice().sort((a,b) => new Date(b.fecha||0) - new Date(a.fecha||0)).map(m => (
                               <tr key={m.id_movimiento} style={{background:'#f8fafc'}}>
                                 <td style={{paddingLeft:28,color:'var(--text-2)',fontSize:12}}>
                                   <span style={{color:'#94a3b8',marginRight:6}}>{m.fecha}</span>
