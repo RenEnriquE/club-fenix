@@ -45,7 +45,7 @@ export default function Dashboard() {
     else setRefreshing(true)
     Promise.all([
       supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero').eq('vigente', 1),
-      supabase.from('pagos').select('id_socio,mes,monto,anio').eq('anio', anio)
+      supabase.from('pagos').select('id_socio,mes,monto,anio,id_actividad').eq('anio', anio)
     ]).then(([resP, resPg]) => {
       const p = resP.data || []
       const pg = resPg.data || []
