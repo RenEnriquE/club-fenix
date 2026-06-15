@@ -21,6 +21,7 @@ export default function Egresos() {
   const [loading, setLoading] = useState(true)
   const [editando, setEditando] = useState(null)
   const [alert, setAlert] = useState(null)
+  const [cuotas, setCuotas] = useState([])
 
   useEffect(() => { cargarCategorias() }, [])
   useEffect(() => { cargar() }, [anio, mes])
@@ -34,8 +35,12 @@ export default function Egresos() {
     setLoading(true)
     let q = supabase.from('movimientos').select('*').eq('anio', anio).order('fecha').order('id_movimiento')
     if (mes) q = q.eq('mes', mes)
-    const { data } = await q
+    // Cargar cuotas de la tabla pagos (id_actividad=0)
+    let qc = supabase.from('pagos').select('id_socio,mes,anio,monto,id_actividad').eq('anio', anio).eq('id_actividad', 0)
+    if (mes) qc = qc.eq('mes', mes)
+    const [{ data }, { data: dataCuotas }] = await Promise.all([q, qc])
     setMovimientos(data || [])
+    setCuotas(dataCuotas || [])
     setLoading(false)
   }
 
@@ -222,6 +227,56 @@ export default function Egresos() {
               )}
             </div>
           )}
+
+          {/* CUOTAS POR MES */}
+              <div className="card">
+                <div className="card-title"><i className="ti ti-users"></i>Ingresos por cuotas del periodo</div>
+                {(() => {
+                  const MESES_ES_LOCAL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+                  // Agrupar por mes
+                  const mesesConCuotas = {}
+                  cuotas.forEach(p => {
+                    if (!mesesConCuotas[p.mes]) mesesConCuotas[p.mes] = { adultos: 0, ninos: 0, total: 0, cantidad: 0 }
+                    mesesConCuotas[p.mes].total += p.monto || 0
+                    mesesConCuotas[p.mes].cantidad++
+                  })
+                  const mesesOrdenados = Object.keys(mesesConCuotas).map(Number).sort((a,b) => a-b)
+                  const totalCuotas = cuotas.reduce((a, p) => a + (p.monto || 0), 0)
+                  if (mesesOrdenados.length === 0) return (
+                    <div className="empty"><i className="ti ti-cash-off"></i>Sin cuotas registradas en este periodo</div>
+                  )
+                  return (
+                    <div style={{overflowX:'auto'}}>
+                      <table className="tbl">
+                        <thead>
+                          <tr>
+                            <th>Mes</th>
+                            <th style={{width:80,textAlign:'center'}}>Pagos</th>
+                            <th style={{width:120,textAlign:'right'}}>Total cuotas</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {mesesOrdenados.map(m => {
+                            const d = mesesConCuotas[m]
+                            return (
+                              <tr key={m}>
+                                <td style={{fontWeight:500}}>{MESES_ES_LOCAL[m-1]} {anio}</td>
+                                <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{d.cantidad}</td>
+                                <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{formatMoney(d.total)}</td>
+                              </tr>
+                            )
+                          })}
+                          <tr style={{background:'#f0fdf4',fontWeight:700}}>
+                            <td>TOTAL</td>
+                            <td style={{textAlign:'center',color:'#64748b'}}>{cuotas.length}</td>
+                            <td style={{textAlign:'right',color:'#16a34a'}}>{formatMoney(totalCuotas)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                })()}
+              </div>
 
           {/* VISTA DETALLE */}
           {vista === 'detalle' && (
