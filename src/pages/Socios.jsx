@@ -249,7 +249,7 @@ export default function Socios({ isAdmin }) {
                 <th>Nombre</th>
                 <th style={{width:60}}>Tipo</th>
                 {filtroVigente !== '0' && <th style={{width:70}}>Estado</th>}
-                {isAdmin && <th style={{width:55}}></th>}
+                {isAdmin && <th style={{width:180}}></th>}
               </tr>
             </thead>
             <tbody>
