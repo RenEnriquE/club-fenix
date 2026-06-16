@@ -26,7 +26,7 @@ export default function App() {
       <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
     ),
     socios: <Socios isAdmin={isAdmin} />,
-    comite: <Comite />,
+    comite: <Comite isAdmin={isAdmin} />,
     egresos: isAdmin ? <Egresos /> : (
       <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
     ),

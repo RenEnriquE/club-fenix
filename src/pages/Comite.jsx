@@ -34,7 +34,7 @@ function columnaEntre(desde, hasta) {
   return cols
 }
 
-export default function Comite() {
+export default function Comite({ isAdmin = false }) {
   const hoy = new Date()
   const defaultDesde = (hoy.getFullYear() - 1) * 100 + (hoy.getMonth() + 1)
   const defaultHasta = hoy.getFullYear() * 100 + (hoy.getMonth() + 1)
@@ -44,6 +44,7 @@ export default function Comite() {
   const [filtroVigente, setFiltroVigente] = useState('1')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroActividades, setFiltroActividades] = useState(['0'])
+  const filtroActividadesFinal = isAdmin ? filtroActividades : ['0']
   const [vistaActiva, setVistaActiva] = useState('cuotas') // 'cuotas' | 'actividades'
   const [personas, setPersonas] = useState([])
   const [pagos, setPagos] = useState([])
@@ -60,10 +61,12 @@ export default function Comite() {
     const anioDesde = Math.floor(desde / 100)
     const anioHasta = Math.floor(hasta / 100)
     const anios = []
-    for (let a = anioDesde; a <= anioHasta; a++) anios.push(a)
+    const anioDesdeReal = isAdmin ? anioDesde : anioActual
+    const anioHastaReal = isAdmin ? anioHasta : anioActual
+    for (let a = anioDesdeReal; a <= anioHastaReal; a++) anios.push(a)
 
     Promise.all([
-      supabase.from('personas').select('id_caif,nombre_comp,rut,dv,atleta,vigente,fecha_nac').order('nombre_comp'),
+      supabase.from('personas').select('id_caif,nombre_comp,nombre,apellido,ap_mat,rut,dv,atleta,vigente,fecha_nac').order('nombre_comp'),
       supabase.from('pagos').select('id_socio,periodo,mes,anio,monto,id_actividad').in('anio', anios)
     ]).then(([resP, resPg]) => {
       setPersonas(resP.data || [])
@@ -83,9 +86,9 @@ export default function Comite() {
   })
 
   // Pagos filtrados por actividad para vista cuotas (multiples)
-  const pagosFiltrados = filtroActividades.length === 0
+  const pagosFiltrados = filtroActividadesFinal.length === 0
     ? pagos
-    : pagos.filter(p => filtroActividades.includes(String(p.id_actividad)))
+    : pagos.filter(p => filtroActividadesFinal.includes(String(p.id_actividad)))
 
   const totalesCols = columnas.map(col =>
     lista.reduce((sum, p) => {
@@ -192,27 +195,62 @@ export default function Comite() {
     })
   }
 
+  // Nombre corto: primer nombre + apellido + inicial ap_mat
+  function nombreCorto(s) {
+    if (!s) return ''
+    const nombre = s.nombre || (s.nombre_comp ? s.nombre_comp.split(' ')[0] : '')
+    const apellido = s.apellido || ''
+    const apMat = s.ap_mat || ''
+    if (nombre && apellido) {
+      return `${nombre} ${apellido}${apMat ? ' ' + apMat.charAt(0) + '.' : ''}`
+    }
+    // Fallback desde nombre_comp si no hay campos separados
+    const partes = (s.nombre_comp || '').replace(' - ', ' ').split(' ').filter(Boolean)
+    if (partes.length >= 3) return `${partes[0]} ${partes[partes.length-2]} ${partes[partes.length-1].charAt(0)}.`
+    if (partes.length === 2) return `${partes[0]} ${partes[1]}`
+    return s.nombre_comp || ''
+  }
+
+  function calcEdad(fn) {
+    if (!fn) return ''
+    const d = new Date(fn + 'T12:00:00-04:00')
+    const hoy = new Date()
+    let e = hoy.getFullYear() - d.getFullYear()
+    const m = hoy.getMonth() - d.getMonth()
+    if (m < 0 || (m === 0 && hoy.getDate() < d.getDate())) e--
+    return e
+  }
+
   return (
     <div className="content">
       <div className="card">
         <div className="card-title"><i className="ti ti-report-analytics"></i>Informe para comite revisor</div>
 
-        {/* Filtros */}
+        {/* Filtros - solo admin */}
         <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'flex-end',marginBottom:16}}>
-          <div className="form-group" style={{minWidth:160}}>
-            <label>Desde</label>
-            <select value={desde} onChange={e=>setDesde(Number(e.target.value))}
-              style={{padding:'7px 10px',border:'0.5px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
-              {PERIODOS.map(p=><option key={p.valor} value={p.valor}>{p.label}</option>)}
-            </select>
-          </div>
-          <div className="form-group" style={{minWidth:160}}>
-            <label>Hasta</label>
-            <select value={hasta} onChange={e=>setHasta(Number(e.target.value))}
-              style={{padding:'7px 10px',border:'0.5px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
-              {PERIODOS.map(p=><option key={p.valor} value={p.valor}>{p.label}</option>)}
-            </select>
-          </div>
+          {isAdmin && (
+            <>
+              <div className="form-group" style={{minWidth:160}}>
+                <label>Desde</label>
+                <select value={desde} onChange={e=>setDesde(Number(e.target.value))}
+                  style={{padding:'7px 10px',border:'0.5px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
+                  {PERIODOS.map(p=><option key={p.valor} value={p.valor}>{p.label}</option>)}
+                </select>
+              </div>
+              <div className="form-group" style={{minWidth:160}}>
+                <label>Hasta</label>
+                <select value={hasta} onChange={e=>setHasta(Number(e.target.value))}
+                  style={{padding:'7px 10px',border:'0.5px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
+                  {PERIODOS.map(p=><option key={p.valor} value={p.valor}>{p.label}</option>)}
+                </select>
+              </div>
+            </>
+          )}
+          {!isAdmin && (
+            <div style={{fontSize:13,fontWeight:600,color:'#1a5e3a',padding:'7px 0'}}>
+              Cuotas {anioActual}
+            </div>
+          )}
           <div className="form-group" style={{minWidth:140}}>
             <label>Socios</label>
             <select value={filtroVigente} onChange={e=>setFiltroVigente(e.target.value)}
@@ -268,12 +306,14 @@ export default function Comite() {
                 style={{fontSize:12}}>
                 <i className="ti ti-table"></i>Cuotas por socio
               </button>
+              {isAdmin && (
               <button
                 className={`btn ${vistaActiva==='actividades'?'primary':''}`}
                 onClick={()=>setVistaActiva('actividades')}
                 style={{fontSize:12}}>
                 <i className="ti ti-chart-bar"></i>Resumen por actividad
               </button>
+              )}
             </div>
             <button className="btn" onClick={exportarExcel} style={{fontSize:12,color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
               <i className="ti ti-file-spreadsheet"></i>Exportar Excel
@@ -346,7 +386,8 @@ export default function Comite() {
                 </div>
               ) : (
                 <div>
-                  {/* Filtro actividades multiple */}
+                  {/* Filtro actividades multiple - solo admin */}
+                  {isAdmin && (<div>
                   <div style={{marginBottom:12}}>
                     <label style={{fontSize:12,color:'var(--text-3)',fontWeight:600,display:'block',marginBottom:6}}>Actividades a mostrar:</label>
                     <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
@@ -381,15 +422,16 @@ export default function Comite() {
                       </div>
                     )}
                   </div>
+                  </div>)}
 
                   <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch',borderRadius:8,border:'0.5px solid #e2e8f0'}}>
                     <table className="tbl" style={{fontSize:11,minWidth:`${360 + columnas.length * 68}px`}}>
                       <thead>
                         <tr>
-                          <th style={{width:50,position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>ID</th>
-                          <th style={{minWidth:140,position:'sticky',left:50,background:'#f8fafc',zIndex:2}}>Nombre</th>
-                          <th style={{width:110}}>RUT</th>
-                          <th style={{width:50}}>Tipo</th>
+                          <th style={{minWidth:130,position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>Nombre</th>
+                          <th style={{width:100}}>RUT</th>
+                          <th style={{width:40,textAlign:'center'}}>Edad</th>
+                          <th style={{width:40}}>Tipo</th>
                           {columnas.map(col=>(
                             <th key={col.periodo} style={{width:68,textAlign:'right',whiteSpace:'nowrap'}}>
                               {col.label}
@@ -404,12 +446,12 @@ export default function Comite() {
                           const totalSocio = pagosSocio.reduce((a,p) => a+(p.monto||0), 0)
                           return (
                             <tr key={s.id_caif} style={{opacity: s.vigente !== 1 ? 0.65 : 1}}>
-                              <td style={{position:'sticky',left:0,background:s.vigente!==1?'#fafafa':'#fff',color:'var(--text-3)',zIndex:1,width:50,minWidth:50}}>{s.id_caif}</td>
-                              <td style={{position:'sticky',left:50,background:s.vigente!==1?'#fafafa':'#fff',fontWeight:500,zIndex:1,maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.nombre_comp}>
-                                {s.nombre_comp}
+                              <td style={{position:'sticky',left:0,background:s.vigente!==1?'#fafafa':'#fff',fontWeight:500,zIndex:1,maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.nombre_comp}>
+                                {nombreCorto(s)}
                                 {s.vigente!==1 && <span style={{marginLeft:5,fontSize:10,color:'#94a3b8'}}>(inactivo)</span>}
                               </td>
                               <td style={{color:'var(--text-3)',fontSize:11,whiteSpace:'nowrap'}}>{s.rut}{s.dv?`-${s.dv}`:''}</td>
+                              <td style={{textAlign:'center',color:'var(--text-3)',fontSize:11}}>{calcEdad(s.fecha_nac)||'-'}</td>
                               <td>
                                 <span className={`badge ${s.atleta&&s.atleta.includes('Ni')?'nino':'adulto'}`} style={{fontSize:9}}>
                                   {s.atleta&&s.atleta.includes('Ni')?'N':'A'}
@@ -430,7 +472,7 @@ export default function Comite() {
                           )
                         })}
                         <tr style={{background:'#f0fdf4',fontWeight:700,fontSize:12}}>
-                          <td colSpan={4} style={{position:'sticky',left:0,background:'#f0fdf4',color:'#16a34a',minWidth:360}}>TOTAL PERIODO</td>
+                          <td colSpan={4} style={{position:'sticky',left:0,background:'#f0fdf4',color:'#16a34a',minWidth:310}}>TOTAL PERIODO</td>
                           {totalesCols.map((t,i) => (
                             <td key={i} style={{textAlign:'right',color:t>0?'#16a34a':'var(--text-3)',fontWeight:600,fontSize:10}}>
                               {t > 0 ? formatMoney(t) : '-'}
