@@ -272,7 +272,7 @@ export default function Comite({ isAdmin = false }) {
           </div>
           {!loading && (
             <div style={{marginLeft:'auto',fontSize:12,color:'var(--text-3)',alignSelf:'center'}}>
-              {lista.length} socios · {columnas.length} meses
+              {lista.length} socios {'-'} {columnas.length} meses
             </div>
           )}
         </div>
@@ -354,7 +354,7 @@ export default function Comite({ isAdmin = false }) {
                             {act.nombre}
                           </div>
                           <div style={{fontSize:11,color:'#64748b',marginTop:2}}>
-                            {act.cantidad} registro{act.cantidad!==1?'s':''} · {act.sociosUnicos} socio{act.sociosUnicos!==1?'s':''} distinto{act.sociosUnicos!==1?'s':''}
+                            {act.cantidad} registro{act.cantidad!==1?'s':''} - {act.sociosUnicos} socio{act.sociosUnicos!==1?'s':''} distinto{act.sociosUnicos!==1?'s':''}
                           </div>
                           {/* Barra de progreso */}
                           <div style={{marginTop:6,background:'#e2e8f0',borderRadius:4,height:4,overflow:'hidden'}}>
@@ -418,7 +418,7 @@ export default function Comite({ isAdmin = false }) {
                     {filtroActividades.length > 0 && (
                       <div style={{marginTop:6,fontSize:11,color:'#64748b'}}>
                         Mostrando: <strong>{nombresActividadesSel.join(', ')}</strong>
-                         · <strong style={{color:'#1a5e3a'}}>{formatMoney(ingTotalRango)}</strong>
+                         - <strong style={{color:'#1a5e3a'}}>{formatMoney(ingTotalRango)}</strong>
                       </div>
                     )}
                   </div>
