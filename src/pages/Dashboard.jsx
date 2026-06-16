@@ -28,7 +28,7 @@ function saveCache(data) {
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS_SEMANA = ['dom','lun','mar','mie','jue','vie','sab']
 
-export default function Dashboard() {
+export default function Dashboard({ isAdmin = true }) {
   const anio = new Date().getFullYear()
   const mesActual = new Date().getMonth() + 1
   const cached = loadCache()
@@ -87,6 +87,7 @@ export default function Dashboard() {
   const morosos = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos, p.atleta, p) === 'moroso').length
   const parcial = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos, p.atleta, p) === 'parcial').length
   const ingTotal = pagos.reduce((a,p) => a+(p.monto||0), 0)
+  const ingCuotas = pagos.filter(p => Number(p.id_actividad) === 0).reduce((a,p) => a+(p.monto||0), 0)
   const ingrMes = MESES_SHORT.map((_,i) => pagos.filter(p=>p.mes===i+1).reduce((a,p)=>a+(p.monto||0),0))
 
   // Morosos
@@ -141,7 +142,7 @@ export default function Dashboard() {
           {label:'Al dia', val:alDia, sub:`cuota ${anio} al corriente`, icon:'ti-circle-check', cls:'green'},
           {label:'Morosos', val:morosos, sub:`sin pago en ${anio}`, icon:'ti-alert-circle', cls:'red'},
           {label:'Pago parcial', val:parcial, sub:'meses pendientes', icon:'ti-clock', cls:'amber'},
-          {label:`Ingresos ${anio}`, val:formatMoney(ingTotal), sub:'total recaudado', icon:'ti-coin', cls:'', small:true},
+          {label:isAdmin?`Ingresos ${anio}`:`Ingresos Cuotas ${anio}`, val:isAdmin?formatMoney(ingTotal):formatMoney(ingCuotas), sub:isAdmin?'total recaudado':'cuotas adultos y ninos', icon:'ti-coin', cls:'', small:true},
         ].map((k,i) => (
           <div key={i} className={`kpi ${k.cls}`}>
             <div className="kpi-label">{k.label}</div>

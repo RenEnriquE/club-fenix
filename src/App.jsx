@@ -21,7 +21,7 @@ export default function App() {
   const isAdmin = session.role === 'admin'
 
   const pages = {
-    dashboard: <Dashboard />,
+    dashboard: <Dashboard isAdmin={isAdmin} />,
     pagos: <Pagos isAdmin={isAdmin} />,
     socios: <Socios isAdmin={isAdmin} />,
     comite: <Comite isAdmin={isAdmin} />,
