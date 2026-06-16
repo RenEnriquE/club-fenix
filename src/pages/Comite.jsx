@@ -437,7 +437,7 @@ export default function Comite({ isAdmin = false }) {
                     <table className="tbl" style={{fontSize:11,minWidth:`${360 + columnas.length * 68}px`}}>
                       <thead>
                         <tr>
-                          <th style={{minWidth:160,position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>Nombre</th>
+                          <th style={{minWidth:200,position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>Nombre</th>
                           <th style={{width:100}}>RUT</th>
                           <th style={{width:40,textAlign:'center'}}>Edad</th>
                           <th style={{width:40}}>Tipo</th>
@@ -455,7 +455,7 @@ export default function Comite({ isAdmin = false }) {
                           const totalSocio = pagosSocio.reduce((a,p) => a+(p.monto||0), 0)
                           return (
                             <tr key={s.id_caif} style={{opacity: s.vigente !== 1 ? 0.65 : 1}}>
-                              <td style={{position:'sticky',left:0,background:s.vigente!==1?'#fafafa':'#fff',fontWeight:500,zIndex:1,minWidth:160,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.nombre_comp}>
+                              <td style={{position:'sticky',left:0,background:s.vigente!==1?'#fafafa':'#fff',fontWeight:500,zIndex:1,minWidth:200,maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.nombre_comp}>
                                 {nombreCorto(s)}
                                 {s.vigente!==1 && <span style={{marginLeft:5,fontSize:10,color:'#94a3b8'}}>(inactivo)</span>}
                               </td>
@@ -481,7 +481,7 @@ export default function Comite({ isAdmin = false }) {
                           )
                         })}
                         <tr style={{background:'#f0fdf4',fontWeight:700,fontSize:12}}>
-                          <td colSpan={4} style={{position:'sticky',left:0,background:'#f0fdf4',color:'#16a34a',minWidth:310}}>TOTAL PERIODO</td>
+                          <td colSpan={4} style={{position:'sticky',left:0,background:'#f0fdf4',color:'#16a34a',minWidth:360}}>TOTAL PERIODO</td>
                           {totalesCols.map((t,i) => (
                             <td key={i} style={{textAlign:'right',color:t>0?'#16a34a':'var(--text-3)',fontWeight:600,fontSize:10}}>
                               {t > 0 ? formatMoney(t) : '-'}
