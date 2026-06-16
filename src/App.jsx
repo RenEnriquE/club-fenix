@@ -22,9 +22,7 @@ export default function App() {
 
   const pages = {
     dashboard: <Dashboard />,
-    pagos: isAdmin ? <Pagos /> : (
-      <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
-    ),
+    pagos: <Pagos isAdmin={isAdmin} />,
     socios: <Socios isAdmin={isAdmin} />,
     comite: <Comite isAdmin={isAdmin} />,
     egresos: isAdmin ? <Egresos /> : (
@@ -61,7 +59,7 @@ export default function App() {
         {[
           {key:'dashboard', icon:'ti-layout-dashboard', label:'Dashboard'},
           {key:'socios', icon:'ti-users', label:'Socios'},
-          ...(isAdmin ? [{key:'pagos', icon:'ti-cash', label:'Pagos'}] : []),
+          {key:'pagos', icon:'ti-cash', label:'Pagos'},
           {key:'comite', icon:'ti-report', label:'Comite'},
           ...(isAdmin ? [{key:'egresos', icon:'ti-arrows-exchange', label:'Movimientos'}] : []),
           ...(isAdmin ? [{key:'torneos', icon:'ti-trophy', label:'Torneos'}] : []),

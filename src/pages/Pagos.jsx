@@ -51,7 +51,7 @@ function SocioGrupal({ entry, anio, onRemove, onToggleMes, onChangeMonto }) {
   )
 }
 
-export default function Pagos() {
+export default function Pagos({ isAdmin = true }) {
   const [modo, setModo] = useState('individual')
   const [actividades, setActividades] = useState([])
 
@@ -411,9 +411,9 @@ export default function Pagos() {
                 <select value={metodo} onChange={e=>setMetodo(e.target.value)}><option>Transferencia</option><option>Efectivo</option><option>Cheque</option></select>
               </div>
               {metodo==='Transferencia'&&<div className="form-group" style={{flex:'1',minWidth:140}}><label>N transaccion</label><input type="text" value={numTrans} onChange={e=>setNumTrans(e.target.value)} placeholder="Opcional"/></div>}
-              <button className="btn primary" onClick={registrarInd} disabled={loadingPago||mesesSel.length===0} style={{marginBottom:1}}>
+              {isAdmin && <button className="btn primary" onClick={registrarInd} disabled={loadingPago||mesesSel.length===0} style={{marginBottom:1}}>
                 {loadingPago?<><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Guardando...</>:<><i className="ti ti-check"></i>Registrar {mesesSel.length>0?`(${mesesSel.length})`:''}</>}
-              </button>
+              </button>}
             </div>
             {alertInd&&<div className={`alert ${alertInd.type}`} dangerouslySetInnerHTML={{__html:alertInd.msg}}></div>}
           </div>
@@ -442,8 +442,8 @@ export default function Pagos() {
                         <td>{p.num_transacc||'—'}</td>
                         <td>
                           <div style={{display:'flex',gap:4}}>
-                            <button className="btn sm" onClick={()=>abrirEdicion(p)} title="Editar"><i className="ti ti-pencil"></i></button>
-                            <button className="btn sm danger" onClick={()=>eliminarPagoInd(p.id_pago)} title="Eliminar"><i className="ti ti-trash"></i></button>
+{isAdmin && <><button className="btn sm" onClick={()=>abrirEdicion(p)} title="Editar"><i className="ti ti-pencil"></i></button>
+                            <button className="btn sm danger" onClick={()=>eliminarPagoInd(p.id_pago)} title="Eliminar"><i className="ti ti-trash"></i></button></>}
                           </div>
                         </td>
                       </tr>
@@ -566,10 +566,10 @@ export default function Pagos() {
               </div>
             )}
             <div style={{display:'flex',justifyContent:'flex-end',marginTop:12}}>
-              <button className="btn primary" onClick={registrarGrupal} disabled={loadingG||totalMesesGrupal===0} style={{padding:'9px 24px'}}>
+              {isAdmin && <button className="btn primary" onClick={registrarGrupal} disabled={loadingG||totalMesesGrupal===0} style={{padding:'9px 24px'}}>
                 {loadingG?<><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Guardando...</>
                   :<><i className="ti ti-check"></i>Registrar {totalMesesGrupal>0?`${totalMesesGrupal} pagos`:''}</>}
-              </button>
+              </button>}
             </div>
             {alertG&&<div className={`alert ${alertG.type}`} dangerouslySetInnerHTML={{__html:alertG.msg}}></div>}
           </div>
