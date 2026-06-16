@@ -2,6 +2,7 @@
 const USERS = [
   { email: 'renenrique@gmail.com', password: 'fenix123', role: 'admin' },
   { email: 'contactoclubcaif@gmail.com', password: 'comite123', role: 'comite' },
+  { email: 'faviohernan16@gmail.com', password: 'favio1234', role: 'comite' },
 ]
 
 const SESSION_KEY = 'fenix-session'
