@@ -37,8 +37,12 @@ function columnaEntre(desde, hasta) {
 export default function Comite({ isAdmin = false }) {
   const anioActual = new Date().getFullYear()
   const hoy = new Date()
-  const defaultDesde = (hoy.getFullYear() - 1) * 100 + (hoy.getMonth() + 1)
-  const defaultHasta = hoy.getFullYear() * 100 + (hoy.getMonth() + 1)
+  const defaultDesde = isAdmin
+    ? (hoy.getFullYear() - 1) * 100 + (hoy.getMonth() + 1)
+    : anioActual * 100 + 1
+  const defaultHasta = isAdmin
+    ? hoy.getFullYear() * 100 + (hoy.getMonth() + 1)
+    : anioActual * 100 + 12
 
   const [desde, setDesde] = useState(defaultDesde)
   const [hasta, setHasta] = useState(defaultHasta)
@@ -72,12 +76,16 @@ export default function Comite({ isAdmin = false }) {
     ]).then(([resP, resPg]) => {
       setPersonas(resP.data || [])
       const all = resPg.data || []
-      setPagos(all.filter(p => Number(p.periodo) >= desde && Number(p.periodo) <= hasta))
+      const desdeReal = isAdmin ? desde : anioActual * 100 + 1
+      const hastaReal = isAdmin ? hasta : anioActual * 100 + 12
+      setPagos(all.filter(p => Number(p.periodo) >= desdeReal && Number(p.periodo) <= hastaReal))
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [desde, hasta])
 
-  const columnas = columnaEntre(desde, hasta)
+  const desdeColumnas = isAdmin ? desde : anioActual * 100 + 1
+  const hastaColumnas = isAdmin ? hasta : anioActual * 100 + 12
+  const columnas = columnaEntre(desdeColumnas, hastaColumnas)
 
   const lista = personas.filter(p => {
     const matchV = filtroVigente === '' || String(p.vigente) === filtroVigente
