@@ -369,12 +369,16 @@ export default function Pagos({ isAdmin = true }) {
             {/* Selector de actividad */}
             <div className="form-group" style={{marginBottom:14}}>
               <label style={{fontWeight:600}}>Tipo de pago / Actividad</label>
-              <select value={actividadInd} onChange={e=>setActividadInd(e.target.value)}
-                style={{padding:'7px 10px',border:`1.5px solid ${esCuotaInd?'#e2e8f0':'#f59e0b'}`,borderRadius:8,fontSize:13,fontFamily:'inherit',background:esCuotaInd?'#fff':'#fffbeb',fontWeight:esCuotaInd?'normal':'600',color:esCuotaInd?'inherit':'#92400e'}}>
-                {actividades.map(a=>(
-                  <option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>
-                ))}
-              </select>
+              {isAdmin ? (
+                <select value={actividadInd} onChange={e=>setActividadInd(e.target.value)}
+                  style={{padding:'7px 10px',border:`1.5px solid ${esCuotaInd?'#e2e8f0':'#f59e0b'}`,borderRadius:8,fontSize:13,fontFamily:'inherit',background:esCuotaInd?'#fff':'#fffbeb',fontWeight:esCuotaInd?'normal':'600',color:esCuotaInd?'inherit':'#92400e'}}>
+                  {actividades.map(a=>(
+                    <option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{padding:'7px 10px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,background:'#f8fafc',color:'#64748b'}}>Cuotas</div>
+              )}
             </div>
 
             {/* Selector de año solo para cuotas */}
@@ -543,12 +547,16 @@ export default function Pagos({ isAdmin = true }) {
               {/* Selector de actividad grupal */}
               <div className="form-group" style={{flex:'1',minWidth:200}}>
                 <label style={{fontWeight:600}}>Tipo de pago / Actividad</label>
-                <select value={actividadG} onChange={e=>setActividadG(e.target.value)}
-                  style={{padding:'7px 10px',border:`1.5px solid ${esCuotaG?'#e2e8f0':'#f59e0b'}`,borderRadius:8,fontSize:13,fontFamily:'inherit',background:esCuotaG?'#fff':'#fffbeb',fontWeight:esCuotaG?'normal':'600',color:esCuotaG?'inherit':'#92400e'}}>
-                  {actividades.map(a=>(
-                    <option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>
-                  ))}
-                </select>
+                {isAdmin ? (
+                  <select value={actividadG} onChange={e=>setActividadG(e.target.value)}
+                    style={{padding:'7px 10px',border:`1.5px solid ${esCuotaG?'#e2e8f0':'#f59e0b'}`,borderRadius:8,fontSize:13,fontFamily:'inherit',background:esCuotaG?'#fff':'#fffbeb',fontWeight:esCuotaG?'normal':'600',color:esCuotaG?'inherit':'#92400e'}}>
+                    {actividades.map(a=>(
+                      <option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div style={{padding:'7px 10px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,background:'#f8fafc',color:'#64748b'}}>Cuotas</div>
+                )}
               </div>
               <div className="form-group" style={{flex:'1',minWidth:150}}><label>Fecha de pago</label><input type="date" value={fechaG} onChange={e=>setFechaG(e.target.value)}/></div>
               <div className="form-group" style={{flex:'1',minWidth:140}}><label>Metodo</label>
