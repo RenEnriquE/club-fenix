@@ -437,7 +437,7 @@ export default function Comite({ isAdmin = false }) {
                     <table className="tbl" style={{fontSize:11,minWidth:`${360 + columnas.length * 68}px`}}>
                       <thead>
                         <tr>
-                          <th style={{minWidth:130,position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>Nombre</th>
+                          <th style={{minWidth:160,position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>Nombre</th>
                           <th style={{width:100}}>RUT</th>
                           <th style={{width:40,textAlign:'center'}}>Edad</th>
                           <th style={{width:40}}>Tipo</th>
@@ -455,7 +455,7 @@ export default function Comite({ isAdmin = false }) {
                           const totalSocio = pagosSocio.reduce((a,p) => a+(p.monto||0), 0)
                           return (
                             <tr key={s.id_caif} style={{opacity: s.vigente !== 1 ? 0.65 : 1}}>
-                              <td style={{position:'sticky',left:0,background:s.vigente!==1?'#fafafa':'#fff',fontWeight:500,zIndex:1,maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.nombre_comp}>
+                              <td style={{position:'sticky',left:0,background:s.vigente!==1?'#fafafa':'#fff',fontWeight:500,zIndex:1,minWidth:160,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.nombre_comp}>
                                 {nombreCorto(s)}
                                 {s.vigente!==1 && <span style={{marginLeft:5,fontSize:10,color:'#94a3b8'}}>(inactivo)</span>}
                               </td>
