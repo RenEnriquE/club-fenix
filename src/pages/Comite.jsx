@@ -35,6 +35,7 @@ function columnaEntre(desde, hasta) {
 }
 
 export default function Comite({ isAdmin = false }) {
+  const anioActual = new Date().getFullYear()
   const hoy = new Date()
   const defaultDesde = (hoy.getFullYear() - 1) * 100 + (hoy.getMonth() + 1)
   const defaultHasta = hoy.getFullYear() * 100 + (hoy.getMonth() + 1)
