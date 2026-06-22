@@ -528,8 +528,8 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
 
   async function registrarPagoOrganizador() {
     if (!fechaPagoOrg) { setAlert({ type:'error', msg:'La fecha es obligatoria.' }); return }
-    const montoTotal = valorOrgEdit * inscripciones.length
-    if (montoTotal <= 0) { setAlert({ type:'error', msg:'No hay atletas inscritos o el valor es 0.' }); return }
+    const montoTotal = valorOrgEdit
+    if (montoTotal <= 0) { setAlert({ type:'error', msg:'El monto debe ser mayor a 0.' }); return }
     setSavingPagoOrg(true)
     try {
       // Crear egreso en movimientos
@@ -557,7 +557,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
         fecha_pago_org: fechaPagoOrg,
         obs_pago_org: obsPagoOrg || null,
         id_movimiento_org: nuevoMov.id_movimiento,
-        valor_organizador: valorOrgEdit,
+        valor_organizador: montoTotal,
       }).eq('id_edicion', edicion.id_edicion)
 
       setEdicionLocal(prev => ({...prev, pagado_organizador: true, fecha_pago_org: fechaPagoOrg, valor_organizador: valorOrgEdit}))
@@ -586,8 +586,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
   const montoAdicionalTotal = inscripciones.reduce((a,i) => a + (i.monto_adicional || 0), 0)
   const montoRecaudado = totalPagados * edicionLocal.valor_atleta + montoAdicionalTotal
   const montoPendiente = totalPendientes * edicionLocal.valor_atleta
-  const valorOrg = edicionLocal.valor_organizador || 0
-  const montoOrganizador = valorOrg * totalInscritos
+  const montoOrganizador = edicionLocal.valor_organizador || 0
   const saldoNeto = montoRecaudado - montoOrganizador
 
   return (
@@ -628,9 +627,9 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
           <div>
             <div className="card-title" style={{marginBottom:4}}><i className="ti ti-building"></i>Pago al organizador</div>
             <div style={{fontSize:12,color:'var(--text-3)'}}>
-              {valorOrg > 0
-                ? <>{formatMoney(valorOrg)}/atleta x {totalInscritos} atletas = <strong style={{color:'#dc2626'}}>{formatMoney(montoOrganizador)}</strong></>
-                : 'Valor organizador no definido'}
+              {montoOrganizador > 0
+                ? <>Monto registrado: <strong style={{color:'#dc2626'}}>{formatMoney(montoOrganizador)}</strong></>
+                : 'Sin monto registrado aun'}
             </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -821,12 +820,9 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
             </div>
             <div className="form-grid">
               <div className="form-group">
-                <label>Valor por atleta ($)</label>
+                <label>Monto total a transferir ($) *</label>
                 <input type="number" value={valorOrgEdit} onChange={e=>setValorOrgEdit(Number(e.target.value))}
-                  placeholder="Valor que cobra el organizador"/>
-                <span style={{fontSize:11,color:'#64748b',marginTop:2,display:'block'}}>
-                  Total: {formatMoney(valorOrgEdit * inscripciones.length)} ({inscripciones.length} atletas)
-                </span>
+                  placeholder="Monto total a pagar al organizador"/>
               </div>
               <div className="form-group">
                 <label>Fecha de pago *</label>
@@ -850,7 +846,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
             </div>
             <div style={{background:'#f8fafc',border:'0.5px solid #e2e8f0',borderRadius:8,padding:'10px 14px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <span style={{fontSize:13,color:'var(--text-2)'}}>Total egreso a registrar</span>
-              <span style={{fontWeight:700,fontSize:18,color:'#dc2626'}}>-{formatMoney(valorOrgEdit * inscripciones.length)}</span>
+              <span style={{fontWeight:700,fontSize:18,color:'#dc2626'}}>-{formatMoney(valorOrgEdit)}</span>
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button className="btn" onClick={()=>setModalPagoOrg(false)}>Cancelar</button>
