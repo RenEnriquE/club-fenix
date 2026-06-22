@@ -538,7 +538,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
       const idCat = catData?.[0]?.id_categoria || null
       const mesEdicion = new Date(edicion.fecha+'T12:00:00').getMonth() + 1
       const anioEdicion = new Date(edicion.fecha+'T12:00:00').getFullYear()
-      const { data: nuevoMov } = await supabase.from('movimientos').insert([{
+      const { data: nuevoMov, error: errMov } = await supabase.from('movimientos').insert([{
         fecha: fechaPagoOrg,
         tipo: 'egreso',
         id_categoria: idCat,
@@ -551,12 +551,14 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
         mes: mesEdicion,
       }]).select().single()
 
+      if (errMov) throw new Error(errMov.message)
+
       // Actualizar edicion con pago registrado
       await supabase.from('ediciones_torneo').update({
         pagado_organizador: true,
         fecha_pago_org: fechaPagoOrg,
         obs_pago_org: obsPagoOrg || null,
-        id_movimiento_org: nuevoMov.id_movimiento,
+        id_movimiento_org: nuevoMov?.id_movimiento || null,
         valor_organizador: montoTotal,
       }).eq('id_edicion', edicion.id_edicion)
 
