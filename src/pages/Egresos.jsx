@@ -684,6 +684,7 @@ export default function Egresos() {
         <ModalMovimiento
           movimiento={editando}
           categorias={categorias}
+          movimientosTodos={movimientos}
           anio={anio}
           onClose={() => setEditando(null)}
           onSaved={() => { setEditando(null); cargar(); mostrarAlert('success', 'Movimiento guardado.') }}
@@ -698,13 +699,23 @@ function itemVacio(tipo, fecha, metodo) {
   return { tipo, fecha, metodo_pago: metodo, id_categoria: '', item: '', monto: '', num_comprobante: '', obs: '', obs_detalle: '' }
 }
 
-function ModalMovimiento({ movimiento, categorias, anio, onClose, onSaved }) {
+// Reemplaza periodo YYYYMM en un texto por el periodo actual
+function actualizarPeriodo(texto) {
+  const hoy = new Date()
+  const anioAct = hoy.getFullYear()
+  const mesAct = String(hoy.getMonth() + 1).padStart(2, '0')
+  const periodoAct = `${anioAct}${mesAct}`
+  return texto.replace(/\d{6}/g, periodoAct)
+}
+
+function ModalMovimiento({ movimiento, categorias, movimientosTodos = [], anio, onClose, onSaved }) {
   const esNuevo = !movimiento.id_movimiento
 
   // Campos compartidos entre todos los items
   const [fecha, setFecha] = useState(movimiento.fecha || new Date().toISOString().split('T')[0])
   const [tipo, setTipo] = useState(movimiento.tipo || 'egreso')
   const [metodo, setMetodo] = useState(movimiento.metodo_pago || 'Transferencia')
+  const [sugerencias, setSugerencias] = useState([])
 
   // Lista de items (para edicion solo hay uno)
   const [items, setItems] = useState(esNuevo ? [itemVacio(movimiento.tipo||'egreso', movimiento.fecha||new Date().toISOString().split('T')[0], movimiento.metodo_pago||'Transferencia')] : [{
@@ -727,7 +738,30 @@ function ModalMovimiento({ movimiento, categorias, anio, onClose, onSaved }) {
   function cambiarTipo(v) { setTipo(v); setItems(its => its.map(i => ({...i, tipo: v}))) }
   function cambiarMetodo(v) { setMetodo(v); setItems(its => its.map(i => ({...i, metodo_pago: v}))) }
 
-  function setItem(idx, k, v) { setItems(its => its.map((it, i) => i === idx ? {...it, [k]: v} : it)) }
+  function setItem(idx, k, v) {
+    setItems(its => its.map((it, i) => i === idx ? {...it, [k]: v} : it))
+    // Al cambiar categoria, cargar sugerencias de items anteriores
+    if (k === 'id_categoria' && v) {
+      const catId = Number(v)
+      const movsCat = movimientosTodos
+        .filter(m => m.id_categoria === catId && m.item)
+        .sort((a, b) => new Date(b.fecha||0) - new Date(a.fecha||0))
+      // Deduplicar por item base (sin el periodo)
+      const vistos = new Set()
+      const unicas = []
+      for (const m of movsCat) {
+        const base = m.item.replace(/\d{6}/g, '______')
+        if (!vistos.has(base)) {
+          vistos.add(base)
+          unicas.push(m)
+        }
+        if (unicas.length >= 5) break
+      }
+      setSugerencias(unicas)
+    } else if (k === 'id_categoria' && !v) {
+      setSugerencias([])
+    }
+  }
   function agregarItem() { setItems(its => [...its, itemVacio(tipo, fecha, metodo)]) }
   function quitarItem(idx) { setItems(its => its.filter((_, i) => i !== idx)) }
 
@@ -839,6 +873,31 @@ function ModalMovimiento({ movimiento, categorias, anio, onClose, onSaved }) {
                 <label>Descripcion *</label>
                 <input value={it.item} onChange={e => setItem(idx, 'item', e.target.value)}
                   placeholder="Ej: Remuneracion Coach, Pago aseo..." autoFocus={idx === items.length - 1 && idx > 0} />
+                {/* Sugerencias basadas en categoria */}
+                {sugerencias.length > 0 && idx === 0 && (
+                  <div style={{marginTop:6}}>
+                    <div style={{fontSize:11,color:'#64748b',marginBottom:4,fontWeight:600}}>Sugerencias (clic para usar):</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                      {sugerencias.map((s, si) => (
+                        <button key={si} type="button"
+                          onClick={() => {
+                            const itemActualizado = actualizarPeriodo(s.item)
+                            setItem(idx, 'item', itemActualizado)
+                            setItem(idx, 'monto', s.monto)
+                          }}
+                          style={{
+                            textAlign:'left', padding:'6px 10px', borderRadius:6, cursor:'pointer',
+                            border:'0.5px solid #e2e8f0', background:'#f8fafc', fontFamily:'inherit',
+                            fontSize:12, color:'var(--text)', display:'flex', justifyContent:'space-between',
+                            alignItems:'center', gap:8
+                          }}>
+                          <span>{actualizarPeriodo(s.item)}</span>
+                          <span style={{color:'#16a34a',fontWeight:600,whiteSpace:'nowrap'}}>{formatMoney(s.monto)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="form-group">
                 <label>Categoria</label>
