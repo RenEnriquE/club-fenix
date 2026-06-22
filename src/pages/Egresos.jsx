@@ -869,51 +869,56 @@ function ModalMovimiento({ movimiento, categorias, movimientosTodos = [], anio, 
             </div>
 
             <div className="form-grid">
+              {/* 1. Categoria */}
               <div className="form-group full">
-                <label>Descripcion *</label>
-                <input value={it.item} onChange={e => setItem(idx, 'item', e.target.value)}
-                  placeholder="Ej: Remuneracion Coach, Pago aseo..." autoFocus={idx === items.length - 1 && idx > 0} />
-                {/* Sugerencias basadas en categoria */}
-                {sugerencias.length > 0 && idx === 0 && (
-                  <div style={{marginTop:6}}>
-                    <div style={{fontSize:11,color:'#64748b',marginBottom:4,fontWeight:600}}>Sugerencias (clic para usar):</div>
-                    <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                      {sugerencias.map((s, si) => (
-                        <button key={si} type="button"
-                          onClick={() => {
-                            const itemActualizado = actualizarPeriodo(s.item)
-                            setItem(idx, 'item', itemActualizado)
-                            setItem(idx, 'monto', s.monto)
-                          }}
-                          style={{
-                            textAlign:'left', padding:'6px 10px', borderRadius:6, cursor:'pointer',
-                            border:'0.5px solid #e2e8f0', background:'#f8fafc', fontFamily:'inherit',
-                            fontSize:12, color:'var(--text)', display:'flex', justifyContent:'space-between',
-                            alignItems:'center', gap:8
-                          }}>
-                          <span>{actualizarPeriodo(s.item)}</span>
-                          <span style={{color:'#16a34a',fontWeight:600,whiteSpace:'nowrap'}}>{formatMoney(s.monto)}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="form-group">
                 <label>Categoria</label>
                 <select value={it.id_categoria} onChange={e => setItem(idx, 'id_categoria', e.target.value)}>
                   <option value="">Sin categoria</option>
                   {catsFiltradas.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre}</option>)}
                 </select>
               </div>
+              {/* 2. Sugerencias (aparecen al seleccionar categoria) */}
+              {sugerencias.length > 0 && idx === 0 && (
+                <div className="form-group full" style={{marginBottom:0}}>
+                  <label style={{fontSize:11,color:'#64748b',fontWeight:600}}>Sugerencias (clic para usar):</label>
+                  <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                    {sugerencias.map((s, si) => (
+                      <button key={si} type="button"
+                        onClick={() => {
+                          const itemActualizado = actualizarPeriodo(s.item)
+                          setItem(idx, 'item', itemActualizado)
+                          setItem(idx, 'monto', s.monto)
+                        }}
+                        style={{
+                          textAlign:'left', padding:'6px 10px', borderRadius:6, cursor:'pointer',
+                          border:'0.5px solid #e2e8f0', background:'#f8fafc', fontFamily:'inherit',
+                          fontSize:12, color:'var(--text)', display:'flex', justifyContent:'space-between',
+                          alignItems:'center', gap:8
+                        }}>
+                        <span>{actualizarPeriodo(s.item)}</span>
+                        <span style={{color:'#16a34a',fontWeight:600,whiteSpace:'nowrap'}}>{formatMoney(s.monto)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* 3. Descripcion */}
+              <div className="form-group full">
+                <label>Descripcion *</label>
+                <input value={it.item} onChange={e => setItem(idx, 'item', e.target.value)}
+                  placeholder="Ej: Remuneracion Coach, Pago aseo..." autoFocus={idx === items.length - 1 && idx > 0} />
+              </div>
+              {/* 4. Monto */}
               <div className="form-group">
                 <label>Monto ($) *</label>
                 <input type="number" value={it.monto} onChange={e => setItem(idx, 'monto', e.target.value)} placeholder="0" />
               </div>
+              {/* 5. Comprobante */}
               <div className="form-group">
                 <label>N comprobante</label>
                 <input value={it.num_comprobante} onChange={e => setItem(idx, 'num_comprobante', e.target.value)} placeholder="Opcional" />
               </div>
+              {/* 6. Observaciones */}
               <div className="form-group full">
                 <label>Observaciones</label>
                 <input value={it.obs} onChange={e => setItem(idx, 'obs', e.target.value)} placeholder="Opcional" />
