@@ -192,14 +192,14 @@ function DetalleTorneo({ torneo, onBack, onSelectEdicion }) {
 
   function abrirNueva() {
     setEditando(null)
-    setForm({ fecha: new Date().toISOString().split('T')[0], valor_atleta: torneo.valor_default || '', obs: '' })
+    setForm({ fecha: new Date().toISOString().split('T')[0], valor_atleta: torneo.valor_default || '', valor_organizador: torneo.valor_default || '', obs: '' })
     setModal(true)
   }
 
   function abrirEditar(e, ev) {
     ev.stopPropagation()
     setEditando(e)
-    setForm({ fecha: e.fecha, valor_atleta: e.valor_atleta, obs: e.obs || '' })
+    setForm({ fecha: e.fecha, valor_atleta: e.valor_atleta, valor_organizador: e.valor_organizador || '', obs: e.obs || '' })
     setModal(true)
   }
 
@@ -210,7 +210,7 @@ function DetalleTorneo({ torneo, onBack, onSelectEdicion }) {
     if (!form.valor_atleta || Number(form.valor_atleta) < 0) { setAlert({ type:'error', msg:'El valor debe ser mayor o igual a 0.' }); return }
     setSaving(true)
     try {
-      const payload = { id_torneo: torneo.id_torneo, fecha: form.fecha, valor_atleta: Number(form.valor_atleta), obs: form.obs || null }
+      const payload = { id_torneo: torneo.id_torneo, fecha: form.fecha, valor_atleta: Number(form.valor_atleta), valor_organizador: Number(form.valor_organizador) || 0, obs: form.obs || null }
       if (editando) {
         await supabase.from('ediciones_torneo').update(payload).eq('id_edicion', editando.id_edicion)
       } else {
@@ -308,7 +308,8 @@ function DetalleTorneo({ torneo, onBack, onSelectEdicion }) {
             </div>
             <div className="form-grid">
               <div className="form-group"><label>Fecha del torneo *</label><input type="date" value={form.fecha} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))}/></div>
-              <div className="form-group"><label>Valor por atleta ($) *</label><input type="number" value={form.valor_atleta} onChange={e=>setForm(f=>({...f,valor_atleta:e.target.value}))}/></div>
+              <div className="form-group"><label>Valor por atleta ($) *</label><input type="number" value={form.valor_atleta} onChange={e=>setForm(f=>({...f,valor_atleta:e.target.value}))} placeholder="Lo que paga cada atleta al club"/></div>
+              <div className="form-group"><label>Valor organizador por atleta ($)</label><input type="number" value={form.valor_organizador} onChange={e=>setForm(f=>({...f,valor_organizador:e.target.value}))} placeholder="Lo que cobra el organizador"/></div>
               <div className="form-group full"><label>Observaciones</label><input value={form.obs} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Opcional"/></div>
             </div>
             {alert && <div className={`alert ${alert.type}`} style={{marginBottom:12}}>{alert.msg}</div>}
@@ -350,6 +351,14 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
   const [montoAdicional, setMontoAdicional] = useState('')
   const [obsAdicional, setObsAdicional] = useState('')
   const [savingAdicional, setSavingAdicional] = useState(false)
+  const [modalPagoOrg, setModalPagoOrg] = useState(false)
+  const [edicionLocal, setEdicionLocal] = useState(edicion)
+  const [fechaPagoOrg, setFechaPagoOrg] = useState(new Date().toISOString().split('T')[0])
+  const [metodoPagoOrg, setMetodoPagoOrg] = useState('Transferencia')
+  const [numTransOrg, setNumTransOrg] = useState('')
+  const [obsPagoOrg, setObsPagoOrg] = useState('')
+  const [savingPagoOrg, setSavingPagoOrg] = useState(false)
+  const [valorOrgEdit, setValorOrgEdit] = useState(edicion.valor_organizador || 0)
 
   useEffect(() => { cargar() }, [edicion])
 
@@ -517,6 +526,48 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
     finally { setSavingAdicional(false) }
   }
 
+  async function registrarPagoOrganizador() {
+    if (!fechaPagoOrg) { setAlert({ type:'error', msg:'La fecha es obligatoria.' }); return }
+    const montoTotal = valorOrgEdit * inscripciones.length
+    if (montoTotal <= 0) { setAlert({ type:'error', msg:'No hay atletas inscritos o el valor es 0.' }); return }
+    setSavingPagoOrg(true)
+    try {
+      // Crear egreso en movimientos
+      const { data: catData } = await supabase.from('categorias_movimiento')
+        .select('id_categoria').ilike('nombre', '%orneo%').limit(1)
+      const idCat = catData?.[0]?.id_categoria || null
+      const mesEdicion = new Date(edicion.fecha+'T12:00:00').getMonth() + 1
+      const anioEdicion = new Date(edicion.fecha+'T12:00:00').getFullYear()
+      const { data: nuevoMov } = await supabase.from('movimientos').insert([{
+        fecha: fechaPagoOrg,
+        tipo: 'egreso',
+        id_categoria: idCat,
+        item: `Pago organizador ${torneo.nombre} ${edicion.fecha}`,
+        monto: montoTotal,
+        metodo_pago: metodoPagoOrg,
+        num_comprobante: numTransOrg || null,
+        obs: obsPagoOrg || `Pago organizador torneo - ${inscripciones.length} atletas x ${formatMoney(valorOrgEdit)}`,
+        anio: anioEdicion,
+        mes: mesEdicion,
+      }]).select().single()
+
+      // Actualizar edicion con pago registrado
+      await supabase.from('ediciones_torneo').update({
+        pagado_organizador: true,
+        fecha_pago_org: fechaPagoOrg,
+        obs_pago_org: obsPagoOrg || null,
+        id_movimiento_org: nuevoMov.id_movimiento,
+        valor_organizador: valorOrgEdit,
+      }).eq('id_edicion', edicion.id_edicion)
+
+      setEdicionLocal(prev => ({...prev, pagado_organizador: true, fecha_pago_org: fechaPagoOrg, valor_organizador: valorOrgEdit}))
+      setModalPagoOrg(false)
+      setAlert({ type:'success', msg:`Pago de ${formatMoney(montoTotal)} registrado en Movimientos.` })
+      setTimeout(() => setAlert(null), 4000)
+    } catch(e) { setAlert({ type:'error', msg:'Error: '+e.message }) }
+    finally { setSavingPagoOrg(false) }
+  }
+
   function mesesToAlDia(idSocio) {
     const anioActual = new Date().getFullYear()
     const mesActual = new Date().getMonth() + 1
@@ -533,8 +584,11 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
   const totalPagados = inscripciones.filter(i => i.pagado).length
   const totalPendientes = totalInscritos - totalPagados
   const montoAdicionalTotal = inscripciones.reduce((a,i) => a + (i.monto_adicional || 0), 0)
-  const montoRecaudado = totalPagados * edicion.valor_atleta + montoAdicionalTotal
-  const montoPendiente = totalPendientes * edicion.valor_atleta
+  const montoRecaudado = totalPagados * edicionLocal.valor_atleta + montoAdicionalTotal
+  const montoPendiente = totalPendientes * edicionLocal.valor_atleta
+  const valorOrg = edicionLocal.valor_organizador || 0
+  const montoOrganizador = valorOrg * totalInscritos
+  const saldoNeto = montoRecaudado - montoOrganizador
 
   return (
     <>
@@ -556,6 +610,8 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
           { label:'Pendientes', val:totalPendientes, color:'#dc2626' },
           { label:'Recaudado', val:formatMoney(montoRecaudado), color:'#1a5e3a', small:true },
           { label:'Por cobrar', val:formatMoney(montoPendiente), color:'#d97706', small:true },
+          { label:'Pago organizador', val:formatMoney(montoOrganizador), color:'#dc2626', small:true },
+          { label:'Saldo neto', val:formatMoney(saldoNeto), color:saldoNeto>=0?'#1d4ed8':'#dc2626', small:true },
         ].map((k,i) => (
           <div key={i} style={{background:'#f8fafc',border:'0.5px solid #e2e8f0',borderRadius:10,padding:'10px 14px'}}>
             <div style={{fontSize:11,color:'#64748b',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>{k.label}</div>
@@ -565,6 +621,34 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
       </div>
 
       {alert && <div className={`alert ${alert.type}`} style={{marginBottom:12}}>{alert.msg}</div>}
+
+      {/* Pago al organizador */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+          <div>
+            <div className="card-title" style={{marginBottom:4}}><i className="ti ti-building"></i>Pago al organizador</div>
+            <div style={{fontSize:12,color:'var(--text-3)'}}>
+              {valorOrg > 0
+                ? <>{formatMoney(valorOrg)}/atleta x {totalInscritos} atletas = <strong style={{color:'#dc2626'}}>{formatMoney(montoOrganizador)}</strong></>
+                : 'Valor organizador no definido'}
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            {edicionLocal.pagado_organizador ? (
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontSize:12,background:'#f0fdf4',color:'#16a34a',padding:'4px 12px',borderRadius:6,border:'0.5px solid #a7f3d0',fontWeight:600}}>
+                  <i className="ti ti-check" style={{marginRight:4}}></i>Pagado {edicionLocal.fecha_pago_org}
+                </span>
+              </div>
+            ) : (
+              <button className="btn primary" style={{background:'#dc2626',borderColor:'#dc2626'}}
+                onClick={()=>{setValorOrgEdit(edicionLocal.valor_organizador||0);setModalPagoOrg(true)}}>
+                <i className="ti ti-cash"></i>Registrar pago organizador
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Lista de inscritos */}
       <div className="card">
@@ -717,6 +801,67 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
             {busqueda.length >= 2 && resultados.length === 0 && !searchLoading && (
               <div className="empty" style={{padding:'1rem'}}><i className="ti ti-search-off"></i>Sin resultados</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal pago al organizador */}
+      {modalPagoOrg && (
+        <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setModalPagoOrg(false)}>
+          <div className="modal" style={{width:'min(580px,95vw)'}}>
+            <div className="modal-header">
+              <h2>Registrar pago al organizador</h2>
+              <button className="modal-close" onClick={()=>setModalPagoOrg(false)}>&times;</button>
+            </div>
+            <div style={{background:'#fef2f2',border:'0.5px solid #fecaca',borderRadius:8,padding:'10px 14px',marginBottom:16}}>
+              <div style={{fontWeight:600,fontSize:14}}>{torneo.nombre} - {edicion.fecha}</div>
+              <div style={{fontSize:12,color:'#64748b',marginTop:4}}>
+                Este egreso quedara registrado automaticamente en Movimientos.
+              </div>
+            </div>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Valor por atleta ($)</label>
+                <input type="number" value={valorOrgEdit} onChange={e=>setValorOrgEdit(Number(e.target.value))}
+                  placeholder="Valor que cobra el organizador"/>
+                <span style={{fontSize:11,color:'#64748b',marginTop:2,display:'block'}}>
+                  Total: {formatMoney(valorOrgEdit * inscripciones.length)} ({inscripciones.length} atletas)
+                </span>
+              </div>
+              <div className="form-group">
+                <label>Fecha de pago *</label>
+                <input type="date" value={fechaPagoOrg} onChange={e=>setFechaPagoOrg(e.target.value)}/>
+              </div>
+              <div className="form-group">
+                <label>Metodo</label>
+                <select value={metodoPagoOrg} onChange={e=>setMetodoPagoOrg(e.target.value)}>
+                  <option>Transferencia</option><option>Efectivo</option><option>Cheque</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>N comprobante</label>
+                <input value={numTransOrg} onChange={e=>setNumTransOrg(e.target.value)} placeholder="Opcional"/>
+              </div>
+              <div className="form-group full">
+                <label>Observaciones</label>
+                <input value={obsPagoOrg} onChange={e=>setObsPagoOrg(e.target.value)}
+                  placeholder={`Pago organizador ${torneo.nombre} ${edicion.fecha}`}/>
+              </div>
+            </div>
+            <div style={{background:'#f8fafc',border:'0.5px solid #e2e8f0',borderRadius:8,padding:'10px 14px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:13,color:'var(--text-2)'}}>Total egreso a registrar</span>
+              <span style={{fontWeight:700,fontSize:18,color:'#dc2626'}}>-{formatMoney(valorOrgEdit * inscripciones.length)}</span>
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn" onClick={()=>setModalPagoOrg(false)}>Cancelar</button>
+              <button className="btn primary" onClick={registrarPagoOrganizador} disabled={savingPagoOrg}
+                style={{background:'#dc2626',borderColor:'#dc2626'}}>
+                {savingPagoOrg
+                  ? <><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Registrando...</>
+                  : <><i className="ti ti-check"></i>Confirmar egreso</>
+                }
+              </button>
+            </div>
           </div>
         </div>
       )}
