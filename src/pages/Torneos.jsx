@@ -346,6 +346,10 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
   const [obsTemp, setObsTemp] = useState('')
   const [editFechaPago, setEditFechaPago] = useState(null)
   const [fechaPagoTemp, setFechaPagoTemp] = useState('')
+  const [modalAdicional, setModalAdicional] = useState(null)
+  const [montoAdicional, setMontoAdicional] = useState('')
+  const [obsAdicional, setObsAdicional] = useState('')
+  const [savingAdicional, setSavingAdicional] = useState(false)
 
   useEffect(() => { cargar() }, [edicion])
 
@@ -473,6 +477,46 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
     cargar()
   }
 
+  async function registrarAdicional() {
+    if (!montoAdicional || Number(montoAdicional) <= 0) {
+      setAlert({ type:'error', msg:'El monto debe ser mayor a 0.' }); return
+    }
+    setSavingAdicional(true)
+    try {
+      // Registrar pago adicional en tabla pagos
+      const { data: lastPago } = await supabase.from('pagos').select('id_pago').order('id_pago', { ascending: false }).limit(1)
+      const nextId = (lastPago?.[0]?.id_pago || 0) + 1
+      const mesEdicion = new Date(edicion.fecha+'T12:00:00').getMonth() + 1
+      const anioEdicion = new Date(edicion.fecha+'T12:00:00').getFullYear()
+      await supabase.from('pagos').insert([{
+        id_pago: nextId,
+        id_socio: modalAdicional.id_socio,
+        periodo: anioEdicion * 100 + mesEdicion,
+        fecha_pago: new Date().toISOString().split('T')[0],
+        monto: Number(montoAdicional),
+        tipo_pago: 'Transferencia',
+        banco: null,
+        num_transacc: null,
+        cuenta: 'CAIF',
+        anio: anioEdicion,
+        mes: mesEdicion,
+        id_actividad: 999,
+      }])
+      // Actualizar inscripcion con monto adicional
+      await supabase.from('inscripciones_torneo').update({
+        monto_adicional: Number(montoAdicional),
+        obs_adicional: obsAdicional || null
+      }).eq('id_inscripcion', modalAdicional.id_inscripcion)
+      setModalAdicional(null)
+      setMontoAdicional('')
+      setObsAdicional('')
+      setAlert({ type:'success', msg:'Monto adicional registrado.' })
+      setTimeout(() => setAlert(null), 3000)
+      cargar()
+    } catch(e) { setAlert({ type:'error', msg:'Error: '+e.message }) }
+    finally { setSavingAdicional(false) }
+  }
+
   function mesesToAlDia(idSocio) {
     const anioActual = new Date().getFullYear()
     const mesActual = new Date().getMonth() + 1
@@ -488,7 +532,8 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
   const totalInscritos = inscripciones.length
   const totalPagados = inscripciones.filter(i => i.pagado).length
   const totalPendientes = totalInscritos - totalPagados
-  const montoRecaudado = totalPagados * edicion.valor_atleta
+  const montoAdicionalTotal = inscripciones.reduce((a,i) => a + (i.monto_adicional || 0), 0)
+  const montoRecaudado = totalPagados * edicion.valor_atleta + montoAdicionalTotal
   const montoPendiente = totalPendientes * edicion.valor_atleta
 
   return (
@@ -540,8 +585,9 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                   <th style={{width:90}}>Cuotas</th>
                   <th style={{width:80}}>Pago</th>
                   <th style={{width:100}}>Fecha pago</th>
+                  <th style={{width:90}}>Adicional</th>
                   <th>Observaciones</th>
-                  <th style={{width:100}}></th>
+                  <th style={{width:120}}></th>
                 </tr>
               </thead>
               <tbody>
@@ -590,6 +636,14 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                           )
                         ) : '—'}
                       </td>
+                      <td style={{fontSize:11}}>
+                        {insc.monto_adicional > 0 ? (
+                          <div>
+                            <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(insc.monto_adicional)}</span>
+                            {insc.obs_adicional && <div style={{color:'var(--text-3)',fontSize:10}}>{insc.obs_adicional}</div>}
+                          </div>
+                        ) : <span style={{color:'#94a3b8'}}>—</span>}
+                      </td>
                       <td>
                         {editObs === insc.id_inscripcion ? (
                           <div style={{display:'flex',gap:4}}>
@@ -608,6 +662,12 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                           {!insc.pagado && (
                             <button className="btn sm primary" style={{fontSize:11,padding:'3px 8px'}} onClick={()=>setRegistrandoPago(insc)}>
                               <i className="ti ti-cash"></i>Pago
+                            </button>
+                          )}
+                          {insc.pagado && (
+                            <button className="btn sm" style={{fontSize:11,padding:'3px 8px',color:'#7c3aed',borderColor:'#ddd6fe',background:'#faf5ff'}}
+                              onClick={()=>{setModalAdicional(insc);setMontoAdicional(insc.monto_adicional||'');setObsAdicional(insc.obs_adicional||'')}}>
+                              <i className="ti ti-plus"></i>Adic
                             </button>
                           )}
                           <button className="btn sm danger" onClick={()=>desinscribir(insc)} style={{padding:'3px 6px'}} title={insc.pagado?'Eliminar inscripcion y pago':'Eliminar inscripcion'}>
@@ -657,6 +717,49 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
             {busqueda.length >= 2 && resultados.length === 0 && !searchLoading && (
               <div className="empty" style={{padding:'1rem'}}><i className="ti ti-search-off"></i>Sin resultados</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal monto adicional */}
+      {modalAdicional && (
+        <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setModalAdicional(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <h2>Monto adicional por competencia extra</h2>
+              <button className="modal-close" onClick={()=>setModalAdicional(null)}>&times;</button>
+            </div>
+            <div style={{background:'#faf5ff',border:'0.5px solid #ddd6fe',borderRadius:8,padding:'10px 14px',marginBottom:16}}>
+              <div style={{fontWeight:600,fontSize:14}}>{personas.find(p=>p.id_caif===modalAdicional.id_socio)?.nombre_comp}</div>
+              <div style={{fontSize:12,color:'var(--text-3)',marginTop:2}}>{torneo.nombre} - {edicion.fecha}</div>
+              {modalAdicional.monto_adicional > 0 && (
+                <div style={{fontSize:12,color:'#7c3aed',marginTop:4,fontWeight:600}}>
+                  Adicional actual: {formatMoney(modalAdicional.monto_adicional)}
+                  {modalAdicional.obs_adicional && ` - ${modalAdicional.obs_adicional}`}
+                </div>
+              )}
+            </div>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Monto adicional ($) *</label>
+                <input type="number" value={montoAdicional} onChange={e=>setMontoAdicional(e.target.value)} placeholder="Ej: 5000"/>
+              </div>
+              <div className="form-group full">
+                <label>Descripcion de la competencia extra</label>
+                <input value={obsAdicional} onChange={e=>setObsAdicional(e.target.value)}
+                  placeholder="Ej: Competencia lanzamiento de bala"/>
+              </div>
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:8}}>
+              <button className="btn" onClick={()=>setModalAdicional(null)}>Cancelar</button>
+              <button className="btn primary" onClick={registrarAdicional} disabled={savingAdicional}
+                style={{background:'#7c3aed',borderColor:'#7c3aed'}}>
+                {savingAdicional
+                  ? <><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Guardando...</>
+                  : <><i className="ti ti-plus"></i>Registrar adicional</>
+                }
+              </button>
+            </div>
           </div>
         </div>
       )}
