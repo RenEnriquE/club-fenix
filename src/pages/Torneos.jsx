@@ -538,6 +538,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
       const idCat = catData?.[0]?.id_categoria || null
       const mesEdicion = new Date(edicion.fecha+'T12:00:00').getMonth() + 1
       const anioEdicion = new Date(edicion.fecha+'T12:00:00').getFullYear()
+      const obsDefault = `Pago organizador torneo ${torneo.nombre} - ${inscripciones.length} atletas`
       const { data: nuevoMov, error: errMov } = await supabase.from('movimientos').insert([{
         fecha: fechaPagoOrg,
         tipo: 'egreso',
@@ -546,9 +547,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
         monto: montoTotal,
         metodo_pago: metodoPagoOrg,
         num_comprobante: numTransOrg || null,
-        obs: obsPagoOrg || `Pago organizador torneo - ${inscripciones.length} atletas x ${formatMoney(valorOrgEdit)}`,
-        anio: anioEdicion,
-        mes: mesEdicion,
+        obs: obsPagoOrg || obsDefault,
       }]).select().single()
 
       if (errMov) throw new Error(errMov.message)
@@ -643,7 +642,11 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
               </div>
             ) : (
               <button className="btn primary" style={{background:'#dc2626',borderColor:'#dc2626'}}
-                onClick={()=>{setValorOrgEdit(edicionLocal.valor_organizador||0);setModalPagoOrg(true)}}>
+                onClick={()=>{
+                  setValorOrgEdit(edicionLocal.valor_organizador||0)
+                  setObsPagoOrg(`Pago organizador torneo ${torneo.nombre} - ${inscripciones.length} atletas`)
+                  setModalPagoOrg(true)
+                }}>
                 <i className="ti ti-cash"></i>Registrar pago organizador
               </button>
             )}
@@ -842,8 +845,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
               </div>
               <div className="form-group full">
                 <label>Observaciones</label>
-                <input value={obsPagoOrg} onChange={e=>setObsPagoOrg(e.target.value)}
-                  placeholder={`Pago organizador ${torneo.nombre} ${edicion.fecha}`}/>
+                <input value={obsPagoOrg} onChange={e=>setObsPagoOrg(e.target.value)}/>
               </div>
             </div>
             <div style={{background:'#f8fafc',border:'0.5px solid #e2e8f0',borderRadius:8,padding:'10px 14px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
