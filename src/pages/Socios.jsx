@@ -243,15 +243,16 @@ export default function Socios({ isAdmin }) {
       </div>
 
       <div className="card" style={{padding:0}}>
-        <div className="tbl-wrap">
-          <table className="tbl">
+        <div className="tbl-wrap" style={{overflowX:'auto'}}>
+          <table className="tbl" style={{minWidth:320}}>
             <thead>
               <tr>
-                <th style={{width:40}}>ID</th>
-                <th>Nombre</th>
-                <th style={{width:60}}>Tipo</th>
-                {filtroVigente !== '0' && <th style={{width:70}}>Estado</th>}
-                {isAdmin && <th style={{width:180}}></th>}
+                <th style={{minWidth:160}}>Nombre</th>
+                <th style={{width:50,display:'none'}} className="col-desktop">ID</th>
+                <th style={{width:55}}>Tipo</th>
+                {filtroVigente !== '0' && <th style={{width:65}}>Estado</th>}
+                {filtroVigente !== '0' && <th style={{width:50}}></th>}
+                {isAdmin && <th style={{width:80}}></th>}
               </tr>
             </thead>
             <tbody>
@@ -263,15 +264,18 @@ export default function Socios({ isAdmin }) {
                 const esInactivo = s.vigente !== 1
                 return (
                   <tr key={s.id_caif} style={{opacity: esInactivo ? 0.7 : 1}}>
-                    <td style={{color:'var(--text-3)'}}>{s.id_caif}</td>
-                    <td title={nombreMostrar(s)}>
-                      {nombreMostrar(s)}
-                      {esInactivo && <span className="badge" style={{marginLeft:6,background:'#f1f5f9',color:'#64748b',fontSize:10}}>Inactivo</span>}
+                    <td style={{fontWeight:500}} title={nombreMostrar(s)}>
+                      <div style={{display:'flex',flexDirection:'column',gap:1}}>
+                        <span>{nombreMostrar(s)}</span>
+                        {esInactivo && <span style={{fontSize:10,color:'#94a3b8'}}>Inactivo</span>}
+                        <span style={{fontSize:10,color:'var(--text-3)'}}>ID {s.id_caif}</span>
+                      </div>
                     </td>
+                    <td style={{display:'none'}} className="col-desktop">{s.id_caif}</td>
                     <td><span className={`badge ${s.atleta==='Atleta Niño'?'nino':s.atleta==='Apoderado'?'':'adulto'}`} style={s.atleta==='Apoderado'?{background:'#f1f5f9',color:'#475569'}:{}}>{s.atleta==='Atleta Niño'?'Niño':s.atleta==='Apoderado'?'Apod':'Adulto'}</span></td>
-                    {filtroVigente !== '0' && <td><span className={`badge ${est}`}>{estadoLabel(est)}</span></td>}
+                    {filtroVigente !== '0' && <td><span className={`badge ${est}`} style={{fontSize:10}}>{estadoLabel(est)}</span></td>}
                     {filtroVigente !== '0' && (
-                      <td style={{color:meses>=(new Date().getMonth()+1)?'var(--success)':'var(--warning)',fontWeight:500}}>
+                      <td style={{color:meses>=(new Date().getMonth()+1)?'var(--success)':'var(--warning)',fontWeight:500,fontSize:12}}>
                         {meses}/12
                       </td>
                     )}
