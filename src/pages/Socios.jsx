@@ -106,6 +106,24 @@ export default function Socios({ isAdmin }) {
           : deudaA - deudaB  // menor deuda (mas al dia) primero
       })
 
+  function enviarWhatsApp(s, mesesDeuda) {
+    const celular = (s.celular || '').replace(/\D/g, '') // solo digitos
+    if (!celular) { alert('Este socio no tiene celular registrado.'); return }
+    const numero = celular.startsWith('56') ? celular : '56' + celular
+    const primerNombre = s.nombre || (s.nombre_comp || '').split(' ')[0]
+    const mesesTexto = mesesDeuda === 1 ? '1 mes' : `${mesesDeuda} meses`
+    const mensaje = `Hola ${primerNombre}! 👋
+
+Esperamos que estes bien. Te contactamos desde el *Club Atletico Independencia Fenix* para informarte que, de acuerdo a nuestros registros, tienes ${mesesTexto} de cuotas pendientes de pago.
+
+Te invitamos a regularizar tu situacion a la brevedad para mantener tu calidad de socio activo. Recuerda que segun nuestros estatutos, acumulando 3 o mas meses sin pago un socio puede ser dado de baja del club.
+
+Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte con nosotros. ¡Muchas gracias por ser parte de la familia CAIF! 🏃`
+
+    const url = 'https://wa.me/' + numero + '?text=' + encodeURIComponent(mensaje)
+    window.open(url, '_blank')
+  }
+
   function abrirModal(socio = null) {
     setTabModal('datos')
     if (socio) {
@@ -339,6 +357,13 @@ export default function Socios({ isAdmin }) {
                           {s.vigente !== 1 && (
                             <button className="btn sm primary" onClick={() => abrirReingreso(s)} title="Reingresar al club">
                               <i className="ti ti-user-check"></i>Reingresar
+                            </button>
+                          )}
+                          {s.vigente === 1 && est === 'moroso' && s.atleta !== 'Apoderado' && (
+                            <button className="btn sm" onClick={() => enviarWhatsApp(s, mesesDebidos - meses)}
+                              title="Enviar mensaje WhatsApp"
+                              style={{color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
+                              <i className="ti ti-brand-whatsapp"></i>
                             </button>
                           )}
                           <button className="btn sm" onClick={() => abrirHistorial(s)} title="Ver historial de vigencia"
