@@ -70,6 +70,7 @@ export default function Socios({ isAdmin }) {
   }
 
   function calcMesesDeuda(p) {
+    if (p.atleta === 'Apoderado') return -999 // siempre al final
     const hoyS = new Date()
     const diaS = hoyS.getDate()
     const mesVigenteS = diaS <= 5 ? hoyS.getMonth() : hoyS.getMonth() + 1
