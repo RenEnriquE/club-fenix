@@ -414,7 +414,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                               <i className="ti ti-user-check"></i>Reingresar
                             </button>
                           )}
-                          {s.vigente === 1 && est === 'moroso' && s.atleta !== 'Apoderado' && (isAdmin || isCoach) && (
+                          {s.vigente === 1 && est === 'moroso' && s.atleta !== 'Apoderado' && (isAdmin || isCoach) && s.celular && (
                             <button className="btn sm" onClick={() => abrirModalWA(s, mesesDebidos - meses)}
                               title="Enviar mensaje WhatsApp"
                               style={{color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
