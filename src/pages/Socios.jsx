@@ -11,6 +11,7 @@ export default function Socios({ isAdmin }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
+  const [ordenMorosidad, setOrdenMorosidad] = useState('') // '' | 'morosos-primero' | 'al-dia-primero'
   const [filtroVigente, setFiltroVigente] = useState('1') // '1'=activos, '0'=inactivos, ''=todos
   const [modalOpen, setModalOpen] = useState(false)
   const [modalReingreso, setModalReingreso] = useState(null) // socio a reingresar
@@ -68,7 +69,22 @@ export default function Socios({ isAdmin }) {
     }
   }
 
-  const lista = personas.filter(p => {
+  function calcMesesDeuda(p) {
+    const hoyS = new Date()
+    const diaS = hoyS.getDate()
+    const mesVigenteS = diaS <= 5 ? hoyS.getMonth() : hoyS.getMonth() + 1
+    const anioActualS = hoyS.getFullYear()
+    const fechaRefS = p.f_reingreso || p.f_ini_vig
+    const mesDesdeS = fechaRefS ? (() => {
+      const d = new Date(fechaRefS + 'T12:00:00-04:00')
+      return d.getFullYear() === anioActualS ? d.getMonth() + 1 : 1
+    })() : 1
+    const mesesDebidosS = Math.max(0, mesVigenteS - mesDesdeS + 1)
+    const mesesPagadosS = pagos.filter(pg => pg.id_socio === p.id_caif && pg.anio === anioActualS && Number(pg.id_actividad) === 0).length
+    return mesesDebidosS - mesesPagadosS // positivo = debe, negativo = pagó a futuro
+  }
+
+  const listaFiltrada = personas.filter(p => {
     const nc = (p.nombre_comp || '').toLowerCase()
     const q = busqueda.toLowerCase()
     const matchQ = !q || nc.includes(q) || String(p.id_caif).includes(q)
@@ -78,6 +94,16 @@ export default function Socios({ isAdmin }) {
     const matchE = !filtroEstado || est === filtroEstado
     return matchQ && matchT && matchV && matchE
   })
+
+  const lista = ordenMorosidad === ''
+    ? listaFiltrada
+    : [...listaFiltrada].sort((a, b) => {
+        const deudaA = calcMesesDeuda(a)
+        const deudaB = calcMesesDeuda(b)
+        return ordenMorosidad === 'morosos-primero'
+          ? deudaB - deudaA  // mayor deuda primero
+          : deudaA - deudaB  // menor deuda (mas al dia) primero
+      })
 
   function abrirModal(socio = null) {
     setTabModal('datos')
@@ -220,9 +246,17 @@ export default function Socios({ isAdmin }) {
           {filtroVigente === '1' && (
             <select value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
               <option value="">Todos los estados</option>
-              <option value="al-dia">Al día</option>
+              <option value="al-dia">Al dia</option>
               <option value="parcial">Parcial</option>
               <option value="moroso">Moroso</option>
+            </select>
+          )}
+          {filtroVigente === '1' && (
+            <select value={ordenMorosidad} onChange={e=>setOrdenMorosidad(e.target.value)}
+              style={{padding:'6px 10px',border:'0.5px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
+              <option value="">Orden: nombre</option>
+              <option value="morosos-primero">Orden: mas morosos primero</option>
+              <option value="al-dia-primero">Orden: mas al dia primero</option>
             </select>
           )}
         </div>
