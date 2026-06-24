@@ -318,11 +318,9 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
           <table className="tbl" style={{minWidth:320}}>
             <thead>
               <tr>
-                <th style={{minWidth:160}}>Nombre</th>
-                <th style={{width:50,display:'none'}} className="col-desktop">ID</th>
-                <th style={{width:55}}>Tipo</th>
-                {filtroVigente !== '0' && <th style={{width:65}}>Estado</th>}
-                {filtroVigente !== '0' && <th style={{width:50}}></th>}
+                <th style={{minWidth:180}}>Nombre</th>
+                <th style={{width:22}}></th>
+                {filtroVigente !== '0' && <th style={{width:40}}></th>}
                 {isAdmin && <th style={{width:110}}>Celular</th>}
                 {isAdmin && <th style={{width:80}}></th>}
               </tr>
@@ -348,16 +346,24 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                   <tr key={s.id_caif} style={{opacity: esInactivo ? 0.7 : 1}}>
                     <td style={{fontWeight:500}} title={nombreMostrar(s)}>
                       <div style={{display:'flex',flexDirection:'column',gap:1}}>
-                        <span>{nombreMostrar(s)}</span>
-                        {esInactivo && <span style={{fontSize:10,color:'#94a3b8'}}>Inactivo</span>}
-                        <span style={{fontSize:10,color:'var(--text-3)'}}>ID {s.id_caif}</span>
+                        <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:175,display:'block'}}>{nombreMostrar(s)}</span>
+                        <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                          {esInactivo && <span style={{fontSize:10,color:'#94a3b8'}}>Inactivo</span>}
+                          <span style={{fontSize:10,color:'var(--text-3)'}}>
+                            {s.atleta==='Atleta Niño'?'N':s.atleta==='Apoderado'?'Apod':'A'} · ID {s.id_caif}
+                          </span>
+                        </div>
                       </div>
                     </td>
-                    <td style={{display:'none'}} className="col-desktop">{s.id_caif}</td>
-                    <td><span className={`badge ${s.atleta==='Atleta Niño'?'nino':s.atleta==='Apoderado'?'':'adulto'}`} style={s.atleta==='Apoderado'?{background:'#f1f5f9',color:'#475569'}:{}}>{s.atleta==='Atleta Niño'?'Niño':s.atleta==='Apoderado'?'Apod':'Adulto'}</span></td>
-                    {filtroVigente !== '0' && <td><span className={`badge ${est}`} style={{fontSize:10}}>{estadoLabel(est)}</span></td>}
+                    {/* Punto de color segun estado */}
+                    <td style={{textAlign:'center'}}>
+                      <span title={estadoLabel(est)} style={{
+                        display:'inline-block', width:10, height:10, borderRadius:'50%',
+                        background: est==='al-dia'?'#16a34a': est==='moroso'?'#dc2626':'#d97706'
+                      }}></span>
+                    </td>
                     {filtroVigente !== '0' && (
-                      <td style={{color:meses>=mesesDebidos?'var(--success)':meses===0?'var(--danger)':'var(--warning)',fontWeight:500,fontSize:12}}>
+                      <td style={{color:meses>=mesesDebidos?'#16a34a':meses===0?'#dc2626':'#d97706',fontWeight:600,fontSize:12,whiteSpace:'nowrap'}}>
                         {meses}/{mesesDebidos}
                       </td>
                     )}
