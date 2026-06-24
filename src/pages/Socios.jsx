@@ -15,7 +15,10 @@ export default function Socios({ isAdmin }) {
   const [filtroVigente, setFiltroVigente] = useState('1') // '1'=activos, '0'=inactivos, ''=todos
   const [modalOpen, setModalOpen] = useState(false)
   const [modalReingreso, setModalReingreso] = useState(null)
-  const [modalWA, setModalWA] = useState(null) // { socio, mensaje, numero } // socio a reingresar
+  const [modalWA, setModalWA] = useState(null) // { socio, mensaje, numero }
+  const [editCelular, setEditCelular] = useState(null) // id_caif del socio editando celular
+  const [celularTemp, setCelularTemp] = useState('')
+  const [savingCelular, setSavingCelular] = useState(false) // socio a reingresar
   const [fechaReingreso, setFechaReingreso] = useState('')
   const [savingReingreso, setSavingReingreso] = useState(false)
   const [modalHistorial, setModalHistorial] = useState(null) // socio a ver historial
@@ -106,6 +109,14 @@ export default function Socios({ isAdmin }) {
           ? deudaB - deudaA  // mayor deuda primero
           : deudaA - deudaB  // menor deuda (mas al dia) primero
       })
+
+  async function guardarCelular(idCaif) {
+    setSavingCelular(true)
+    await supabase.from('personas').update({ celular: celularTemp.trim() }).eq('id_caif', idCaif)
+    setPersonas(prev => prev.map(p => p.id_caif === idCaif ? {...p, celular: celularTemp.trim()} : p))
+    setEditCelular(null)
+    setSavingCelular(false)
+  }
 
   function abrirModalWA(s, mesesDeuda) {
     const celular = (s.celular || '').replace(/[^0-9]/g, '')
@@ -314,6 +325,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                 <th style={{width:55}}>Tipo</th>
                 {filtroVigente !== '0' && <th style={{width:65}}>Estado</th>}
                 {filtroVigente !== '0' && <th style={{width:50}}></th>}
+                {isAdmin && <th style={{width:110}}>Celular</th>}
                 {isAdmin && <th style={{width:80}}></th>}
               </tr>
             </thead>
@@ -358,6 +370,38 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                     )}
                     {filtroVigente === '0' && (
                       <td style={{color:'var(--text-2)',fontSize:12}}>{s.causa_salida || '—'}</td>
+                    )}
+                    {isAdmin && (
+                      <td style={{fontSize:11}}>
+                        {editCelular === s.id_caif ? (
+                          <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                            <input
+                              value={celularTemp}
+                              onChange={e=>setCelularTemp(e.target.value)}
+                              onKeyDown={e=>{ if(e.key==='Enter') guardarCelular(s.id_caif); if(e.key==='Escape') setEditCelular(null) }}
+                              placeholder="9XXXXXXXX"
+                              autoFocus
+                              style={{width:95,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:11,fontFamily:'inherit'}}
+                            />
+                            <button className="btn sm" onClick={()=>guardarCelular(s.id_caif)} disabled={savingCelular}
+                              style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
+                              {savingCelular ? '...' : <i className="ti ti-check"></i>}
+                            </button>
+                            <button className="btn sm" onClick={()=>setEditCelular(null)} style={{padding:'3px 6px'}}>
+                              <i className="ti ti-x"></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer'}}
+                            onClick={()=>{ setEditCelular(s.id_caif); setCelularTemp(s.celular||'') }}>
+                            {s.celular
+                              ? <span style={{color:'var(--text-2)'}}>{s.celular}</span>
+                              : <span style={{color:'#94a3b8',fontStyle:'italic'}}>sin celular</span>
+                            }
+                            <i className="ti ti-pencil" style={{fontSize:10,color:'#94a3b8'}}></i>
+                          </div>
+                        )}
+                      </td>
                     )}
                     {isAdmin && (
                       <td>
