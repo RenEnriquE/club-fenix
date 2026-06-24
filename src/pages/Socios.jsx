@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase, insertPersona, updatePersona } from '../lib/supabase'
-import { estadoSocio, mesesAlDia, mesesPendientes, estadoLabel, MESES, nombreMostrar } from '../lib/helpers'
+import { estadoSocio, mesesAlDia, mesesPendientes, estadoLabel, MESES, nombreMostrar, cuotaEsperada } from '../lib/helpers'
 
 const ANIO_ACTUAL = new Date().getFullYear()
 
@@ -262,6 +262,16 @@ export default function Socios({ isAdmin }) {
                 const est = estadoSocio(s.id_caif, pagos, s.atleta, s)
                 const meses = mesesAlDia(s.id_caif, ANIO_ACTUAL, pagos)
                 const esInactivo = s.vigente !== 1
+                // Meses que debe pagar: desde ingreso hasta mes vigente (con gracia 5 dias)
+                const hoyS = new Date()
+                const diaS = hoyS.getDate()
+                const mesVigenteS = diaS <= 5 ? hoyS.getMonth() : hoyS.getMonth() + 1
+                const fechaRefS = s.f_reingreso || s.f_ini_vig
+                const mesDesdeS = fechaRefS ? (() => {
+                  const d = new Date(fechaRefS + 'T12:00:00-04:00')
+                  return d.getFullYear() === ANIO_ACTUAL ? d.getMonth() + 1 : 1
+                })() : 1
+                const mesesDebidos = Math.max(0, mesVigenteS - mesDesdeS + 1)
                 return (
                   <tr key={s.id_caif} style={{opacity: esInactivo ? 0.7 : 1}}>
                     <td style={{fontWeight:500}} title={nombreMostrar(s)}>
@@ -275,8 +285,8 @@ export default function Socios({ isAdmin }) {
                     <td><span className={`badge ${s.atleta==='Atleta Niño'?'nino':s.atleta==='Apoderado'?'':'adulto'}`} style={s.atleta==='Apoderado'?{background:'#f1f5f9',color:'#475569'}:{}}>{s.atleta==='Atleta Niño'?'Niño':s.atleta==='Apoderado'?'Apod':'Adulto'}</span></td>
                     {filtroVigente !== '0' && <td><span className={`badge ${est}`} style={{fontSize:10}}>{estadoLabel(est)}</span></td>}
                     {filtroVigente !== '0' && (
-                      <td style={{color:meses>=(new Date().getMonth()+1)?'var(--success)':'var(--warning)',fontWeight:500,fontSize:12}}>
-                        {meses}/12
+                      <td style={{color:meses>=mesesDebidos?'var(--success)':meses===0?'var(--danger)':'var(--warning)',fontWeight:500,fontSize:12}}>
+                        {meses}/{mesesDebidos}
                       </td>
                     )}
                     {filtroVigente === '0' && (
