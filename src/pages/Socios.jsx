@@ -7,6 +7,7 @@ const ANIO_ACTUAL = new Date().getFullYear()
 export default function Socios({ isAdmin = false, isCoach = false }) {
   const [personas, setPersonas] = useState([])
   const [pagos, setPagos] = useState([])
+  const [sociosConHistorial, setSociosConHistorial] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
@@ -64,10 +65,14 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
     try {
       const [resP, resPg] = await Promise.all([
         supabase.from('personas').select('*').order('id_caif', { ascending: false }),
-        supabase.from('pagos').select('id_socio,mes,anio,monto,id_actividad').eq('anio', ANIO_ACTUAL)
+        supabase.from('pagos').select('id_socio,mes,anio,monto,id_actividad').eq('anio', ANIO_ACTUAL),
+        supabase.from('historial_vigencia').select('id_socio')
       ])
       setPersonas(resP.data || [])
       setPagos(resPg.data || [])
+      // IDs de socios que tienen al menos un ciclo anterior
+      const idsConHistorial = new Set((resH.data || []).map(h => h.id_socio))
+      setSociosConHistorial(idsConHistorial)
     } finally {
       setLoading(false)
     }
@@ -421,10 +426,12 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                               <i className="ti ti-brand-whatsapp"></i>
                             </button>
                           )}
-                          <button className="btn sm" onClick={() => abrirHistorial(s)} title="Ver historial de vigencia"
-                            style={{color:'#7c3aed',borderColor:'#ddd6fe',background:'#faf5ff'}}>
-                            <i className="ti ti-history"></i>
-                          </button>
+                          {sociosConHistorial.has(s.id_caif) && (
+                            <button className="btn sm" onClick={() => abrirHistorial(s)} title="Ver historial de vigencia"
+                              style={{color:'#7c3aed',borderColor:'#ddd6fe',background:'#faf5ff'}}>
+                              <i className="ti ti-history"></i>
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}
