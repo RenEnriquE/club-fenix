@@ -192,8 +192,8 @@ body {
   transition: all .15s;
   font-family: inherit;
 }
-.mes-btn.pagado { background: var(--success-light); color: var(--success); border-color: #bbf7d0; cursor: default; }
-.mes-btn.sel { border: 2px solid var(--accent); background: var(--accent-light); color: var(--accent); }
+.mes-btn.pagado { background: #1a5e3a; color: #fff; border-color: #1a5e3a; cursor: default; font-weight: 700; }
+.mes-btn.sel { border: 2px solid #d97706; background: #fffbeb; color: #92400e; font-weight: 700; }
 .mes-btn:hover:not(.pagado) { border-color: var(--accent); color: var(--accent); }
 
 /* Year tabs */

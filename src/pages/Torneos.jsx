@@ -6,8 +6,8 @@ const BANCOS = ['Banco Estado','Banco BCI','Banco Santander','Banco de Chile','B
 const TIPOS_CUENTA = ['Cuenta Corriente','Cuenta Vista','Cuenta RUT','Cuenta Ahorro']
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
-// ── Vistas ────────────────────────────────────────────────────────────
-// lista → detalle torneo → detalle edicion
+// -- Vistas ------------------------------------------------------------
+// lista -> detalle torneo -> detalle edicion
 
 export default function Torneos() {
   const [vista, setVista] = useState('lista') // 'lista' | 'torneo' | 'edicion'
@@ -39,7 +39,7 @@ export default function Torneos() {
   )
 }
 
-// ── Lista de torneos ──────────────────────────────────────────────────
+// -- Lista de torneos --------------------------------------------------
 function ListaTorneos({ torneos, loading, onSelect, onRefresh }) {
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -167,7 +167,7 @@ function ListaTorneos({ torneos, loading, onSelect, onRefresh }) {
   )
 }
 
-// ── Detalle torneo: ediciones ─────────────────────────────────────────
+// -- Detalle torneo: ediciones -----------------------------------------
 function DetalleTorneo({ torneo, onBack, onSelectEdicion }) {
   const [ediciones, setEdiciones] = useState([])
   const [loading, setLoading] = useState(true)
@@ -326,7 +326,7 @@ function DetalleTorneo({ torneo, onBack, onSelectEdicion }) {
   )
 }
 
-// ── Detalle edicion: atletas inscritos ────────────────────────────────
+// -- Detalle edicion: atletas inscritos --------------------------------
 function DetalleEdicion({ edicion, torneo, onBack }) {
   const [inscripciones, setInscripciones] = useState([])
   const [personas, setPersonas] = useState([])
@@ -722,7 +722,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                               <i className="ti ti-pencil" style={{fontSize:10,opacity:0.5}}></i>
                             </span>
                           )
-                        ) : '—'}
+                        ) : '-'}
                       </td>
                       <td style={{fontSize:11}}>
                         {insc.monto_adicional > 0 ? (
@@ -730,7 +730,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                             <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(insc.monto_adicional)}</span>
                             {insc.obs_adicional && <div style={{color:'var(--text-3)',fontSize:10}}>{insc.obs_adicional}</div>}
                           </div>
-                        ) : <span style={{color:'#94a3b8'}}>—</span>}
+                        ) : <span style={{color:'#94a3b8'}}>-</span>}
                       </td>
                       <td>
                         {editObs === insc.id_inscripcion ? (
@@ -957,5 +957,5 @@ function FechaPago({ idPago, onLoad }) {
         if (onLoad && f) onLoad(f)
       })
   }, [idPago])
-  return fecha || '—'
+  return fecha || '-'
 }
