@@ -45,7 +45,7 @@ export default function Dashboard({ isAdmin = true }) {
     else setRefreshing(true)
     Promise.all([
       supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero,f_ini_vig,f_reingreso').eq('vigente', 1),
-      supabase.from('pagos').select('id_socio,mes,monto,anio,id_actividad').eq('anio', anio)
+      supabase.from('pagos').select('id_socio,mes,monto,anio,id_actividad,fecha_pago').eq('anio', anio)
     ]).then(([resP, resPg]) => {
       const p = resP.data || []
       const pg = resPg.data || []
@@ -88,7 +88,16 @@ export default function Dashboard({ isAdmin = true }) {
   const parcial = atletasSolos.filter(p => estadoSocio(p.id_caif, pagos, p.atleta, p) === 'parcial').length
   const ingTotal = pagos.reduce((a,p) => a+(p.monto||0), 0)
   const ingCuotas = pagos.filter(p => Number(p.id_actividad) === 0).reduce((a,p) => a+(p.monto||0), 0)
-  const ingrMes = MESES_SHORT.map((_,i) => pagos.filter(p=>p.mes===i+1).reduce((a,p)=>a+(p.monto||0),0))
+  const ingrMes = MESES_SHORT.map((_,i) => {
+    const mesNum = i + 1
+    return pagos.filter(p => {
+      if (p.fecha_pago) {
+        const fp = new Date(p.fecha_pago + 'T12:00:00-04:00')
+        return fp.getFullYear() === anio && fp.getMonth() + 1 === mesNum
+      }
+      return p.mes === mesNum && p.anio === anio
+    }).reduce((a, p) => a + (p.monto || 0), 0)
+  })
 
   // Morosos
   const morososList = atletasSolos
