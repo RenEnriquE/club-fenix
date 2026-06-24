@@ -19,11 +19,12 @@ export default function App() {
   if (!session) return <Login onLogin={handleLogin} />
 
   const isAdmin = session.role === 'admin'
+  const isCoach = session.role === 'coach'
 
   const pages = {
     dashboard: <Dashboard isAdmin={isAdmin} />,
     pagos: <Pagos isAdmin={isAdmin} />,
-    socios: <Socios isAdmin={isAdmin} />,
+    socios: <Socios isAdmin={isAdmin} isCoach={isCoach} />,
     comite: <Comite isAdmin={isAdmin} />,
     egresos: isAdmin ? <Egresos /> : (
       <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
@@ -46,7 +47,7 @@ export default function App() {
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <span style={{background:'rgba(255,255,255,.15)',color:'#fff',fontSize:11,padding:'3px 8px',borderRadius:6}}>
-            {isAdmin ? 'Admin' : 'Comite'}
+            {isAdmin ? 'Admin' : isCoach ? 'Coach' : 'Comite'}
           </span>
           <button onClick={handleLogout} style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,color:'#fff',cursor:'pointer',fontSize:12,display:'flex',alignItems:'center',gap:5,padding:'6px 10px',fontFamily:'inherit'}}>
             <i className="ti ti-logout"></i>Salir

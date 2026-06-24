@@ -4,7 +4,7 @@ import { estadoSocio, mesesAlDia, mesesPendientes, estadoLabel, MESES, nombreMos
 
 const ANIO_ACTUAL = new Date().getFullYear()
 
-export default function Socios({ isAdmin }) {
+export default function Socios({ isAdmin = false, isCoach = false }) {
   const [personas, setPersonas] = useState([])
   const [pagos, setPagos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -353,7 +353,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                           </span>
                         </div>
                         {/* Celular editable inline */}
-                        {isAdmin && (
+                        {(isAdmin || isCoach) && (
                           editCelular === s.id_caif ? (
                             <div style={{display:'flex',gap:4,alignItems:'center',marginTop:2}}>
                               <input
@@ -405,16 +405,16 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                     {filtroVigente === '0' && (
                       <td style={{color:'var(--text-2)',fontSize:12}}>{s.causa_salida || '—'}</td>
                     )}
-                    {isAdmin && (
+                    {(isAdmin || isCoach) && (
                       <td>
                         <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                          <button className="btn sm" onClick={() => abrirModal(s)}><i className="ti ti-edit"></i>Editar</button>
-                          {s.vigente !== 1 && (
+                          {isAdmin && <button className="btn sm" onClick={() => abrirModal(s)}><i className="ti ti-edit"></i>Editar</button>}
+                          {isAdmin && s.vigente !== 1 && (
                             <button className="btn sm primary" onClick={() => abrirReingreso(s)} title="Reingresar al club">
                               <i className="ti ti-user-check"></i>Reingresar
                             </button>
                           )}
-                          {s.vigente === 1 && est === 'moroso' && s.atleta !== 'Apoderado' && (
+                          {s.vigente === 1 && est === 'moroso' && s.atleta !== 'Apoderado' && (isAdmin || isCoach) && (
                             <button className="btn sm" onClick={() => abrirModalWA(s, mesesDebidos - meses)}
                               title="Enviar mensaje WhatsApp"
                               style={{color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
