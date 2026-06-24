@@ -597,7 +597,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button className="btn" onClick={()=>setModalWA(null)}>Cancelar</button>
-              <a href={'https://api.whatsapp.com/send?phone=' + modalWA.numero + '&text=' + encodeURIComponent(modalWA.mensaje)}
+              <a href={'https://api.whatsapp.com/send/?phone=' + modalWA.numero + '&text=' + encodeURIComponent(modalWA.mensaje) + '&type=phone_number&app_absent=0'}
                 target="_blank" rel="noopener noreferrer"
                 onClick={()=>setTimeout(()=>setModalWA(null), 300)}
                 className="btn primary"
