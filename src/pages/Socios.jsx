@@ -14,7 +14,8 @@ export default function Socios({ isAdmin }) {
   const [ordenMorosidad, setOrdenMorosidad] = useState('') // '' | 'morosos-primero' | 'al-dia-primero'
   const [filtroVigente, setFiltroVigente] = useState('1') // '1'=activos, '0'=inactivos, ''=todos
   const [modalOpen, setModalOpen] = useState(false)
-  const [modalReingreso, setModalReingreso] = useState(null) // socio a reingresar
+  const [modalReingreso, setModalReingreso] = useState(null)
+  const [modalWA, setModalWA] = useState(null) // { socio, mensaje, numero } // socio a reingresar
   const [fechaReingreso, setFechaReingreso] = useState('')
   const [savingReingreso, setSavingReingreso] = useState(false)
   const [modalHistorial, setModalHistorial] = useState(null) // socio a ver historial
@@ -106,22 +107,24 @@ export default function Socios({ isAdmin }) {
           : deudaA - deudaB  // menor deuda (mas al dia) primero
       })
 
-  function enviarWhatsApp(s, mesesDeuda) {
-    const celular = (s.celular || '').replace(/\D/g, '') // solo digitos
+  function abrirModalWA(s, mesesDeuda) {
+    const celular = (s.celular || '').replace(/[^0-9]/g, '')
     if (!celular) { alert('Este socio no tiene celular registrado.'); return }
     const numero = celular.startsWith('56') ? celular : '56' + celular
     const primerNombre = s.nombre || (s.nombre_comp || '').split(' ')[0]
     const mesesTexto = mesesDeuda === 1 ? '1 mes' : `${mesesDeuda} meses`
-    const mensaje = `Hola ${primerNombre}! 👋
-
-Esperamos que estes bien. Te contactamos desde el *Club Atletico Independencia Fenix* para informarte que, de acuerdo a nuestros registros, tienes ${mesesTexto} de cuotas pendientes de pago.
+    const mensaje = `Hola ${primerNombre}! Esperamos que estes bien. Te contactamos desde el Club Atletico Independencia Fenix para informarte que, de acuerdo a nuestros registros, tienes ${mesesTexto} de cuotas pendientes de pago.
 
 Te invitamos a regularizar tu situacion a la brevedad para mantener tu calidad de socio activo. Recuerda que segun nuestros estatutos, acumulando 3 o mas meses sin pago un socio puede ser dado de baja del club.
 
-Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte con nosotros. ¡Muchas gracias por ser parte de la familia CAIF! 🏃`
+Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte con nosotros. Muchas gracias por ser parte de la familia CAIF!`
+    setModalWA({ socio: s, mensaje, numero })
+  }
 
-    const url = 'https://wa.me/' + numero + '?text=' + encodeURIComponent(mensaje)
+  function enviarWhatsApp() {
+    const url = 'https://wa.me/' + modalWA.numero + '?text=' + encodeURIComponent(modalWA.mensaje)
     window.open(url, '_blank')
+    setModalWA(null)
   }
 
   function abrirModal(socio = null) {
@@ -360,7 +363,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                             </button>
                           )}
                           {s.vigente === 1 && est === 'moroso' && s.atleta !== 'Apoderado' && (
-                            <button className="btn sm" onClick={() => enviarWhatsApp(s, mesesDebidos - meses)}
+                            <button className="btn sm" onClick={() => abrirModalWA(s, mesesDebidos - meses)}
                               title="Enviar mensaje WhatsApp"
                               style={{color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
                               <i className="ti ti-brand-whatsapp"></i>
@@ -558,6 +561,44 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
         </div>
       )}
 
+
+      {/* Modal WhatsApp */}
+      {modalWA && (
+        <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setModalWA(null)}>
+          <div className="modal" style={{width:'min(560px,95vw)'}}>
+            <div className="modal-header">
+              <h2><i className="ti ti-brand-whatsapp" style={{color:'#16a34a',marginRight:8}}></i>Enviar mensaje WhatsApp</h2>
+              <button className="modal-close" onClick={()=>setModalWA(null)}>&times;</button>
+            </div>
+            <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 14px',marginBottom:14}}>
+              <div style={{fontWeight:600,fontSize:14}}>{modalWA.socio.nombre_comp}</div>
+              <div style={{fontSize:12,color:'#64748b',marginTop:2}}>
+                <i className="ti ti-phone" style={{marginRight:4}}></i>+{modalWA.numero}
+              </div>
+            </div>
+            <div className="form-group" style={{marginBottom:16}}>
+              <label style={{fontWeight:600}}>Edita el mensaje antes de enviar</label>
+              <textarea
+                value={modalWA.mensaje}
+                onChange={e=>setModalWA(m=>({...m, mensaje:e.target.value}))}
+                rows={10}
+                style={{
+                  width:'100%', padding:'10px 12px', border:'1.5px solid #e2e8f0',
+                  borderRadius:8, fontSize:13, fontFamily:'inherit', resize:'vertical',
+                  lineHeight:1.6, boxSizing:'border-box'
+                }}
+              />
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn" onClick={()=>setModalWA(null)}>Cancelar</button>
+              <button className="btn primary" onClick={enviarWhatsApp}
+                style={{background:'#16a34a',borderColor:'#16a34a'}}>
+                <i className="ti ti-brand-whatsapp"></i>Abrir en WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal reingreso */}
       {modalReingreso && (
