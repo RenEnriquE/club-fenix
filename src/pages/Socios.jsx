@@ -126,9 +126,7 @@ export default function Socios({ isAdmin }) {
     const mesesTexto = mesesDeuda === 1 ? '1 mes' : `${mesesDeuda} meses`
     const mensaje = `Hola ${primerNombre}! Esperamos que estes bien. Te contactamos desde el Club Atletico Independencia Fenix para informarte que, de acuerdo a nuestros registros, tienes ${mesesTexto} de cuotas pendientes de pago.
 
-Te invitamos a regularizar tu situacion a la brevedad para mantener tu calidad de socio activo. Recuerda que segun nuestros estatutos, acumulando 3 o mas meses sin pago un socio puede ser dado de baja del club.
-
-Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte con nosotros. Muchas gracias por ser parte de la familia CAIF!`
+Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte con nosotros. Muchas gracias por ser parte de la familia Fenix!`
     setModalWA({ socio: s, mensaje, numero })
   }
 
