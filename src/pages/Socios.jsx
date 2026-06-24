@@ -318,10 +318,9 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
           <table className="tbl" style={{minWidth:320}}>
             <thead>
               <tr>
-                <th style={{minWidth:180}}>Nombre</th>
+                <th style={{minWidth:200}}>Nombre</th>
                 <th style={{width:22}}></th>
                 {filtroVigente !== '0' && <th style={{width:40}}></th>}
-                {isAdmin && <th style={{width:110}}>Celular</th>}
                 {isAdmin && <th style={{width:80}}></th>}
               </tr>
             </thead>
@@ -345,14 +344,45 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                 return (
                   <tr key={s.id_caif} style={{opacity: esInactivo ? 0.7 : 1}}>
                     <td style={{fontWeight:500}} title={nombreMostrar(s)}>
-                      <div style={{display:'flex',flexDirection:'column',gap:1}}>
-                        <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:175,display:'block'}}>{nombreMostrar(s)}</span>
+                      <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                        <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:195,display:'block'}}>{nombreMostrar(s)}</span>
                         <div style={{display:'flex',gap:4,alignItems:'center'}}>
                           {esInactivo && <span style={{fontSize:10,color:'#94a3b8'}}>Inactivo</span>}
                           <span style={{fontSize:10,color:'var(--text-3)'}}>
                             {s.atleta==='Atleta Niño'?'N':s.atleta==='Apoderado'?'Apod':'A'} · ID {s.id_caif}
                           </span>
                         </div>
+                        {/* Celular editable inline */}
+                        {isAdmin && (
+                          editCelular === s.id_caif ? (
+                            <div style={{display:'flex',gap:4,alignItems:'center',marginTop:2}}>
+                              <input
+                                value={celularTemp}
+                                onChange={e=>setCelularTemp(e.target.value)}
+                                onKeyDown={e=>{ if(e.key==='Enter') guardarCelular(s.id_caif); if(e.key==='Escape') setEditCelular(null) }}
+                                placeholder="9XXXXXXXX"
+                                autoFocus
+                                style={{width:105,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:11,fontFamily:'inherit'}}
+                              />
+                              <button className="btn sm" onClick={()=>guardarCelular(s.id_caif)} disabled={savingCelular}
+                                style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
+                                {savingCelular ? '...' : <i className="ti ti-check"></i>}
+                              </button>
+                              <button className="btn sm" onClick={()=>setEditCelular(null)} style={{padding:'3px 6px'}}>
+                                <i className="ti ti-x"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer',marginTop:1}}
+                              onClick={()=>{ setEditCelular(s.id_caif); setCelularTemp(s.celular||'') }}>
+                              {s.celular
+                                ? <span style={{fontSize:11,color:'var(--text-3)'}}>{s.celular}</span>
+                                : <span style={{fontSize:11,color:'#94a3b8',fontStyle:'italic'}}>sin celular</span>
+                              }
+                              <i className="ti ti-pencil" style={{fontSize:10,color:'#cbd5e1'}}></i>
+                            </div>
+                          )
+                        )}
                       </div>
                     </td>
                     {/* Punto de color segun estado */}
@@ -374,38 +404,6 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                     )}
                     {filtroVigente === '0' && (
                       <td style={{color:'var(--text-2)',fontSize:12}}>{s.causa_salida || '—'}</td>
-                    )}
-                    {isAdmin && (
-                      <td style={{fontSize:11}}>
-                        {editCelular === s.id_caif ? (
-                          <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                            <input
-                              value={celularTemp}
-                              onChange={e=>setCelularTemp(e.target.value)}
-                              onKeyDown={e=>{ if(e.key==='Enter') guardarCelular(s.id_caif); if(e.key==='Escape') setEditCelular(null) }}
-                              placeholder="9XXXXXXXX"
-                              autoFocus
-                              style={{width:95,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:11,fontFamily:'inherit'}}
-                            />
-                            <button className="btn sm" onClick={()=>guardarCelular(s.id_caif)} disabled={savingCelular}
-                              style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
-                              {savingCelular ? '...' : <i className="ti ti-check"></i>}
-                            </button>
-                            <button className="btn sm" onClick={()=>setEditCelular(null)} style={{padding:'3px 6px'}}>
-                              <i className="ti ti-x"></i>
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer'}}
-                            onClick={()=>{ setEditCelular(s.id_caif); setCelularTemp(s.celular||'') }}>
-                            {s.celular
-                              ? <span style={{color:'var(--text-2)'}}>{s.celular}</span>
-                              : <span style={{color:'#94a3b8',fontStyle:'italic'}}>sin celular</span>
-                            }
-                            <i className="ti ti-pencil" style={{fontSize:10,color:'#94a3b8'}}></i>
-                          </div>
-                        )}
-                      </td>
                     )}
                     {isAdmin && (
                       <td>
