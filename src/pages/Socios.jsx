@@ -123,7 +123,13 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
 
   function enviarWhatsApp() {
     const url = 'https://wa.me/' + modalWA.numero + '?text=' + encodeURIComponent(modalWA.mensaje)
-    window.open(url, '_blank')
+    const a = document.createElement('a')
+    a.href = url
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
     setModalWA(null)
   }
 
@@ -591,10 +597,13 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button className="btn" onClick={()=>setModalWA(null)}>Cancelar</button>
-              <button className="btn primary" onClick={enviarWhatsApp}
-                style={{background:'#16a34a',borderColor:'#16a34a'}}>
+              <a href={'https://wa.me/' + modalWA.numero + '?text=' + encodeURIComponent(modalWA.mensaje)}
+                target="_blank" rel="noopener noreferrer"
+                onClick={()=>setTimeout(()=>setModalWA(null), 300)}
+                className="btn primary"
+                style={{background:'#16a34a',borderColor:'#16a34a',textDecoration:'none',display:'flex',alignItems:'center',gap:6}}>
                 <i className="ti ti-brand-whatsapp"></i>Abrir en WhatsApp
-              </button>
+              </a>
             </div>
           </div>
         </div>
