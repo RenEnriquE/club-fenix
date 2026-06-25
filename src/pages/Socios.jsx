@@ -348,60 +348,58 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                 const mesesDebidos = Math.max(0, mesVigenteS - mesDesdeS + 1)
                 return (
                   <tr key={s.id_caif} style={{opacity: esInactivo ? 0.7 : 1}}>
-                    <td style={{fontWeight:500}} title={nombreMostrar(s)}>
-                      <div style={{display:'flex',flexDirection:'column',gap:2}}>
-                        <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:195,display:'block'}}>{nombreMostrar(s)}</span>
-                        <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                          {esInactivo && <span style={{fontSize:10,color:'#94a3b8'}}>Inactivo</span>}
-                          <span style={{fontSize:10,color:'var(--text-3)'}}>
-                            {s.atleta==='Atleta Niño'?'N':s.atleta==='Apoderado'?'Apod':'A'} · ID {s.id_caif}
-                          </span>
+                    <td style={{fontWeight:500}}>
+                      <div style={{display:'flex',flexDirection:'column',gap:3}}>
+                        {/* Nombre + estado en la misma linea */}
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <span style={{fontWeight:600,fontSize:14}}>{nombreMostrar(s)}</span>
+                          <span title={estadoLabel(est)} style={{
+                            flexShrink:0, display:'inline-block', width:9, height:9, borderRadius:'50%',
+                            background: est==='al-dia'?'#16a34a': est==='moroso'?'#dc2626':'#d97706'
+                          }}></span>
+                          {filtroVigente !== '0' && (
+                            <span style={{color:meses>=mesesDebidos?'#16a34a':meses===0?'#dc2626':'#d97706',fontWeight:700,fontSize:13,whiteSpace:'nowrap'}}>
+                              {meses}/{mesesDebidos}
+                            </span>
+                          )}
                         </div>
-                        {/* Celular editable inline */}
+                        {/* Tipo e ID */}
+                        <div style={{fontSize:11,color:'var(--text-3)',display:'flex',gap:4,alignItems:'center'}}>
+                          {esInactivo && <span style={{color:'#94a3b8'}}>Inactivo ·</span>}
+                          <span>{s.atleta==='Atleta Niño'?'Nino':s.atleta==='Apoderado'?'Apod':'Adulto'} · ID {s.id_caif}</span>
+                        </div>
+                        {/* Celular editable */}
                         {(isAdmin || isCoach) && (
                           editCelular === s.id_caif ? (
-                            <div style={{display:'flex',gap:4,alignItems:'center',marginTop:2}}>
+                            <div style={{display:'flex',gap:4,alignItems:'center'}}>
                               <input
                                 value={celularTemp}
                                 onChange={e=>setCelularTemp(e.target.value)}
                                 onKeyDown={e=>{ if(e.key==='Enter') guardarCelular(s.id_caif); if(e.key==='Escape') setEditCelular(null) }}
-                                placeholder="9XXXXXXXX"
-                                autoFocus
-                                style={{width:105,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:11,fontFamily:'inherit'}}
+                                placeholder="9XXXXXXXX" autoFocus
+                                style={{width:110,padding:'4px 8px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:12,fontFamily:'inherit'}}
                               />
                               <button className="btn sm" onClick={()=>guardarCelular(s.id_caif)} disabled={savingCelular}
-                                style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
-                                {savingCelular ? '...' : <i className="ti ti-check"></i>}
+                                style={{padding:'4px 8px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
+                                {savingCelular?'...':<i className="ti ti-check"></i>}
                               </button>
-                              <button className="btn sm" onClick={()=>setEditCelular(null)} style={{padding:'3px 6px'}}>
+                              <button className="btn sm" onClick={()=>setEditCelular(null)} style={{padding:'4px 8px'}}>
                                 <i className="ti ti-x"></i>
                               </button>
                             </div>
                           ) : (
-                            <div style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer',marginTop:1}}
+                            <div style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer'}}
                               onClick={()=>{ setEditCelular(s.id_caif); setCelularTemp(s.celular||'') }}>
                               {s.celular
-                                ? <span style={{fontSize:11,color:'var(--text-3)'}}>{s.celular}</span>
-                                : <span style={{fontSize:11,color:'#94a3b8',fontStyle:'italic'}}>sin celular</span>
+                                ? <span style={{fontSize:12,color:'#475569',fontWeight:500}}>{s.celular}</span>
+                                : <span style={{fontSize:12,color:'#94a3b8',fontStyle:'italic'}}>sin celular</span>
                               }
-                              <i className="ti ti-pencil" style={{fontSize:10,color:'#cbd5e1'}}></i>
+                              <i className="ti ti-pencil" style={{fontSize:11,color:'#cbd5e1'}}></i>
                             </div>
                           )
                         )}
                       </div>
                     </td>
-                    {/* Punto de color segun estado */}
-                    <td style={{textAlign:'center'}}>
-                      <span title={estadoLabel(est)} style={{
-                        display:'inline-block', width:10, height:10, borderRadius:'50%',
-                        background: est==='al-dia'?'#16a34a': est==='moroso'?'#dc2626':'#d97706'
-                      }}></span>
-                    </td>
-                    {filtroVigente !== '0' && (
-                      <td style={{color:meses>=mesesDebidos?'#16a34a':meses===0?'#dc2626':'#d97706',fontWeight:600,fontSize:12,whiteSpace:'nowrap'}}>
-                        {meses}/{mesesDebidos}
-                      </td>
-                    )}
                     {filtroVigente === '0' && (
                       <td style={{color:'var(--text-2)',fontSize:12}}>
                         {s.f_fin_vig ? new Date(s.f_fin_vig+'T12:00:00-04:00').toLocaleDateString('es-CL') : '—'}
@@ -422,8 +420,8 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                           {s.vigente === 1 && est === 'moroso' && s.atleta !== 'Apoderado' && (isAdmin || isCoach) && s.celular && (
                             <button className="btn sm" onClick={() => abrirModalWA(s, mesesDebidos - meses)}
                               title="Enviar mensaje WhatsApp"
-                              style={{color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
-                              <i className="ti ti-brand-whatsapp"></i>
+                              style={{color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4',padding:'6px 10px'}}>
+                              <i className="ti ti-brand-whatsapp" style={{fontSize:18}}></i>
                             </button>
                           )}
                           {sociosConHistorial.has(s.id_caif) && (
