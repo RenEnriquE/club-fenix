@@ -323,10 +323,8 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
           <table className="tbl" style={{minWidth:320}}>
             <thead>
               <tr>
-                <th style={{minWidth:200}}>Nombre</th>
-                <th style={{width:22}}></th>
-                {filtroVigente !== '0' && <th style={{width:40}}></th>}
-                {isAdmin && <th style={{width:80}}></th>}
+                <th>Nombre</th>
+                {(isAdmin || isCoach) && <th style={{width:90}}></th>}
               </tr>
             </thead>
             <tbody>
@@ -372,13 +370,10 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                         {(isAdmin || isCoach) && (
                           editCelular === s.id_caif ? (
                             <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                              <input
-                                value={celularTemp}
-                                onChange={e=>setCelularTemp(e.target.value)}
+                              <input value={celularTemp} onChange={e=>setCelularTemp(e.target.value)}
                                 onKeyDown={e=>{ if(e.key==='Enter') guardarCelular(s.id_caif); if(e.key==='Escape') setEditCelular(null) }}
                                 placeholder="9XXXXXXXX" autoFocus
-                                style={{width:110,padding:'4px 8px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:12,fontFamily:'inherit'}}
-                              />
+                                style={{width:110,padding:'4px 8px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:12,fontFamily:'inherit'}}/>
                               <button className="btn sm" onClick={()=>guardarCelular(s.id_caif)} disabled={savingCelular}
                                 style={{padding:'4px 8px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
                                 {savingCelular?'...':<i className="ti ti-check"></i>}
@@ -390,11 +385,43 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                           ) : (
                             <div style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer'}}
                               onClick={()=>{ setEditCelular(s.id_caif); setCelularTemp(s.celular||'') }}>
+                              <i className="ti ti-phone" style={{fontSize:11,color:'#94a3b8'}}></i>
                               {s.celular
                                 ? <span style={{fontSize:12,color:'#475569',fontWeight:500}}>{s.celular}</span>
                                 : <span style={{fontSize:12,color:'#94a3b8',fontStyle:'italic'}}>sin celular</span>
                               }
-                              <i className="ti ti-pencil" style={{fontSize:11,color:'#cbd5e1'}}></i>
+                              <i className="ti ti-pencil" style={{fontSize:10,color:'#cbd5e1'}}></i>
+                            </div>
+                          )
+                        )}
+                        {/* Email editable */}
+                        {(isAdmin || isCoach) && (
+                          editCelular === s.id_caif + '_email' ? (
+                            <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                              <input value={celularTemp} onChange={e=>setCelularTemp(e.target.value)}
+                                onKeyDown={e=>{
+                                  if(e.key==='Enter') { supabase.from('personas').update({email:celularTemp.trim()}).eq('id_caif',s.id_caif).then(()=>{ setPersonas(prev=>prev.map(p=>p.id_caif===s.id_caif?{...p,email:celularTemp.trim()}:p)); setEditCelular(null) }) }
+                                  if(e.key==='Escape') setEditCelular(null)
+                                }}
+                                placeholder="correo@ejemplo.com" autoFocus
+                                style={{width:150,padding:'4px 8px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:12,fontFamily:'inherit'}}/>
+                              <button className="btn sm" onClick={()=>{ supabase.from('personas').update({email:celularTemp.trim()}).eq('id_caif',s.id_caif).then(()=>{ setPersonas(prev=>prev.map(p=>p.id_caif===s.id_caif?{...p,email:celularTemp.trim()}:p)); setEditCelular(null) }) }}
+                                style={{padding:'4px 8px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
+                                <i className="ti ti-check"></i>
+                              </button>
+                              <button className="btn sm" onClick={()=>setEditCelular(null)} style={{padding:'4px 8px'}}>
+                                <i className="ti ti-x"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer'}}
+                              onClick={()=>{ setEditCelular(s.id_caif+'_email'); setCelularTemp(s.email||'') }}>
+                              <i className="ti ti-mail" style={{fontSize:11,color:'#94a3b8'}}></i>
+                              {s.email
+                                ? <span style={{fontSize:12,color:'#475569'}}>{s.email}</span>
+                                : <span style={{fontSize:12,color:'#94a3b8',fontStyle:'italic'}}>sin email</span>
+                              }
+                              <i className="ti ti-pencil" style={{fontSize:10,color:'#cbd5e1'}}></i>
                             </div>
                           )
                         )}
