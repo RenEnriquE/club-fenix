@@ -361,10 +361,12 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                             </span>
                           )}
                         </div>
-                        {/* Tipo e ID */}
-                        <div style={{fontSize:11,color:'var(--text-3)',display:'flex',gap:4,alignItems:'center'}}>
+                        {/* Tipo, RUT e ID */}
+                        <div style={{fontSize:11,color:'var(--text-3)',display:'flex',gap:4,alignItems:'center',flexWrap:'wrap'}}>
                           {esInactivo && <span style={{color:'#94a3b8'}}>Inactivo ·</span>}
-                          <span>{s.atleta==='Atleta Niño'?'Nino':s.atleta==='Apoderado'?'Apod':'Adulto'} · ID {s.id_caif}</span>
+                          <span>{s.atleta==='Atleta Niño'?'Nino':s.atleta==='Apoderado'?'Apod':'Adulto'}</span>
+                          {s.rut && <span>· {s.rut}{s.dv?'-'+s.dv:''}</span>}
+                          <span>· ID {s.id_caif}</span>
                         </div>
                         {/* Celular editable */}
                         {(isAdmin || isCoach) && (
