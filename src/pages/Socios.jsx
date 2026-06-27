@@ -16,7 +16,8 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
   const [filtroVigente, setFiltroVigente] = useState('1') // '1'=activos, '0'=inactivos, ''=todos
   const [modalOpen, setModalOpen] = useState(false)
   const [modalReingreso, setModalReingreso] = useState(null)
-  const [modalWA, setModalWA] = useState(null) // { socio, mensaje, numero }
+  const [modalWA, setModalWA] = useState(null)
+  const [modalPerfil, setModalPerfil] = useState(null) // { socio, mensaje, numero }
   const [editCelular, setEditCelular] = useState(null) // id_caif del socio editando celular
   const [celularTemp, setCelularTemp] = useState('')
   const [savingCelular, setSavingCelular] = useState(false) // socio a reingresar
@@ -345,7 +346,9 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                 })() : 1
                 const mesesDebidos = Math.max(0, mesVigenteS - mesDesdeS + 1)
                 return (
-                  <tr key={s.id_caif} style={{opacity: esInactivo ? 0.7 : 1}}>
+                  <tr key={s.id_caif}
+                    style={{opacity: esInactivo ? 0.7 : 1, cursor: isCoach ? 'pointer' : 'default'}}
+                    onClick={isCoach ? () => setModalPerfil(s) : undefined}>
                     <td style={{fontWeight:500}}>
                       <div style={{display:'flex',flexDirection:'column',gap:3}}>
                         {/* Nombre + estado en la misma linea */}
@@ -647,6 +650,95 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
         </div>
       )}
 
+
+      {/* Modal perfil socio (Coach) */}
+      {modalPerfil && (
+        <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setModalPerfil(null)}>
+          <div className="modal" style={{width:'min(480px,95vw)'}}>
+            <div className="modal-header">
+              <h2><i className="ti ti-user" style={{marginRight:8}}></i>Perfil socio</h2>
+              <button className="modal-close" onClick={()=>setModalPerfil(null)}>&times;</button>
+            </div>
+
+            {/* Header con estado */}
+            <div style={{
+              background: estadoSocio(modalPerfil.id_caif,pagos,modalPerfil.atleta,modalPerfil)==='al-dia'?'#f0fdf4':
+                estadoSocio(modalPerfil.id_caif,pagos,modalPerfil.atleta,modalPerfil)==='moroso'?'#fef2f2':'#fffbeb',
+              border:`0.5px solid ${estadoSocio(modalPerfil.id_caif,pagos,modalPerfil.atleta,modalPerfil)==='al-dia'?'#a7f3d0':
+                estadoSocio(modalPerfil.id_caif,pagos,modalPerfil.atleta,modalPerfil)==='moroso'?'#fecaca':'#fde68a'}`,
+              borderRadius:10,padding:'12px 16px',marginBottom:16
+            }}>
+              <div style={{fontWeight:700,fontSize:16}}>{nombreMostrar(modalPerfil)}</div>
+              <div style={{fontSize:12,color:'#64748b',marginTop:4,display:'flex',gap:12,flexWrap:'wrap'}}>
+                <span>{modalPerfil.atleta}</span>
+                {modalPerfil.rut && <span>RUT: {modalPerfil.rut}{modalPerfil.dv?'-'+modalPerfil.dv:''}</span>}
+                <span>ID: {modalPerfil.id_caif}</span>
+              </div>
+              <div style={{marginTop:8,display:'flex',alignItems:'center',gap:6}}>
+                <span style={{
+                  fontSize:12,fontWeight:700,padding:'3px 10px',borderRadius:6,
+                  background:estadoSocio(modalPerfil.id_caif,pagos,modalPerfil.atleta,modalPerfil)==='al-dia'?'#16a34a':
+                    estadoSocio(modalPerfil.id_caif,pagos,modalPerfil.atleta,modalPerfil)==='moroso'?'#dc2626':'#d97706',
+                  color:'#fff'
+                }}>
+                  {estadoLabel(estadoSocio(modalPerfil.id_caif,pagos,modalPerfil.atleta,modalPerfil))}
+                </span>
+              </div>
+            </div>
+
+            {/* Datos de contacto */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
+              {[
+                {icon:'ti-phone',label:'Celular',val:modalPerfil.celular||'No registrado'},
+                {icon:'ti-mail',label:'Email',val:modalPerfil.email||'No registrado'},
+                {icon:'ti-calendar',label:'Fecha nacimiento',val:modalPerfil.fecha_nac?new Date(modalPerfil.fecha_nac+'T12:00:00-04:00').toLocaleDateString('es-CL'):'No registrada'},
+                {icon:'ti-map-pin',label:'Comuna',val:modalPerfil.comuna||'No registrada'},
+              ].map((d,i) => (
+                <div key={i} style={{background:'#f8fafc',borderRadius:8,padding:'10px 12px'}}>
+                  <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,marginBottom:2}}>
+                    <i className={`ti ${d.icon}`} style={{marginRight:4}}></i>{d.label}
+                  </div>
+                  <div style={{fontSize:13,color:d.val.includes('No')?'#94a3b8':'#1e293b',fontStyle:d.val.includes('No')?'italic':'normal'}}>
+                    {d.val}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagos del año */}
+            {(() => {
+              const anioActual = new Date().getFullYear()
+              const pagosSocio = pagos.filter(p=>p.id_socio===modalPerfil.id_caif&&p.anio===anioActual&&Number(p.id_actividad)===0)
+              const mesesPag = pagosSocio.map(p=>p.mes)
+              const MESES_SHORT_L = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+              return (
+                <div>
+                  <div style={{fontSize:12,fontWeight:600,color:'#64748b',marginBottom:8,textTransform:'uppercase'}}>Cuotas {anioActual}</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                    {MESES_SHORT_L.map((m,i) => (
+                      <span key={i} style={{
+                        padding:'4px 8px',borderRadius:6,fontSize:12,fontWeight:600,
+                        background:mesesPag.includes(i+1)?'#1a5e3a':'#f1f5f9',
+                        color:mesesPag.includes(i+1)?'#fff':'#94a3b8'
+                      }}>{m}</span>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:16}}>
+              {modalPerfil.celular && estadoSocio(modalPerfil.id_caif,pagos,modalPerfil.atleta,modalPerfil)==='moroso' && (
+                <button className="btn" onClick={()=>{setModalPerfil(null);abrirModalWA(modalPerfil,mesesPendientes(modalPerfil.id_caif,pagos,modalPerfil))}}
+                  style={{color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
+                  <i className="ti ti-brand-whatsapp" style={{fontSize:16}}></i>Enviar mensaje
+                </button>
+              )}
+              <button className="btn" onClick={()=>setModalPerfil(null)} style={{marginLeft:'auto'}}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal WhatsApp */}
       {modalWA && (

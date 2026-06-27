@@ -45,9 +45,9 @@ export async function searchPersonas(term) {
   let q = supabase.from('personas').select('*').eq('vigente', 1).order('nombre_comp').limit(30)
   const t = term.trim()
   if (isNum) {
-    q = q.or(`nombre_comp.ilike.%${t}%,apodo.ilike.%${t}%,nombre.ilike.%${t}%,seg_nombre.ilike.%${t}%,apellido.ilike.%${t}%,ap_mat.ilike.%${t}%,id_caif.eq.${t}`)
+    q = q.or(`nombre_comp.ilike.%${t}%,apodo.ilike.%${t}%,nombre.ilike.%${t}%,seg_nombre.ilike.%${t}%,apellido.ilike.%${t}%,ap_mat.ilike.%${t}%,apoderado.ilike.%${t}%,id_caif.eq.${t}`)
   } else {
-    q = q.or(`nombre_comp.ilike.%${t}%,apodo.ilike.%${t}%,nombre.ilike.%${t}%,seg_nombre.ilike.%${t}%,apellido.ilike.%${t}%,ap_mat.ilike.%${t}%`)
+    q = q.or(`nombre_comp.ilike.%${t}%,apodo.ilike.%${t}%,nombre.ilike.%${t}%,seg_nombre.ilike.%${t}%,apellido.ilike.%${t}%,ap_mat.ilike.%${t}%,apoderado.ilike.%${t}%`)
   }
   const { data, error } = await q
   if (error) throw error
