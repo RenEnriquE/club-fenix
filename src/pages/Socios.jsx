@@ -130,7 +130,12 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
     const numero = celular.startsWith('56') ? celular : '56' + celular
     const primerNombre = s.nombre || (s.nombre_comp || '').split(' ')[0]
     const mesesTexto = mesesDeuda === 1 ? '1 mes' : `${mesesDeuda} meses`
-    const mensaje = `Hola ${primerNombre}! Esperamos que estes bien. Te contactamos desde el Club Atletico Independencia Fenix para informarte que, de acuerdo a nuestros registros, tienes ${mesesTexto} de cuotas pendientes de pago.
+    const esNino = s.atleta === 'Atleta Nino' || (s.atleta && s.atleta.includes('Ni'))
+    const mensaje = esNino
+      ? `Hola${s.apoderado ? ` apoderado(a) de ${primerNombre}` : ` ${primerNombre}`}! Esperamos que estes bien. Te contactamos desde el Club Atletico Independencia Fenix para informarte que, de acuerdo a nuestros registros, tu representado presenta ${mesesTexto} de cuotas pendientes de pago.
+
+Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte con nosotros. Muchas gracias por ser parte de la familia Fenix!`
+      : `Hola ${primerNombre}! Esperamos que estes bien. Te contactamos desde el Club Atletico Independencia Fenix para informarte que, de acuerdo a nuestros registros, tienes ${mesesTexto} de cuotas pendientes de pago.
 
 Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte con nosotros. Muchas gracias por ser parte de la familia Fenix!`
     setModalWA({ socio: s, mensaje, numero })
@@ -693,6 +698,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                 {icon:'ti-mail',label:'Email',val:modalPerfil.email||'No registrado'},
                 {icon:'ti-calendar',label:'Fecha nacimiento',val:modalPerfil.fecha_nac?new Date(modalPerfil.fecha_nac+'T12:00:00-04:00').toLocaleDateString('es-CL'):'No registrada'},
                 {icon:'ti-map-pin',label:'Comuna',val:modalPerfil.comuna||'No registrada'},
+                ...(modalPerfil.atleta==='Atleta Niño'&&modalPerfil.apoderado?[{icon:'ti-users',label:'Apoderado',val:modalPerfil.apoderado}]:[]),
               ].map((d,i) => (
                 <div key={i} style={{background:'#f8fafc',borderRadius:8,padding:'10px 12px'}}>
                   <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,marginBottom:2}}>
