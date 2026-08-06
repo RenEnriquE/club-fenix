@@ -369,11 +369,19 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                             </span>
                           )}
                         </div>
-                        {/* Tipo, RUT e ID */}
+                        {/* Tipo, RUT, Edad e ID */}
                         <div style={{fontSize:11,color:'var(--text-3)',display:'flex',gap:4,alignItems:'center',flexWrap:'wrap'}}>
                           {esInactivo && <span style={{color:'#94a3b8'}}>Inactivo ·</span>}
                           <span>{s.atleta==='Atleta Niño'?'Nino':s.atleta==='Apoderado'?'Apod':'Adulto'}</span>
                           {s.rut && <span>· {s.rut}{s.dv?'-'+s.dv:''}</span>}
+                          {s.fecha_nac && (() => {
+                            const d = new Date(s.fecha_nac+'T12:00:00-04:00')
+                            const hoy = new Date()
+                            let e = hoy.getFullYear()-d.getFullYear()
+                            const m = hoy.getMonth()-d.getMonth()
+                            if(m<0||(m===0&&hoy.getDate()<d.getDate())) e--
+                            return <span>· {e} años</span>
+                          })()}
                           <span>· ID {s.id_caif}</span>
                         </div>
                         {/* Celular editable */}
