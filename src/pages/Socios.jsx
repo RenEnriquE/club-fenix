@@ -118,7 +118,11 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
       })
 
   function copiarDatos(s) {
-    const rut = s.rut ? `${s.rut}${s.dv?'-'+s.dv:''}` : ''
+    const rutNum = s.rut ? String(s.rut).replace(/\./, '').replace(/[^0-9]/g,'') : ''
+    const rutFormateado = rutNum.length >= 7
+      ? rutNum.replace(/^(\d{1,2})(\d{3})(\d{3})$/, '$1.$2.$3')
+      : rutNum
+    const rut = rutFormateado ? `${rutFormateado}${s.dv?'-'+s.dv:''}` : ''
     const nombre = (s.nombre_comp || '').toUpperCase()
     const genero = (s.genero || '').toLowerCase().includes('fem') ? 'F' : 'M'
     const edad = s.fecha_nac ? (() => {
