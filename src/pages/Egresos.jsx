@@ -131,6 +131,13 @@ export default function Egresos() {
     return { mes: mesNum, nombre, ingresos: ing, egresos: egr, saldo: ing - egr, movs: total }
   }).filter(m => m.movs > 0)
 
+  // Calcular saldo acumulado mes a mes
+  let acumulado = 0
+  const porMesConAcumulado = porMes.map(m => {
+    acumulado += m.saldo
+    return { ...m, saldoAcumulado: acumulado }
+  })
+
   function abrirNuevaCat() {
     setEditandoCat(null)
     setFormCat({ nombre: '', tipo: 'egreso', activa: true })
@@ -404,7 +411,7 @@ export default function Egresos() {
                         </tr>
                       </thead>
                       <tbody>
-                        {porMes.map(m => (
+                        {porMesConAcumulado.map(m => (
                           <tr key={m.mes} style={{ cursor: 'pointer' }} onClick={() => setMes(m.mes)}>
                             <td style={{ fontWeight: 500 }}>{m.nombre} {anio}</td>
                             <td style={{ textAlign: 'right', color: m.ingresos > 0 ? '#16a34a' : '#94a3b8' }}>
@@ -413,8 +420,8 @@ export default function Egresos() {
                             <td style={{ textAlign: 'right', color: m.egresos > 0 ? '#dc2626' : '#94a3b8' }}>
                               {m.egresos > 0 ? formatMoney(m.egresos) : '-'}
                             </td>
-                            <td style={{ textAlign: 'right', fontWeight: 600, color: m.saldo >= 0 ? '#1d4ed8' : '#dc2626' }}>
-                              {formatMoney(m.saldo)}
+                            <td style={{ textAlign: 'right', fontWeight: 600, color: m.saldoAcumulado >= 0 ? '#1d4ed8' : '#dc2626' }}>
+                              {formatMoney(m.saldoAcumulado)}
                             </td>
                             <td style={{ textAlign: 'center', color: '#64748b', fontSize: 12 }}>{m.movs}</td>
                           </tr>
