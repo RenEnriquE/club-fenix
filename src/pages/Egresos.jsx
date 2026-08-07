@@ -93,8 +93,11 @@ export default function Egresos() {
   const saldo = totalIngresos - totalEgresos
 
   // Agrupar por categoria para resumen
+  // IDs de categorias a excluir del resumen normal (se muestran combinadas con ingresos)
+  const catTorneosId = categorias.find(c => c.nombre.toLowerCase().includes('orneo'))?.id_categoria
+
   const porCategoria = categorias.map(cat => {
-    const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria)
+    const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria && !(cat.id_categoria === catTorneosId && m.tipo === 'egreso' && totalTorneos > 0))
     const ing = movsCat.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0)
     const egr = movsCat.filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0)
     return { ...cat, ingresos: ing, egresos: egr, saldo: ing - egr, movs: movsCat.length }
@@ -274,22 +277,31 @@ export default function Egresos() {
                           <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{cuotasNinos.length}</td>
                         </tr>
                       )}
-                      {/* Torneos */}
-                      {totalTorneos > 0 && (
-                        <tr style={{background:'#fff7ed'}}>
-                          <td style={{fontWeight:500,color:'#c2410c'}}>
-                            <i className="ti ti-trophy" style={{marginRight:6,fontSize:12}}></i>
-                            Torneos
-                          </td>
-                          <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{formatMoney(totalTorneos)}</td>
-                          <td style={{textAlign:'right',color:'#94a3b8'}}>-</td>
-                          <td style={{textAlign:'right',fontWeight:600,color:'#1d4ed8'}}>{formatMoney(totalTorneos)}</td>
-                          <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{torneos.length}</td>
-                        </tr>
-                      )}
+                      {/* Torneos - fila combinada ingresos atletas + egresos organizador */}
+                      {(() => {
+                        // Egresos de torneos desde movimientos (categoria Torneos = id 3)
+                        const catTorneos = categorias.find(c => c.nombre.toLowerCase().includes('orneo'))
+                        const egresosTorneos = catTorneos
+                          ? movimientos.filter(m => m.id_categoria === catTorneos.id_categoria && m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
+                          : 0
+                        const saldoTorneos = totalTorneos - egresosTorneos
+                        if (totalTorneos === 0 && egresosTorneos === 0) return null
+                        return (
+                          <tr style={{background:'#fff7ed'}}>
+                            <td style={{fontWeight:500,color:'#c2410c'}}>
+                              <i className="ti ti-trophy" style={{marginRight:6,fontSize:12}}></i>
+                              Torneos
+                            </td>
+                            <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{totalTorneos>0?formatMoney(totalTorneos):'-'}</td>
+                            <td style={{textAlign:'right',color:'#dc2626',fontWeight:600}}>{egresosTorneos>0?formatMoney(egresosTorneos):'-'}</td>
+                            <td style={{textAlign:'right',fontWeight:700,color:saldoTorneos>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoTorneos)}</td>
+                            <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{torneos.length}</td>
+                          </tr>
+                        )
+                      })()}
                       {porCategoria.map(cat => {
                         const expandida = catExpandida === cat.id_categoria
-                        const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria)
+                        const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria && !(cat.id_categoria === catTorneosId && m.tipo === 'egreso' && totalTorneos > 0))
                         return (
                           <>
                             <tr key={cat.id_categoria}
