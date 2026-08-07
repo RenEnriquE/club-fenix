@@ -829,41 +829,37 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                 <div style={{fontSize:11,fontWeight:700,color:'#1d4ed8',textTransform:'uppercase',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
                   <i className="ti ti-building-bank"></i>Datos para la transferencia
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:8}}>
-                  {torneo.organizador && (
-                    <div>
-                      <div style={{fontSize:10,color:'#64748b',fontWeight:600,textTransform:'uppercase'}}>Destinatario</div>
-                      <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{torneo.organizador}</div>
-                    </div>
-                  )}
-                  {torneo.rut_organizador && (
-                    <div>
-                      <div style={{fontSize:10,color:'#64748b',fontWeight:600,textTransform:'uppercase'}}>RUT</div>
-                      <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{torneo.rut_organizador}</div>
-                    </div>
-                  )}
-                  {torneo.banco && (
-                    <div>
-                      <div style={{fontSize:10,color:'#64748b',fontWeight:600,textTransform:'uppercase'}}>Banco</div>
-                      <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{torneo.banco}</div>
-                    </div>
-                  )}
-                  {torneo.tipo_cuenta && (
-                    <div>
-                      <div style={{fontSize:10,color:'#64748b',fontWeight:600,textTransform:'uppercase'}}>Tipo cuenta</div>
-                      <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{torneo.tipo_cuenta}</div>
-                    </div>
-                  )}
-                  {torneo.num_cuenta && (
-                    <div>
-                      <div style={{fontSize:10,color:'#64748b',fontWeight:600,textTransform:'uppercase'}}>N cuenta</div>
-                      <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{torneo.num_cuenta}</div>
-                    </div>
-                  )}
+                <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                  {/* Fila 1: Destinatario + RUT */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                    {[
+                      {label:'Destinatario', val:torneo.organizador},
+                      {label:'RUT', val:torneo.rut_organizador},
+                    ].map((d,i) => d.val ? (
+                      <div key={i}>
+                        <div style={{fontSize:10,color:'#64748b',fontWeight:600,textTransform:'uppercase',marginBottom:1}}>{d.label}</div>
+                        <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{d.val}</div>
+                      </div>
+                    ) : null)}
+                  </div>
+                  {/* Fila 2: Banco + Tipo + N cuenta */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                    {[
+                      {label:'Banco', val:torneo.banco},
+                      {label:'Tipo cuenta', val:torneo.tipo_cuenta},
+                      {label:'N cuenta', val:torneo.num_cuenta},
+                    ].map((d,i) => d.val ? (
+                      <div key={i}>
+                        <div style={{fontSize:10,color:'#64748b',fontWeight:600,textTransform:'uppercase',marginBottom:1}}>{d.label}</div>
+                        <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{d.val}</div>
+                      </div>
+                    ) : null)}
+                  </div>
+                  {/* Fila 3: Email full width */}
                   {torneo.email_organizador && (
-                    <div>
-                      <div style={{fontSize:10,color:'#64748b',fontWeight:600,textTransform:'uppercase'}}>Email</div>
-                      <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{torneo.email_organizador}</div>
+                    <div style={{borderTop:'0.5px solid #bfdbfe',paddingTop:6}}>
+                      <div style={{fontSize:10,color:'#64748b',fontWeight:600,textTransform:'uppercase',marginBottom:1}}>Email</div>
+                      <div style={{fontSize:13,fontWeight:600,color:'#1e293b',wordBreak:'break-all'}}>{torneo.email_organizador}</div>
                     </div>
                   )}
                 </div>
