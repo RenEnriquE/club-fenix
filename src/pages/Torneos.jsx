@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatMoney } from '../lib/helpers'
 
-const BANCOS = ['Banco Estado','Banco BCI','Banco Santander','Banco de Chile','Banco Itau','Banco BBVA','Banco Security','Coopeuch / Dale','Mercado Pago','TENPO','Otro']
+const BANCOS = ['Banco Estado','Banco BCI / MACH','Banco Santander','Banco de Chile','Banco Itau','Banco BBVA','Banco Security','Banco Falabella','Banco Ripley','Coopeuch / Dale','Mercado Pago','TENPO','Otro']
 const TIPOS_CUENTA = ['Cuenta Corriente','Cuenta Vista','Cuenta RUT','Cuenta Ahorro']
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
