@@ -20,7 +20,8 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
   const [modalPerfil, setModalPerfil] = useState(null) // { socio, mensaje, numero }
   const [editCelular, setEditCelular] = useState(null) // id_caif del socio editando celular
   const [celularTemp, setCelularTemp] = useState('')
-  const [savingCelular, setSavingCelular] = useState(false) // socio a reingresar
+  const [savingCelular, setSavingCelular] = useState(false)
+  const [copiadoId, setCopiadoId] = useState(null) // socio a reingresar
   const [fechaReingreso, setFechaReingreso] = useState('')
   const [savingReingreso, setSavingReingreso] = useState(false)
   const [modalHistorial, setModalHistorial] = useState(null) // socio a ver historial
@@ -115,6 +116,25 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
           ? deudaB - deudaA  // mayor deuda primero
           : deudaA - deudaB  // menor deuda (mas al dia) primero
       })
+
+  function copiarDatos(s) {
+    const rut = s.rut ? `${s.rut}${s.dv?'-'+s.dv:''}` : ''
+    const nombre = (s.nombre_comp || '').toUpperCase()
+    const genero = (s.genero || '').toLowerCase().includes('fem') ? 'F' : 'M'
+    const edad = s.fecha_nac ? (() => {
+      const d = new Date(s.fecha_nac+'T12:00:00-04:00')
+      const hoy = new Date()
+      let e = hoy.getFullYear()-d.getFullYear()
+      const m = hoy.getMonth()-d.getMonth()
+      if(m<0||(m===0&&hoy.getDate()<d.getDate())) e--
+      return e
+    })() : ''
+    const texto = `${rut}	${nombre}	${genero}	${edad}`
+    navigator.clipboard.writeText(texto).then(() => {
+      setCopiadoId(s.id_caif)
+      setTimeout(() => setCopiadoId(null), 2000)
+    })
+  }
 
   async function guardarCelular(idCaif) {
     setSavingCelular(true)
@@ -457,6 +477,11 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                       <td>
                         <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                           {isAdmin && <button className="btn sm" onClick={() => abrirModal(s)}><i className="ti ti-edit"></i>Editar</button>}
+                          <button className="btn sm" onClick={()=>copiarDatos(s)}
+                            title="Copiar RUT, nombre, género y edad"
+                            style={{padding:'4px 7px',color:copiadoId===s.id_caif?'#16a34a':'#64748b',borderColor:copiadoId===s.id_caif?'#a7f3d0':'#e2e8f0',background:copiadoId===s.id_caif?'#f0fdf4':'#f8fafc'}}>
+                            <i className={`ti ${copiadoId===s.id_caif?'ti-check':'ti-clipboard'}`}></i>
+                          </button>
                           {isAdmin && s.vigente !== 1 && (
                             <button className="btn sm primary" onClick={() => abrirReingreso(s)} title="Reingresar al club">
                               <i className="ti ti-user-check"></i>Reingresar
