@@ -425,8 +425,8 @@ export default function Pagos({ isAdmin = true }) {
           <div className="card">
             <div className="card-title"><i className="ti ti-history"></i>Historial &mdash; {anio}</div>
             {pagosAnio.length===0?<div className="empty"><i className="ti ti-calendar-x"></i>Sin pagos en {anio}</div>:(
-              <div className="tbl-wrap"><table className="tbl">
-                <thead><tr><th style={{width:90}}>Mes</th><th style={{width:100}}>Fecha</th><th style={{width:90}}>Monto</th><th style={{width:110}}>Metodo</th><th>Actividad</th><th>N Trans.</th><th style={{width:60}}></th></tr></thead>
+              <div className="tbl-scroll"><table className="tbl">
+                <thead><tr><th style={{width:90}}>Mes</th><th style={{width:100}}>Fecha</th><th style={{width:90}}>Monto</th><th style={{width:110}}>Metodo</th><th>Actividad</th><th>N Trans.</th><th style={{width:76,minWidth:76}}></th></tr></thead>
                 <tbody>
                   {pagosAnio.sort((a,b)=>{ const fd=new Date(b.fecha_pago||0)-new Date(a.fecha_pago||0); return fd!==0?fd:b.mes-a.mes }).map(p=>{
                     const nomAct = actividades.find(a=>a.id_actividad===Number(p.id_actividad))?.nombre || 'Cuotas'
@@ -444,7 +444,7 @@ export default function Pagos({ isAdmin = true }) {
                           }
                         </td>
                         <td>{p.num_transacc||'—'}</td>
-                        <td>
+                        <td style={{whiteSpace:'nowrap'}}>
                           <div style={{display:'flex',gap:4}}>
 {isAdmin && <><button className="btn sm" onClick={()=>abrirEdicion(p)} title="Editar"><i className="ti ti-pencil"></i></button>
                             <button className="btn sm danger" onClick={()=>eliminarPagoInd(p.id_pago)} title="Eliminar"><i className="ti ti-trash"></i></button></>}
