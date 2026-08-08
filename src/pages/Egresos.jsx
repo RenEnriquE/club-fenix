@@ -37,8 +37,9 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
   const [valorRifa, setValorRifa] = useState(10000)
   const [participacionRifa, setParticipacionRifa] = useState(80)
   const [mesRifa, setMesRifa] = useState(9)
-  const [sueldoFavio, setSueldoFavio] = useState(120000)
-  const [sueldoConsuelo, setSueldoConsuelo] = useState(60000)
+  // Sueldos de coaches: se mantienen fijos hasta fin de año, no son un supuesto editable
+  const SUELDO_FAVIO = 120000
+  const SUELDO_CONSUELO = 60000
   const [saldoAnioActualData, setSaldoAnioActualData] = useState({ movimientos: [], cuotas: [], torneos: [] })
 
   useEffect(() => { cargarCategorias(); cargarSociosVigentes(); cargarSaldoAnioActual() }, [])
@@ -46,7 +47,7 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
 
   async function cargarSociosVigentes() {
     const { count } = await supabase.from('personas').select('id_caif', { count: 'exact', head: true })
-      .eq('vigente', true).neq('atleta', 'Apoderado')
+      .eq('vigente', 1).neq('atleta', 'Apoderado')
     setSociosVigentes(count || 0)
   }
 
@@ -178,7 +179,7 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
   const mesesRestantes = Math.max(0, 12 - mesActual)
   const cuotasProyectadas = sociosVigentes * cuotaProy * mesesRestantes
   const rifaProyectada = mesActual <= mesRifa ? sociosVigentes * (participacionRifa / 100) * valorRifa : 0
-  const sueldosProyectados = (sueldoFavio + sueldoConsuelo) * mesesRestantes
+  const sueldosProyectados = (SUELDO_FAVIO + SUELDO_CONSUELO) * mesesRestantes
   const ingresosProyectados = cuotasProyectadas + rifaProyectada
   const egresosProyectados = sueldosProyectados
   const saldoProyectado = ingresosProyectados - egresosProyectados
@@ -679,11 +680,15 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
             </div>
             <div className="form-group">
               <label>Sueldo Coach 1 (Favio) $/mes</label>
-              <input type="number" value={sueldoFavio} onChange={e => setSueldoFavio(Number(e.target.value))} />
+              <div style={{ padding: '7px 10px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, background: '#f8fafc', color: '#64748b' }}>
+                {formatMoney(SUELDO_FAVIO)} <span style={{ fontSize: 11 }}>(fijo hasta fin de año)</span>
+              </div>
             </div>
             <div className="form-group">
               <label>Sueldo Coach 2 (Consuelo) $/mes</label>
-              <input type="number" value={sueldoConsuelo} onChange={e => setSueldoConsuelo(Number(e.target.value))} />
+              <div style={{ padding: '7px 10px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, background: '#f8fafc', color: '#64748b' }}>
+                {formatMoney(SUELDO_CONSUELO)} <span style={{ fontSize: 11 }}>(fijo hasta fin de año)</span>
+              </div>
             </div>
           </div>
 
@@ -705,7 +710,7 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
                 </tr>
                 <tr>
                   <td style={{ fontWeight: 500 }}>Sueldos coaches</td>
-                  <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>{formatMoney(sueldoFavio + sueldoConsuelo)} × {mesesRestantes} meses</td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>{formatMoney(SUELDO_FAVIO + SUELDO_CONSUELO)} × {mesesRestantes} meses</td>
                   <td style={{ textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{formatMoney(sueldosProyectados)}</td>
                 </tr>
                 <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
