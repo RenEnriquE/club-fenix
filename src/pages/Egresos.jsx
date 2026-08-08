@@ -42,8 +42,39 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
   const SUELDO_CONSUELO = 60000
   const [saldoAnioActualData, setSaldoAnioActualData] = useState({ movimientos: [], cuotas: [], torneos: [] })
 
-  useEffect(() => { cargarCategorias(); cargarSociosVigentes(); cargarSaldoAnioActual() }, [])
+  // Tasa de altas/bajas de socios (calculada de los ultimos 12 meses, ajustable con slider)
+  const [altasBajas12m, setAltasBajas12m] = useState({ altas: 0, bajas: 0, tasaCalculada: 0 })
+  const [tasaMensual, setTasaMensual] = useState(0)
+  const [tasaTocada, setTasaTocada] = useState(false)
+
+  // Costo FEDACHI pendiente antes de fin de año (en UF)
+  const FEDACHI_UF = 10
+  const [valorUF, setValorUF] = useState(40845)
+  const [costoFemachi, setCostoFemachi] = useState(60000)
+
+  useEffect(() => { cargarCategorias(); cargarSociosVigentes(); cargarSaldoAnioActual(); cargarAltasBajas12m() }, [])
   useEffect(() => { cargar() }, [anio, mes])
+
+  async function cargarAltasBajas12m() {
+    const hoy = new Date()
+    const hace12m = new Date(hoy.getFullYear(), hoy.getMonth() - 12, hoy.getDate()).toISOString().split('T')[0]
+    const hoyStr = hoy.toISOString().split('T')[0]
+    const [{ count: altas }, { count: bajas }, { count: totalVigentesHoy }] = await Promise.all([
+      supabase.from('personas').select('id_caif', { count: 'exact', head: true })
+        .neq('atleta', 'Apoderado')
+        .or(`f_ini_vig.gte.${hace12m},f_reingreso.gte.${hace12m}`),
+      supabase.from('personas').select('id_caif', { count: 'exact', head: true })
+        .neq('atleta', 'Apoderado')
+        .eq('vigente', 0)
+        .gte('f_fin_vig', hace12m).lte('f_fin_vig', hoyStr),
+      supabase.from('personas').select('id_caif', { count: 'exact', head: true })
+        .neq('atleta', 'Apoderado').eq('vigente', 1),
+    ])
+    const base = (totalVigentesHoy || 0) - (altas || 0) + (bajas || 0) // aprox. socios hace 12 meses
+    const tasaCalculada = base > 0 ? (((altas || 0) - (bajas || 0)) / base / 12) * 100 : 0
+    setAltasBajas12m({ altas: altas || 0, bajas: bajas || 0, tasaCalculada: Number(tasaCalculada.toFixed(2)) })
+    if (!tasaTocada) setTasaMensual(Number(tasaCalculada.toFixed(2)))
+  }
 
   async function cargarSociosVigentes() {
     const { count } = await supabase.from('personas').select('id_caif', { count: 'exact', head: true })
@@ -177,11 +208,19 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
   // --- Proyeccion a fin de año ---
   const mesActual = new Date().getMonth() + 1
   const mesesRestantes = Math.max(0, 12 - mesActual)
-  const cuotasProyectadas = sociosVigentes * cuotaProy * mesesRestantes
-  const rifaProyectada = mesActual <= mesRifa ? sociosVigentes * (participacionRifa / 100) * valorRifa : 0
+  // Proyeccion de socios mes a mes aplicando la tasa (compuesta)
+  const sociosPorMes = Array.from({ length: mesesRestantes }, (_, i) =>
+    sociosVigentes * Math.pow(1 + tasaMensual / 100, i + 1)
+  )
+  const cuotasProyectadas = sociosPorMes.reduce((a, s) => a + s * cuotaProy, 0)
+  const sociosEnMesRifaIdx = mesRifa - mesActual - 1 // indice dentro de sociosPorMes
+  const sociosEnMesRifa = sociosEnMesRifaIdx >= 0 && sociosEnMesRifaIdx < sociosPorMes.length
+    ? sociosPorMes[sociosEnMesRifaIdx] : sociosVigentes
+  const rifaProyectada = mesActual <= mesRifa ? sociosEnMesRifa * (participacionRifa / 100) * valorRifa : 0
   const sueldosProyectados = (SUELDO_FAVIO + SUELDO_CONSUELO) * mesesRestantes
+  const costoFedachiUF = FEDACHI_UF * valorUF
   const ingresosProyectados = cuotasProyectadas + rifaProyectada
-  const egresosProyectados = sueldosProyectados
+  const egresosProyectados = sueldosProyectados + costoFedachiUF + costoFemachi
   const saldoProyectado = ingresosProyectados - egresosProyectados
 
   // Saldo real del año actual completo, calculado independiente del filtro anio/mes de arriba
@@ -659,6 +698,33 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
             No incluye torneos, donaciones ni gastos imprevistos. Ajusta los supuestos si es necesario.
           </p>
 
+          <div style={{ background: '#f8fafc', border: '0.5px solid #e2e8f0', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontWeight: 600, fontSize: 13 }}>Tasa de crecimiento mensual de socios</label>
+              <span style={{ fontWeight: 700, fontSize: 15, color: tasaMensual >= 0 ? '#16a34a' : '#dc2626' }}>
+                {tasaMensual > 0 ? '+' : ''}{tasaMensual}% / mes
+              </span>
+            </div>
+            <input type="range" min={-10} max={10} step={0.1} value={tasaMensual}
+              onChange={e => { setTasaMensual(Number(e.target.value)); setTasaTocada(true) }}
+              style={{ width: '100%' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+              <span>-10%</span>
+              <span>0%</span>
+              <span>+10%</span>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 8 }}>
+              Calculada de los últimos 12 meses: <strong>{altasBajas12m.altas} altas</strong>, <strong>{altasBajas12m.bajas} bajas</strong>
+              {' '}→ tasa sugerida <strong>{altasBajas12m.tasaCalculada > 0 ? '+' : ''}{altasBajas12m.tasaCalculada}% / mes</strong>.
+              {tasaTocada && (
+                <button className="btn sm" style={{ marginLeft: 8 }}
+                  onClick={() => { setTasaMensual(altasBajas12m.tasaCalculada); setTasaTocada(false) }}>
+                  Volver a la sugerida
+                </button>
+              )}
+            </p>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginBottom: 20 }}>
             <div className="form-group">
               <label>Cuota mensual por socio ($)</label>
@@ -690,6 +756,14 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
                 {formatMoney(SUELDO_CONSUELO)} <span style={{ fontSize: 11 }}>(fijo hasta fin de año)</span>
               </div>
             </div>
+            <div className="form-group">
+              <label>Valor UF hoy ($)</label>
+              <input type="number" value={valorUF} onChange={e => setValorUF(Number(e.target.value))} />
+            </div>
+            <div className="form-group">
+              <label>FEMACHI semestral pendiente ($, agosto)</label>
+              <input type="number" value={costoFemachi} onChange={e => setCostoFemachi(Number(e.target.value))} />
+            </div>
           </div>
 
           <div className="tbl-scroll">
@@ -698,15 +772,27 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
               <tbody>
                 <tr>
                   <td style={{ fontWeight: 500 }}>Cuotas proyectadas</td>
-                  <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>{sociosVigentes} socios × {formatMoney(cuotaProy)} × {mesesRestantes} meses</td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>
+                    {sociosVigentes} socios × {formatMoney(cuotaProy)}, con {tasaMensual > 0 ? '+' : ''}{tasaMensual}%/mes durante {mesesRestantes} meses
+                  </td>
                   <td style={{ textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>+{formatMoney(cuotasProyectadas)}</td>
                 </tr>
                 <tr>
                   <td style={{ fontWeight: 500 }}>Rifa ({MESES_ES[mesRifa - 1]})</td>
                   <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>
-                    {mesActual <= mesRifa ? `${sociosVigentes} × ${participacionRifa}% × ${formatMoney(valorRifa)}` : 'mes ya paso'}
+                    {mesActual <= mesRifa ? `${Math.round(sociosEnMesRifa)} × ${participacionRifa}% × ${formatMoney(valorRifa)}` : 'mes ya paso'}
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>+{formatMoney(rifaProyectada)}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 500 }}>Afiliación FEDACHI pendiente</td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>{FEDACHI_UF} UF × {formatMoney(valorUF)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{formatMoney(costoFedachiUF)}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 500 }}>Afiliación FEMACHI semestral (agosto)</td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>pago unico pendiente</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{formatMoney(costoFemachi)}</td>
                 </tr>
                 <tr>
                   <td style={{ fontWeight: 500 }}>Sueldos coaches</td>
