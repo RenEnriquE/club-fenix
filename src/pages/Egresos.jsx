@@ -305,10 +305,10 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
               <div className="card">
                 <div className="card-title"><i className="ti ti-layout-list"></i>Por categoria</div>
                 <div style={{ overflowX: 'auto' }}>
-                  <table className="tbl">
+                  <table className="tbl" style={{ minWidth: 560 }}>
                     <thead>
                       <tr>
-                        <th>Categoria</th>
+                        <th style={{ minWidth: 180, whiteSpace: 'nowrap' }}>Categoria</th>
                         <th style={{ width: 110, textAlign: 'right' }}>Ingresos</th>
                         <th style={{ width: 110, textAlign: 'right' }}>Egresos</th>
                         <th style={{ width: 110, textAlign: 'right' }}>Saldo</th>
