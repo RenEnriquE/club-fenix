@@ -50,7 +50,8 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
   // Costo FEDACHI pendiente antes de fin de año (en UF)
   const FEDACHI_UF = 10
   const [valorUF, setValorUF] = useState(40845)
-  const [costoFemachi, setCostoFemachi] = useState(60000)
+  // FEMACHI semestral: fijo en $60.000 para este año, no es un supuesto editable
+  const COSTO_FEMACHI = 60000
 
   useEffect(() => { cargarCategorias(); cargarSociosVigentes(); cargarSaldoAnioActual(); cargarAltasBajas12m() }, [])
   useEffect(() => { cargar() }, [anio, mes])
@@ -220,7 +221,7 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
   const sueldosProyectados = (SUELDO_FAVIO + SUELDO_CONSUELO) * mesesRestantes
   const costoFedachiUF = FEDACHI_UF * valorUF
   const ingresosProyectados = cuotasProyectadas + rifaProyectada
-  const egresosProyectados = sueldosProyectados + costoFedachiUF + costoFemachi
+  const egresosProyectados = sueldosProyectados + costoFedachiUF + COSTO_FEMACHI
   const saldoProyectado = ingresosProyectados - egresosProyectados
 
   // Saldo real del año actual completo, calculado independiente del filtro anio/mes de arriba
@@ -761,8 +762,10 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
               <input type="number" value={valorUF} onChange={e => setValorUF(Number(e.target.value))} />
             </div>
             <div className="form-group">
-              <label>FEMACHI semestral pendiente ($, agosto)</label>
-              <input type="number" value={costoFemachi} onChange={e => setCostoFemachi(Number(e.target.value))} />
+              <label>FEMACHI semestral (agosto)</label>
+              <div style={{ padding: '7px 10px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, background: '#f8fafc', color: '#64748b' }}>
+                {formatMoney(COSTO_FEMACHI)} <span style={{ fontSize: 11 }}>(fijo este año)</span>
+              </div>
             </div>
           </div>
 
@@ -792,7 +795,7 @@ export default function Egresos({ isAdmin = true, isCoach = false }) {
                 <tr>
                   <td style={{ fontWeight: 500 }}>Afiliación FEMACHI semestral (agosto)</td>
                   <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>pago unico pendiente</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{formatMoney(costoFemachi)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{formatMoney(COSTO_FEMACHI)}</td>
                 </tr>
                 <tr>
                   <td style={{ fontWeight: 500 }}>Sueldos coaches</td>
