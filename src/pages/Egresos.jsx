@@ -6,15 +6,16 @@ const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agos
 const METODOS = ['Transferencia','Efectivo','Cheque']
 const TIPOS = ['ingreso','egreso']
 
-function generarAnios() {
+function generarAnios(desde = 2024) {
   const anios = []
-  for (let a = 2024; a <= new Date().getFullYear(); a++) anios.push(a)
+  for (let a = desde; a <= new Date().getFullYear(); a++) anios.push(a)
   return anios
 }
 
-export default function Egresos() {
+export default function Egresos({ isAdmin = true }) {
+  const anioMinimo = isAdmin ? 2024 : 2026
   const [vista, setVista] = useState('resumen') // 'resumen' | 'detalle' | 'categorias'
-  const [anio, setAnio] = useState(new Date().getFullYear())
+  const [anio, setAnio] = useState(() => Math.max(new Date().getFullYear(), anioMinimo))
   const [mes, setMes] = useState(null) // null = todos
   const [movimientos, setMovimientos] = useState([])
   const [categorias, setCategorias] = useState([])
@@ -188,7 +189,7 @@ export default function Egresos() {
           {/* Selector anio */}
           <select value={anio} onChange={e => setAnio(Number(e.target.value))}
             style={{ padding: '6px 10px', border: '0.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-            {generarAnios().map(a => <option key={a}>{a}</option>)}
+            {generarAnios(anioMinimo).map(a => <option key={a}>{a}</option>)}
           </select>
           {/* Selector mes */}
           <select value={mes || ''} onChange={e => setMes(e.target.value ? Number(e.target.value) : null)}
@@ -201,7 +202,7 @@ export default function Egresos() {
             {[
               { key: 'resumen', icon: 'ti-chart-bar', label: 'Resumen' },
               { key: 'detalle', icon: 'ti-list', label: 'Detalle' },
-              { key: 'categorias', icon: 'ti-tag', label: 'Categorias' },
+              ...(isAdmin ? [{ key: 'categorias', icon: 'ti-tag', label: 'Categorias' }] : []),
             ].map(t => (
               <button key={t.key} className={`btn ${vista === t.key ? 'primary' : ''}`}
                 onClick={() => setVista(t.key)} style={{ fontSize: 12, padding: '6px 12px' }}>
@@ -210,9 +211,11 @@ export default function Egresos() {
             ))}
           </div>
         </div>
-        <button className="btn primary" onClick={() => setEditando({})}>
-          <i className="ti ti-plus"></i>Nuevo movimiento
-        </button>
+        {isAdmin && (
+          <button className="btn primary" onClick={() => setEditando({})}>
+            <i className="ti ti-plus"></i>Nuevo movimiento
+          </button>
+        )}
       </div>
 
       {alert && <div className={`alert ${alert.type}`} style={{ marginBottom: 12 }}>{alert.msg}</div>}
@@ -564,7 +567,7 @@ export default function Egresos() {
                         <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-3)' }}
                           title={m.obs}>{m.obs}</td>
                         <td>
-                          {m.editable && (
+                          {isAdmin && m.editable && (
                             <div style={{ display: 'flex', gap: 4 }}>
                               <button className="btn sm" onClick={() => setEditando(m.raw)} title="Editar"><i className="ti ti-pencil"></i></button>
                               <button className="btn sm danger" onClick={() => eliminar(m.id)} title="Eliminar"><i className="ti ti-trash"></i></button>
@@ -593,7 +596,7 @@ export default function Egresos() {
       )}
 
       {/* VISTA CATEGORIAS */}
-      {!loading && vista === 'categorias' && (
+      {!loading && isAdmin && vista === 'categorias' && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div className="card-title" style={{ marginBottom: 0 }}>
