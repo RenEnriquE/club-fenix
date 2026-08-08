@@ -26,7 +26,7 @@ export default function App() {
     pagos: <Pagos isAdmin={isAdmin} />,
     socios: <Socios isAdmin={isAdmin} isCoach={isCoach} />,
     comite: <Comite isAdmin={isAdmin} />,
-    egresos: (isAdmin || isCoach) ? <Egresos isAdmin={isAdmin} /> : (
+    egresos: (isAdmin || isCoach) ? <Egresos isAdmin={isAdmin} isCoach={isCoach} /> : (
       <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
     ),
     torneos: isAdmin ? <Torneos /> : (

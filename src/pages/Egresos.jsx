@@ -12,9 +12,10 @@ function generarAnios(desde = 2024) {
   return anios
 }
 
-export default function Egresos({ isAdmin = true }) {
+export default function Egresos({ isAdmin = true, isCoach = false }) {
+  const puedeVerProyeccion = isAdmin || isCoach
   const anioMinimo = isAdmin ? 2024 : 2026
-  const [vista, setVista] = useState('resumen') // 'resumen' | 'detalle' | 'categorias'
+  const [vista, setVista] = useState('resumen') // 'resumen' | 'detalle' | 'categorias' | 'proyeccion'
   const [anio, setAnio] = useState(() => Math.max(new Date().getFullYear(), anioMinimo))
   const [mes, setMes] = useState(null) // null = todos
   const [movimientos, setMovimientos] = useState([])
@@ -30,8 +31,41 @@ export default function Egresos({ isAdmin = true }) {
   const [cuotas, setCuotas] = useState([])
   const [torneos, setTorneos] = useState([])
 
-  useEffect(() => { cargarCategorias() }, [])
+  // Proyeccion
+  const [sociosVigentes, setSociosVigentes] = useState(0)
+  const [cuotaProy, setCuotaProy] = useState(3000)
+  const [valorRifa, setValorRifa] = useState(10000)
+  const [participacionRifa, setParticipacionRifa] = useState(80)
+  const [mesRifa, setMesRifa] = useState(9)
+  const [sueldoFavio, setSueldoFavio] = useState(120000)
+  const [sueldoConsuelo, setSueldoConsuelo] = useState(60000)
+  const [saldoAnioActualData, setSaldoAnioActualData] = useState({ movimientos: [], cuotas: [], torneos: [] })
+
+  useEffect(() => { cargarCategorias(); cargarSociosVigentes(); cargarSaldoAnioActual() }, [])
   useEffect(() => { cargar() }, [anio, mes])
+
+  async function cargarSociosVigentes() {
+    const { count } = await supabase.from('personas').select('id_caif', { count: 'exact', head: true })
+      .eq('vigente', true).neq('atleta', 'Apoderado')
+    setSociosVigentes(count || 0)
+  }
+
+  // Saldo del año actual completo (12 meses), independiente del filtro anio/mes de arriba.
+  // Se usa solo para la Proyeccion, para que no dependa de que el usuario tenga seleccionado el año/mes correcto.
+  async function cargarSaldoAnioActual() {
+    const anioActual = new Date().getFullYear()
+    const q = supabase.from('movimientos').select('*').eq('anio', anioActual)
+    const qc = supabase.from('pagos')
+      .select('id_socio,mes,anio,monto,id_actividad,fecha_pago,personas(atleta)')
+      .eq('id_actividad', 0)
+      .gte('fecha_pago', `${anioActual}-01-01`).lte('fecha_pago', `${anioActual}-12-31`)
+    const qt = supabase.from('pagos')
+      .select('id_socio,mes,anio,monto,id_actividad,fecha_pago')
+      .eq('id_actividad', 999)
+      .gte('fecha_pago', `${anioActual}-01-01`).lte('fecha_pago', `${anioActual}-12-31`)
+    const [{ data }, { data: dataCuotas }, { data: dataTorneos }] = await Promise.all([q, qc, qt])
+    setSaldoAnioActualData({ movimientos: data || [], cuotas: dataCuotas || [], torneos: dataTorneos || [] })
+  }
 
   async function cargarCategorias() {
     const { data } = await supabase.from('categorias_movimiento').select('*').order('orden').order('nombre')
@@ -139,6 +173,25 @@ export default function Egresos({ isAdmin = true }) {
     return { ...m, saldoAcumulado: acumulado }
   })
 
+  // --- Proyeccion a fin de año ---
+  const mesActual = new Date().getMonth() + 1
+  const mesesRestantes = Math.max(0, 12 - mesActual)
+  const cuotasProyectadas = sociosVigentes * cuotaProy * mesesRestantes
+  const rifaProyectada = mesActual <= mesRifa ? sociosVigentes * (participacionRifa / 100) * valorRifa : 0
+  const sueldosProyectados = (sueldoFavio + sueldoConsuelo) * mesesRestantes
+  const ingresosProyectados = cuotasProyectadas + rifaProyectada
+  const egresosProyectados = sueldosProyectados
+  const saldoProyectado = ingresosProyectados - egresosProyectados
+
+  // Saldo real del año actual completo, calculado independiente del filtro anio/mes de arriba
+  const totalCuotasAnioActual = saldoAnioActualData.cuotas.reduce((a, p) => a + (p.monto || 0), 0)
+  const totalTorneosAnioActual = saldoAnioActualData.torneos.reduce((a, p) => a + (p.monto || 0), 0)
+  const totalIngresosAnioActual = saldoAnioActualData.movimientos.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0) + totalCuotasAnioActual + totalTorneosAnioActual
+  const totalEgresosAnioActual = saldoAnioActualData.movimientos.filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0)
+  const saldoAnioActual = totalIngresosAnioActual - totalEgresosAnioActual
+
+  const saldoFinAnio = saldoAnioActual + saldoProyectado
+
   function abrirNuevaCat() {
     setEditandoCat(null)
     setFormCat({ nombre: '', tipo: 'egreso', activa: true })
@@ -202,6 +255,7 @@ export default function Egresos({ isAdmin = true }) {
             {[
               { key: 'resumen', icon: 'ti-chart-bar', label: 'Resumen' },
               { key: 'detalle', icon: 'ti-list', label: 'Detalle' },
+              ...(puedeVerProyeccion ? [{ key: 'proyeccion', icon: 'ti-trending-up', label: 'Proyeccion' }] : []),
               ...(isAdmin ? [{ key: 'categorias', icon: 'ti-tag', label: 'Categorias' }] : []),
             ].map(t => (
               <button key={t.key} className={`btn ${vista === t.key ? 'primary' : ''}`}
@@ -593,6 +647,79 @@ export default function Egresos({ isAdmin = true }) {
             </div>
           )}
         </>
+      )}
+
+      {/* VISTA PROYECCION */}
+      {!loading && puedeVerProyeccion && vista === 'proyeccion' && (
+        <div className="card">
+          <div className="card-title"><i className="ti ti-trending-up"></i>Proyeccion a fin de año {new Date().getFullYear()}</div>
+          <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 16 }}>
+            Calculado sobre <strong>{sociosVigentes} socios vigentes</strong> hoy, para los <strong>{mesesRestantes} meses restantes</strong> del año.
+            No incluye torneos, donaciones ni gastos imprevistos. Ajusta los supuestos si es necesario.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginBottom: 20 }}>
+            <div className="form-group">
+              <label>Cuota mensual por socio ($)</label>
+              <input type="number" value={cuotaProy} onChange={e => setCuotaProy(Number(e.target.value))} />
+            </div>
+            <div className="form-group">
+              <label>Valor rifa por socio ($)</label>
+              <input type="number" value={valorRifa} onChange={e => setValorRifa(Number(e.target.value))} />
+            </div>
+            <div className="form-group">
+              <label>% participacion esperada rifa</label>
+              <input type="number" value={participacionRifa} onChange={e => setParticipacionRifa(Number(e.target.value))} />
+            </div>
+            <div className="form-group">
+              <label>Mes de la rifa</label>
+              <select value={mesRifa} onChange={e => setMesRifa(Number(e.target.value))}>
+                {MESES_ES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Sueldo Coach 1 (Favio) $/mes</label>
+              <input type="number" value={sueldoFavio} onChange={e => setSueldoFavio(Number(e.target.value))} />
+            </div>
+            <div className="form-group">
+              <label>Sueldo Coach 2 (Consuelo) $/mes</label>
+              <input type="number" value={sueldoConsuelo} onChange={e => setSueldoConsuelo(Number(e.target.value))} />
+            </div>
+          </div>
+
+          <div className="tbl-scroll">
+            <table className="tbl">
+              <thead><tr><th>Concepto</th><th style={{ textAlign: 'right' }}>Calculo</th><th style={{ textAlign: 'right' }}>Monto</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td style={{ fontWeight: 500 }}>Cuotas proyectadas</td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>{sociosVigentes} socios × {formatMoney(cuotaProy)} × {mesesRestantes} meses</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>+{formatMoney(cuotasProyectadas)}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 500 }}>Rifa ({MESES_ES[mesRifa - 1]})</td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>
+                    {mesActual <= mesRifa ? `${sociosVigentes} × ${participacionRifa}% × ${formatMoney(valorRifa)}` : 'mes ya paso'}
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>+{formatMoney(rifaProyectada)}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 500 }}>Sueldos coaches</td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: 12 }}>{formatMoney(sueldoFavio + sueldoConsuelo)} × {mesesRestantes} meses</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{formatMoney(sueldosProyectados)}</td>
+                </tr>
+                <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
+                  <td colSpan={2}>Saldo proyectado (solo meses restantes)</td>
+                  <td style={{ textAlign: 'right', color: saldoProyectado >= 0 ? '#1d4ed8' : '#dc2626' }}>{formatMoney(saldoProyectado)}</td>
+                </tr>
+                <tr style={{ background: '#eff6ff', fontWeight: 700, fontSize: 14 }}>
+                  <td colSpan={2}>Saldo {new Date().getFullYear()} a la fecha ({formatMoney(saldoAnioActual)}) + proyeccion = estimado a diciembre</td>
+                  <td style={{ textAlign: 'right', color: saldoFinAnio >= 0 ? '#1d4ed8' : '#dc2626' }}>{formatMoney(saldoFinAnio)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {/* VISTA CATEGORIAS */}
