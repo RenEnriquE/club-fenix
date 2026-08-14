@@ -408,6 +408,29 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                           })()}
                           <span>· ID {s.id_caif}</span>
                         </div>
+                        {/* Fechas de vigencia y meses activo */}
+                        {(() => {
+                          const ini = s.f_reingreso || s.f_ini_vig
+                          const fin = s.f_fin_vig
+                          const hoy = new Date()
+                          const fechaIni = ini ? new Date(ini+'T12:00:00-04:00') : null
+                          const fechaFin = fin ? new Date(fin+'T12:00:00-04:00') : null
+                          const fechaRef = fechaFin || hoy
+                          const mesesActivo = fechaIni
+                            ? Math.max(0, (fechaRef.getFullYear()-fechaIni.getFullYear())*12 + (fechaRef.getMonth()-fechaIni.getMonth()))
+                            : null
+                          return (
+                            <div style={{fontSize:10,color:'var(--text-3)',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginTop:1}}>
+                              {fechaIni && <span>Ingreso: {fechaIni.toLocaleDateString('es-CL')}</span>}
+                              {fechaFin && <span>· Salida: {fechaFin.toLocaleDateString('es-CL')}</span>}
+                              {mesesActivo !== null && (
+                                <span style={{color:s.vigente===1?'#1a5e3a':'#94a3b8',fontWeight:600}}>
+                                  · {mesesActivo} {mesesActivo===1?'mes':'meses'} {s.vigente===1?'activo':'activo en el club'}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
                         {/* Celular editable */}
                         {(isAdmin || isCoach) && (
                           editCelular === s.id_caif ? (
