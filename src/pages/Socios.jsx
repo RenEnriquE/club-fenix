@@ -21,7 +21,11 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
   const [editCelular, setEditCelular] = useState(null) // id_caif del socio editando celular
   const [celularTemp, setCelularTemp] = useState('')
   const [savingCelular, setSavingCelular] = useState(false)
-  const [copiadoId, setCopiadoId] = useState(null) // socio a reingresar
+  const [copiadoId, setCopiadoId] = useState(null)
+  const [modalPDF, setModalPDF] = useState(false)
+  const [campoExtra, setCampoExtra] = useState('RIFA')
+  const [filtroTipoPDF, setFiltroTipoPDF] = useState('')
+  const [ordenPDF, setOrdenPDF] = useState('nombre') // socio a reingresar
   const [fechaReingreso, setFechaReingreso] = useState('')
   const [savingReingreso, setSavingReingreso] = useState(false)
   const [modalHistorial, setModalHistorial] = useState(null) // socio a ver historial
@@ -116,6 +120,93 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
           ? deudaB - deudaA  // mayor deuda primero
           : deudaA - deudaB  // menor deuda (mas al dia) primero
       })
+
+  function generarPDF() {
+    const hoy = new Date()
+    const anioActual = hoy.getFullYear()
+
+    // Filtrar y ordenar socios
+    let listaPDF = personas.filter(p => p.vigente === 1 && p.atleta !== 'Apoderado')
+    if (filtroTipoPDF) listaPDF = listaPDF.filter(p => p.atleta === filtroTipoPDF)
+
+    // Calcular meses activo
+    const conMeses = listaPDF.map(p => {
+      const ini = p.f_reingreso || p.f_ini_vig
+      const fechaIni = ini ? new Date(ini+'T12:00:00-04:00') : null
+      const mesesActivo = fechaIni
+        ? Math.max(0, (hoy.getFullYear()-fechaIni.getFullYear())*12 + (hoy.getMonth()-fechaIni.getMonth()))
+        : 0
+      const nombreComp = [p.nombre, p.seg_nombre, p.apellido, p.ap_mat].filter(Boolean).join(' ')
+      return { ...p, mesesActivo, nombreComp }
+    })
+
+    // Ordenar
+    conMeses.sort((a, b) => {
+      if (ordenPDF === 'nombre') return a.nombreComp.localeCompare(b.nombreComp)
+      if (ordenPDF === 'meses_desc') return b.mesesActivo - a.mesesActivo
+      if (ordenPDF === 'meses_asc') return a.mesesActivo - b.mesesActivo
+      return 0
+    })
+
+    // Generar HTML para imprimir
+    const filas = conMeses.map((p, i) => `
+      <tr>
+        <td style="text-align:center;color:#666">${i+1}</td>
+        <td>${p.nombreComp}</td>
+        <td style="text-align:center">${p.atleta==='Atleta Nino'||p.atleta==='Atleta Niño'?'Nino':'Adulto'}</td>
+        <td style="text-align:center">${p.mesesActivo} mes${p.mesesActivo!==1?'es':''}</td>
+        <td style="text-align:center"></td>
+      </tr>
+    `).join('')
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Listado Socios CAIF</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; color: #1e293b; }
+    h2 { text-align: center; font-size: 14px; margin-bottom: 4px; color: #1a5e3a; }
+    .sub { text-align: center; font-size: 10px; color: #666; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th { background: #1a5e3a; color: white; padding: 6px 8px; text-align: left; font-size: 10px; text-transform: uppercase; }
+    th:nth-child(1),th:nth-child(3),th:nth-child(4),th:nth-child(5) { text-align: center; }
+    td { padding: 5px 8px; border-bottom: 0.5px solid #e2e8f0; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    th:nth-child(1) { width: 30px; }
+    th:nth-child(3) { width: 70px; }
+    th:nth-child(4) { width: 90px; }
+    th:nth-child(5) { width: 100px; }
+    .footer { margin-top: 16px; font-size: 9px; color: #94a3b8; text-align: right; }
+    @media print { body { margin: 10px; } }
+  </style>
+</head>
+<body>
+  <h2>Club Atletico Independencia Fenix</h2>
+  <div class="sub">
+    Listado de Socios Activos${filtroTipoPDF?' - '+filtroTipoPDF:''} &nbsp;|&nbsp; ${conMeses.length} socios &nbsp;|&nbsp; Generado: ${hoy.toLocaleDateString('es-CL')}
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nombre completo</th>
+        <th>Tipo</th>
+        <th>Meses activo</th>
+        <th>${campoExtra}</th>
+      </tr>
+    </thead>
+    <tbody>${filas}</tbody>
+  </table>
+  <div class="footer">Club Atletico Independencia Fenix &bull; ${hoy.toLocaleDateString('es-CL')}</div>
+</body>
+</html>`
+
+    const ventana = window.open('', '_blank')
+    ventana.document.write(html)
+    ventana.document.close()
+    setTimeout(() => ventana.print(), 500)
+  }
 
   function copiarDatos(s) {
     const rutNum = s.rut ? String(s.rut).replace(/\./, '').replace(/[^0-9]/g,'') : ''
@@ -333,9 +424,13 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
           )}
         </div>
         {isAdmin && (
-          <div style={{display:'flex',gap:8}}>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             <button className="btn" onClick={detectarDuplicados}>
               <i className="ti ti-copy-off"></i>Ver duplicados
+            </button>
+            <button className="btn" onClick={()=>setModalPDF(true)}
+              style={{color:'#dc2626',borderColor:'#fecaca',background:'#fef2f2'}}>
+              <i className="ti ti-file-type-pdf"></i>Generar listado PDF
             </button>
             <button className="btn primary" onClick={() => abrirModal()}>
               <i className="ti ti-user-plus"></i>Nuevo socio
@@ -801,6 +896,55 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                 </button>
               )}
               <button className="btn" onClick={()=>setModalPerfil(null)} style={{marginLeft:'auto'}}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal configuracion PDF */}
+      {modalPDF && (
+        <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setModalPDF(false)}>
+          <div className="modal" style={{width:'min(480px,95vw)'}}>
+            <div className="modal-header">
+              <h2><i className="ti ti-file-type-pdf" style={{marginRight:8,color:'#dc2626'}}></i>Generar listado PDF</h2>
+              <button className="modal-close" onClick={()=>setModalPDF(false)}>&times;</button>
+            </div>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Filtrar por tipo</label>
+                <select value={filtroTipoPDF} onChange={e=>setFiltroTipoPDF(e.target.value)}>
+                  <option value="">Todos (excl. apoderados)</option>
+                  <option value="Atleta Adulto">Solo adultos</option>
+                  <option value="Atleta Nino">Solo ninos</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Ordenar por</label>
+                <select value={ordenPDF} onChange={e=>setOrdenPDF(e.target.value)}>
+                  <option value="nombre">Nombre (A-Z)</option>
+                  <option value="meses_desc">Mas meses activo primero</option>
+                  <option value="meses_asc">Menos meses activo primero</option>
+                </select>
+              </div>
+              <div className="form-group full">
+                <label>Titulo de la columna extra</label>
+                <input value={campoExtra} onChange={e=>setCampoExtra(e.target.value)}
+                  placeholder="Ej: RIFA, FIRMA, PAGO, N BOLETO..."/>
+                <span style={{fontSize:11,color:'#64748b',marginTop:3,display:'block'}}>
+                  Esta columna aparece en blanco para completar a mano al imprimir
+                </span>
+              </div>
+            </div>
+            <div style={{background:'#f8fafc',border:'0.5px solid #e2e8f0',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:12,color:'#64748b'}}>
+              <i className="ti ti-info-circle" style={{marginRight:6}}></i>
+              Se generara un PDF con {personas.filter(p=>p.vigente===1&&p.atleta!=='Apoderado'&&(!filtroTipoPDF||p.atleta===filtroTipoPDF)).length} socios activos con columnas: N, Nombre completo, Tipo, Meses activo, {campoExtra||'(columna extra)'}
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn" onClick={()=>setModalPDF(false)}>Cancelar</button>
+              <button className="btn primary" onClick={()=>{generarPDF();setModalPDF(false)}}
+                style={{background:'#dc2626',borderColor:'#dc2626'}}>
+                <i className="ti ti-printer"></i>Generar e imprimir
+              </button>
             </div>
           </div>
         </div>
