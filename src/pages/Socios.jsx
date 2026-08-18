@@ -8,6 +8,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
   const [personas, setPersonas] = useState([])
   const [pagos, setPagos] = useState([])
   const [sociosConHistorial, setSociosConHistorial] = useState(new Set())
+  const [pagosHistoricos, setPagosHistoricos] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
@@ -72,13 +73,15 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
       const [resP, resPg] = await Promise.all([
         supabase.from('personas').select('*').order('id_caif', { ascending: false }),
         supabase.from('pagos').select('id_socio,mes,anio,monto,id_actividad').eq('anio', ANIO_ACTUAL),
-        supabase.from('historial_vigencia').select('id_socio')
+        supabase.from('historial_vigencia').select('id_socio'),
+        supabase.from('pagos').select('id_socio,fecha_pago').not('fecha_pago','is',null).order('fecha_pago',{ascending:true})
       ])
       setPersonas(resP.data || [])
       setPagos(resPg.data || [])
       // IDs de socios que tienen al menos un ciclo anterior
       const idsConHistorial = new Set((resH.data || []).map(h => h.id_socio))
       setSociosConHistorial(idsConHistorial)
+      setPagosHistoricos(resPgHist.data || [])
     } finally {
       setLoading(false)
     }
@@ -133,11 +136,28 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
     const conMeses = listaPDF.map(p => {
       const ini = p.f_reingreso || p.f_ini_vig
       const fechaIni = ini ? new Date(ini+'T12:00:00-04:00') : null
-      const mesesActivo = fechaIni
-        ? Math.max(0, (hoy.getFullYear()-fechaIni.getFullYear())*12 + (hoy.getMonth()-fechaIni.getMonth()))
+
+      // Estimar fecha de ingreso desde primer pago si no tiene fecha registrada
+      let fechaIngreso = fechaIni
+      let fechaEstimada = false
+      if (!fechaIngreso) {
+        const pagosP = pagosHistoricos.filter(pg => pg.id_socio === p.id_caif)
+        if (pagosP.length > 0) {
+          // Buscar pago con fecha_pago mas antigua
+          const conFecha = pagosP.filter(pg => pg.fecha_pago).sort((a,b) => new Date(a.fecha_pago)-new Date(b.fecha_pago))
+          if (conFecha.length > 0) {
+            fechaIngreso = new Date(conFecha[0].fecha_pago+'T12:00:00-04:00')
+            fechaEstimada = true
+          }
+        }
+      }
+
+      const mesesActivo = fechaIngreso
+        ? Math.max(0, (hoy.getFullYear()-fechaIngreso.getFullYear())*12 + (hoy.getMonth()-fechaIngreso.getMonth()))
         : 0
       const nombreComp = [p.nombre, p.seg_nombre, p.apellido, p.ap_mat].filter(Boolean).join(' ')
-      return { ...p, mesesActivo, nombreComp }
+      const fechaIngresoStr = fechaIngreso ? fechaIngreso.toLocaleDateString('es-CL') + (fechaEstimada?'*':'') : '-'
+      return { ...p, mesesActivo, nombreComp, fechaIngresoStr, fechaEstimada }
     })
 
     // Ordenar
@@ -155,6 +175,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
         <td>${p.nombreComp}</td>
         <td>${p.apoderado||''}</td>
         <td style="text-align:center">${p.atleta==='Atleta Nino'||p.atleta==='Atleta Niño'?'Nino':'Adulto'}</td>
+        <td style="text-align:center;${p.fechaEstimada?'color:#92400e;':''}">${p.fechaIngresoStr}</td>
         <td style="text-align:center">${p.mesesActivo} mes${p.mesesActivo!==1?'es':''}</td>
         <td style="text-align:center"></td>
       </tr>
@@ -166,7 +187,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
   <meta charset="UTF-8">
   <title>Listado Socios CAIF</title>
   <style>
-    body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; color: #1e293b; }
+    body { font-family: Arial, sans-serif; font-size: 13px; margin: 20px; color: #1e293b; }
     h2 { text-align: center; font-size: 14px; margin-bottom: 4px; color: #1a5e3a; }
     .sub { text-align: center; font-size: 10px; color: #666; margin-bottom: 16px; }
     table { width: 100%; border-collapse: collapse; margin-top: 8px; }
@@ -175,10 +196,11 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
     td { padding: 5px 8px; border-bottom: 0.5px solid #e2e8f0; }
     tr:nth-child(even) td { background: #f8fafc; }
     th:nth-child(1) { width: 30px; }
-    th:nth-child(3) { width: 120px; }
-    th:nth-child(4) { width: 60px; }
-    th:nth-child(5) { width: 80px; }
-    th:nth-child(6) { width: 90px; }
+    th:nth-child(3) { width: 110px; }
+    th:nth-child(4) { width: 55px; }
+    th:nth-child(5) { width: 90px; }
+    th:nth-child(6) { width: 75px; }
+    th:nth-child(7) { width: 85px; }
     .footer { margin-top: 16px; font-size: 9px; color: #94a3b8; text-align: right; }
     @media print { body { margin: 10px; } }
   </style>
@@ -195,13 +217,17 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
         <th>Nombre completo</th>
         <th>Apoderado</th>
         <th>Tipo</th>
+        <th>Fecha ingreso</th>
         <th>Meses activo</th>
         <th>${campoExtra}</th>
       </tr>
     </thead>
     <tbody>${filas}</tbody>
   </table>
-  <div class="footer">Club Atletico Independencia Fenix &bull; ${hoy.toLocaleDateString('es-CL')}</div>
+  <div class="footer">
+    ${conMeses.some(p=>p.fechaEstimada)?'* Fecha estimada en base al primer pago registrado &nbsp;|&nbsp;':''}
+    Club Atletico Independencia Fenix &bull; ${hoy.toLocaleDateString('es-CL')}
+  </div>
 </body>
 </html>`
 
