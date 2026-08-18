@@ -74,7 +74,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
         supabase.from('personas').select('*').order('id_caif', { ascending: false }),
         supabase.from('pagos').select('id_socio,mes,anio,monto,id_actividad').eq('anio', ANIO_ACTUAL),
         supabase.from('historial_vigencia').select('id_socio'),
-        supabase.from('pagos').select('id_socio,fecha_pago').not('fecha_pago','is',null).order('fecha_pago',{ascending:true})
+        supabase.from('pagos').select('id_socio,fecha_pago,anio,mes').order('anio',{ascending:true}).order('mes',{ascending:true})
       ])
       setPersonas(resP.data || [])
       setPagos(resPg.data || [])
@@ -143,11 +143,23 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
       if (!fechaIngreso) {
         const pagosP = pagosHistoricos.filter(pg => pg.id_socio === p.id_caif)
         if (pagosP.length > 0) {
-          // Buscar pago con fecha_pago mas antigua
-          const conFecha = pagosP.filter(pg => pg.fecha_pago).sort((a,b) => new Date(a.fecha_pago)-new Date(b.fecha_pago))
-          if (conFecha.length > 0) {
-            fechaIngreso = new Date(conFecha[0].fecha_pago+'T12:00:00-04:00')
+          // Primero intentar con fecha_pago real
+          const conFechaReal = pagosP.filter(pg => pg.fecha_pago).sort((a,b) => new Date(a.fecha_pago)-new Date(b.fecha_pago))
+          if (conFechaReal.length > 0) {
+            fechaIngreso = new Date(conFechaReal[0].fecha_pago+'T12:00:00-04:00')
             fechaEstimada = true
+          } else {
+            // Fallback: usar anio+mes del pago mas antiguo (dia 1 del mes)
+            const ordenados = [...pagosP].sort((a,b) => {
+              const pa = (a.anio||0)*100+(a.mes||0)
+              const pb = (b.anio||0)*100+(b.mes||0)
+              return pa-pb
+            })
+            const primero = ordenados[0]
+            if (primero && primero.anio && primero.mes) {
+              fechaIngreso = new Date(primero.anio, primero.mes-1, 1)
+              fechaEstimada = true
+            }
           }
         }
       }
