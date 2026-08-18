@@ -26,6 +26,9 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
   const [modalPDF, setModalPDF] = useState(false)
   const [campoExtra, setCampoExtra] = useState('RIFA')
   const [filtroTipoPDF, setFiltroTipoPDF] = useState('')
+  const [filtroGeneroPDF, setFiltroGeneroPDF] = useState('')
+  const [edadMinPDF, setEdadMinPDF] = useState('')
+  const [edadMaxPDF, setEdadMaxPDF] = useState('')
   const [ordenPDF, setOrdenPDF] = useState('nombre') // socio a reingresar
   const [fechaReingreso, setFechaReingreso] = useState('')
   const [savingReingreso, setSavingReingreso] = useState(false)
@@ -149,6 +152,19 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
     // Filtrar y ordenar socios
     let listaPDF = personas.filter(p => p.vigente === 1 && p.atleta !== 'Apoderado')
     if (filtroTipoPDF) listaPDF = listaPDF.filter(p => p.atleta === filtroTipoPDF)
+    if (filtroGeneroPDF) listaPDF = listaPDF.filter(p => (p.genero||'').toLowerCase().includes(filtroGeneroPDF))
+    if (edadMinPDF || edadMaxPDF) {
+      listaPDF = listaPDF.filter(p => {
+        if (!p.fecha_nac) return false
+        const d = new Date(p.fecha_nac+'T12:00:00-04:00')
+        let e = hoy.getFullYear()-d.getFullYear()
+        const m = hoy.getMonth()-d.getMonth()
+        if(m<0||(m===0&&hoy.getDate()<d.getDate())) e--
+        if (edadMinPDF && e < Number(edadMinPDF)) return false
+        if (edadMaxPDF && e > Number(edadMaxPDF)) return false
+        return true
+      })
+    }
 
     // Calcular meses activo
     const conMeses = listaPDF.map(p => {
@@ -967,12 +983,30 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
             </div>
             <div className="form-grid">
               <div className="form-group">
-                <label>Filtrar por tipo</label>
+                <label>Tipo</label>
                 <select value={filtroTipoPDF} onChange={e=>setFiltroTipoPDF(e.target.value)}>
                   <option value="">Todos (excl. apoderados)</option>
                   <option value="Atleta Adulto">Solo adultos</option>
                   <option value="Atleta Nino">Solo ninos</option>
                 </select>
+              </div>
+              <div className="form-group">
+                <label>Genero</label>
+                <select value={filtroGeneroPDF} onChange={e=>setFiltroGeneroPDF(e.target.value)}>
+                  <option value="">Todos</option>
+                  <option value="masc">Masculino</option>
+                  <option value="fem">Femenino</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Edad minima</label>
+                <input type="number" value={edadMinPDF} onChange={e=>setEdadMinPDF(e.target.value)}
+                  placeholder="Ej: 18" min={0} max={99}/>
+              </div>
+              <div className="form-group">
+                <label>Edad maxima</label>
+                <input type="number" value={edadMaxPDF} onChange={e=>setEdadMaxPDF(e.target.value)}
+                  placeholder="Ej: 35" min={0} max={99}/>
               </div>
               <div className="form-group">
                 <label>Ordenar por</label>
@@ -993,7 +1027,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
             </div>
             <div style={{background:'#f8fafc',border:'0.5px solid #e2e8f0',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:12,color:'#64748b'}}>
               <i className="ti ti-info-circle" style={{marginRight:6}}></i>
-              Se generara un PDF con {personas.filter(p=>p.vigente===1&&p.atleta!=='Apoderado'&&(!filtroTipoPDF||p.atleta===filtroTipoPDF)).length} socios activos con columnas: N, Nombre completo, Apoderado, Tipo, Fecha ingreso, Activo por, {campoExtra||'(columna extra)'}
+              Se generara un PDF con los socios que cumplan los filtros seleccionados con columnas: N, Nombre completo, Apoderado, Tipo, Fecha ingreso, Activo por, {campoExtra||'(columna extra)'}
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button className="btn" onClick={()=>setModalPDF(false)}>Cancelar</button>
