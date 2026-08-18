@@ -153,6 +153,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
       <tr>
         <td style="text-align:center;color:#666">${i+1}</td>
         <td>${p.nombreComp}</td>
+        <td>${p.apoderado||''}</td>
         <td style="text-align:center">${p.atleta==='Atleta Nino'||p.atleta==='Atleta Niño'?'Nino':'Adulto'}</td>
         <td style="text-align:center">${p.mesesActivo} mes${p.mesesActivo!==1?'es':''}</td>
         <td style="text-align:center"></td>
@@ -174,9 +175,10 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
     td { padding: 5px 8px; border-bottom: 0.5px solid #e2e8f0; }
     tr:nth-child(even) td { background: #f8fafc; }
     th:nth-child(1) { width: 30px; }
-    th:nth-child(3) { width: 70px; }
-    th:nth-child(4) { width: 90px; }
-    th:nth-child(5) { width: 100px; }
+    th:nth-child(3) { width: 120px; }
+    th:nth-child(4) { width: 60px; }
+    th:nth-child(5) { width: 80px; }
+    th:nth-child(6) { width: 90px; }
     .footer { margin-top: 16px; font-size: 9px; color: #94a3b8; text-align: right; }
     @media print { body { margin: 10px; } }
   </style>
@@ -191,6 +193,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
       <tr>
         <th>#</th>
         <th>Nombre completo</th>
+        <th>Apoderado</th>
         <th>Tipo</th>
         <th>Meses activo</th>
         <th>${campoExtra}</th>
@@ -937,7 +940,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
             </div>
             <div style={{background:'#f8fafc',border:'0.5px solid #e2e8f0',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:12,color:'#64748b'}}>
               <i className="ti ti-info-circle" style={{marginRight:6}}></i>
-              Se generara un PDF con {personas.filter(p=>p.vigente===1&&p.atleta!=='Apoderado'&&(!filtroTipoPDF||p.atleta===filtroTipoPDF)).length} socios activos con columnas: N, Nombre completo, Tipo, Meses activo, {campoExtra||'(columna extra)'}
+              Se generara un PDF con {personas.filter(p=>p.vigente===1&&p.atleta!=='Apoderado'&&(!filtroTipoPDF||p.atleta===filtroTipoPDF)).length} socios activos con columnas: N, Nombre completo, Apoderado, Tipo, Meses activo, {campoExtra||'(columna extra)'}
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button className="btn" onClick={()=>setModalPDF(false)}>Cancelar</button>
