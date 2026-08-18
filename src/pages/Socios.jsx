@@ -74,7 +74,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
         supabase.from('personas').select('*').order('id_caif', { ascending: false }),
         supabase.from('pagos').select('id_socio,mes,anio,monto,id_actividad').eq('anio', ANIO_ACTUAL),
         supabase.from('historial_vigencia').select('id_socio'),
-        supabase.from('pagos').select('id_socio,fecha_pago,anio,mes').order('anio',{ascending:true}).order('mes',{ascending:true})
+        supabase.from('pagos').select('id_socio,fecha_pago,anio,mes').order('anio',{ascending:true}).order('mes',{ascending:true}).limit(10000)
       ])
       setPersonas(resP.data || [])
       setPagos(resPg.data || [])
