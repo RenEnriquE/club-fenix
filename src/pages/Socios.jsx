@@ -74,7 +74,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
         supabase.from('personas').select('*').order('id_caif', { ascending: false }),
         supabase.from('pagos').select('id_socio,mes,anio,monto,id_actividad').eq('anio', ANIO_ACTUAL),
         supabase.from('historial_vigencia').select('id_socio'),
-        supabase.from('pagos').select('id_socio,fecha_pago,anio,mes').order('anio',{ascending:true}).order('mes',{ascending:true}).limit(10000)
+        supabase.from('pagos').select('id_socio,fecha_pago,anio,mes').order('anio',{ascending:true}).order('mes',{ascending:true}).limit(10000) // carga diferida en generarPDF
       ])
       setPersonas(resP.data || [])
       setPagos(resPg.data || [])
@@ -124,9 +124,17 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
           : deudaA - deudaB  // menor deuda (mas al dia) primero
       })
 
-  function generarPDF() {
+  async function generarPDF() {
     const hoy = new Date()
     const anioActual = hoy.getFullYear()
+
+    // Cargar todos los pagos historicos frescos
+    const { data: todosLosPagos } = await supabase.from('pagos')
+      .select('id_socio,fecha_pago,anio,mes')
+      .order('anio', { ascending: true })
+      .order('mes', { ascending: true })
+      .limit(10000)
+    const histPagos = todosLosPagos || []
 
     // Filtrar y ordenar socios
     let listaPDF = personas.filter(p => p.vigente === 1 && p.atleta !== 'Apoderado')
@@ -141,7 +149,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
       let fechaIngreso = fechaIni
       let fechaEstimada = false
       if (!fechaIngreso) {
-        const pagosP = pagosHistoricos.filter(pg => pg.id_socio === p.id_caif)
+        const pagosP = histPagos.filter(pg => pg.id_socio === p.id_caif)
         if (pagosP.length > 0) {
           // Ordenar por periodo (anio*100+mes) para encontrar el mas antiguo
           const ordenadosPeriodo = [...pagosP].sort((a,b) => {
