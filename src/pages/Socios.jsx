@@ -128,6 +128,16 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
     const hoy = new Date()
     const anioActual = hoy.getFullYear()
 
+    function formatearTiempo(meses) {
+      if (meses === 0) return '0 meses'
+      if (meses > 36) return '> 3 años'
+      if (meses < 12) return `${meses} mes${meses!==1?'es':''}`
+      const anios = Math.floor(meses/12)
+      const mesesResto = meses % 12
+      if (mesesResto === 0) return `${anios} año${anios!==1?'s':''}`
+      return `${anios} año${anios!==1?'s':''} ${mesesResto} mes${mesesResto!==1?'es':''}`
+    }
+
     // Cargar todos los pagos historicos frescos
     const { data: todosLosPagos } = await supabase.from('pagos')
       .select('id_socio,fecha_pago,anio,mes')
@@ -193,7 +203,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
         <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">${p.apoderado||''}</td>
         <td style="text-align:center">${p.atleta==='Atleta Nino'||p.atleta==='Atleta Niño'?'Nino':'Adulto'}</td>
         <td style="text-align:center;${p.fechaEstimada?'color:#92400e;':''}">${p.fechaIngresoStr}</td>
-        <td style="text-align:center">${p.mesesActivo} mes${p.mesesActivo!==1?'es':''}</td>
+        <td style="text-align:center">${formatearTiempo(p.mesesActivo)}</td>
         <td style="text-align:center"></td>
       </tr>
     `).join('')
@@ -235,7 +245,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
         <th>Apoderado</th>
         <th>Tipo</th>
         <th>Fecha ingreso</th>
-        <th>Meses activo</th>
+        <th>Activo por</th>
         <th>${campoExtra}</th>
       </tr>
     </thead>
@@ -983,7 +993,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
             </div>
             <div style={{background:'#f8fafc',border:'0.5px solid #e2e8f0',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:12,color:'#64748b'}}>
               <i className="ti ti-info-circle" style={{marginRight:6}}></i>
-              Se generara un PDF con {personas.filter(p=>p.vigente===1&&p.atleta!=='Apoderado'&&(!filtroTipoPDF||p.atleta===filtroTipoPDF)).length} socios activos con columnas: N, Nombre completo, Apoderado, Tipo, Meses activo, {campoExtra||'(columna extra)'}
+              Se generara un PDF con {personas.filter(p=>p.vigente===1&&p.atleta!=='Apoderado'&&(!filtroTipoPDF||p.atleta===filtroTipoPDF)).length} socios activos con columnas: N, Nombre completo, Apoderado, Tipo, Fecha ingreso, Activo por, {campoExtra||'(columna extra)'}
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button className="btn" onClick={()=>setModalPDF(false)}>Cancelar</button>
