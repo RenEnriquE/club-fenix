@@ -131,11 +131,11 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
     function formatearTiempo(meses) {
       if (meses === 0) return '0 meses'
       if (meses > 36) return '> 3 años'
-      if (meses < 12) return `${meses} mes${meses!==1?'es':''}`
+      if (meses < 12) return `${meses} meses`
       const anios = Math.floor(meses/12)
       const mesesResto = meses % 12
       if (mesesResto === 0) return `${anios} año${anios!==1?'s':''}`
-      return `${anios} año${anios!==1?'s':''} ${mesesResto} mes${mesesResto!==1?'es':''}`
+      return `${anios} año${anios!==1?'s':''} ${mesesResto}m`
     }
 
     // Cargar todos los pagos historicos frescos
