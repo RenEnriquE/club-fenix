@@ -143,24 +143,21 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
       if (!fechaIngreso) {
         const pagosP = pagosHistoricos.filter(pg => pg.id_socio === p.id_caif)
         if (pagosP.length > 0) {
-          // Primero intentar con fecha_pago real
-          const conFechaReal = pagosP.filter(pg => pg.fecha_pago).sort((a,b) => new Date(a.fecha_pago)-new Date(b.fecha_pago))
-          if (conFechaReal.length > 0) {
-            fechaIngreso = new Date(conFechaReal[0].fecha_pago+'T12:00:00-04:00')
-            fechaEstimada = true
-          } else {
-            // Fallback: usar anio+mes del pago mas antiguo (dia 1 del mes)
-            const ordenados = [...pagosP].sort((a,b) => {
-              const pa = (a.anio||0)*100+(a.mes||0)
-              const pb = (b.anio||0)*100+(b.mes||0)
-              return pa-pb
-            })
-            const primero = ordenados[0]
-            if (primero && primero.anio && primero.mes) {
-              fechaIngreso = new Date(primero.anio, primero.mes-1, 1)
-              fechaEstimada = true
-            }
+          // Ordenar por periodo (anio*100+mes) para encontrar el mas antiguo
+          const ordenadosPeriodo = [...pagosP].sort((a,b) => {
+            const pa = (a.anio||9999)*100+(a.mes||99)
+            const pb = (b.anio||9999)*100+(b.mes||99)
+            return pa-pb
+          })
+          const primerPago = ordenadosPeriodo[0]
+
+          // Usar fecha_pago real si existe en ese periodo, sino dia 1 del mes
+          if (primerPago.fecha_pago) {
+            fechaIngreso = new Date(primerPago.fecha_pago+'T12:00:00-04:00')
+          } else if (primerPago.anio && primerPago.mes) {
+            fechaIngreso = new Date(primerPago.anio, primerPago.mes-1, 1)
           }
+          if (fechaIngreso) fechaEstimada = true
         }
       }
 
@@ -185,7 +182,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
       <tr>
         <td style="text-align:center;color:#666">${i+1}</td>
         <td>${p.nombreComp}</td>
-        <td>${p.apoderado||''}</td>
+        <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">${p.apoderado||''}</td>
         <td style="text-align:center">${p.atleta==='Atleta Nino'||p.atleta==='Atleta Niño'?'Nino':'Adulto'}</td>
         <td style="text-align:center;${p.fechaEstimada?'color:#92400e;':''}">${p.fechaIngresoStr}</td>
         <td style="text-align:center">${p.mesesActivo} mes${p.mesesActivo!==1?'es':''}</td>
