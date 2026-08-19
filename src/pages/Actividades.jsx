@@ -11,6 +11,7 @@ export default function Actividades() {
   const [activa, setActiva] = useState(true)
   const [tipoCobro, setTipoCobro] = useState('mensual')
   const [montoDefault, setMontoDefault] = useState('')
+  const [mostrarDashboard, setMostrarDashboard] = useState(false)
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState(null)
   const [actividadSel, setActividadSel] = useState(null)
@@ -30,6 +31,7 @@ export default function Actividades() {
     setActiva(true)
     setTipoCobro('mensual')
     setMontoDefault('')
+    setMostrarDashboard(false)
     setModal(true)
   }
 
@@ -39,6 +41,7 @@ export default function Actividades() {
     setActiva(act.activa)
     setTipoCobro(act.tipo_cobro || 'mensual')
     setMontoDefault(act.monto_default || '')
+    setMostrarDashboard(act.mostrar_dashboard || false)
     setModal(true)
   }
 
@@ -49,6 +52,7 @@ export default function Actividades() {
     setActiva(true)
     setTipoCobro('mensual')
     setMontoDefault('')
+    setMostrarDashboard(false)
   }
 
   async function guardar() {
@@ -135,6 +139,7 @@ export default function Actividades() {
                   <th style={{ width: 100 }}>Tipo cobro</th>
                   <th style={{ width: 90 }}>Monto</th>
                   <th style={{ width: 90 }}>Estado</th>
+                  <th style={{ width: 90 }}>Dashboard</th>
                   <th style={{ width: 100 }}></th>
                 </tr>
               </thead>
@@ -177,6 +182,20 @@ export default function Actividades() {
                         }}>
                         {act.activa ? 'Activa' : 'Inactiva'}
                       </button>
+                    </td>
+                    <td>
+                      {act.tipo_cobro === 'unico' ? (
+                        <button onClick={async()=>{await supabase.from('actividades').update({mostrar_dashboard:!act.mostrar_dashboard}).eq('id_actividad',act.id_actividad);cargar()}}
+                          style={{
+                            background:act.mostrar_dashboard?'#eff6ff':'#f8fafc',
+                            border:`0.5px solid ${act.mostrar_dashboard?'#bfdbfe':'#e2e8f0'}`,
+                            borderRadius:6,padding:'3px 10px',fontSize:11,fontWeight:600,
+                            color:act.mostrar_dashboard?'#1d4ed8':'#94a3b8',
+                            cursor:'pointer',fontFamily:'inherit'
+                          }}>
+                          {act.mostrar_dashboard?'Visible':'Oculto'}
+                        </button>
+                      ) : <span style={{fontSize:11,color:'#cbd5e1'}}>-</span>}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
@@ -245,6 +264,18 @@ export default function Actividades() {
                   <option value="false">Inactiva</option>
                 </select>
               </div>
+              {tipoCobro === 'unico' && (
+                <div className="form-group">
+                  <label>Mostrar en Dashboard</label>
+                  <select value={mostrarDashboard} onChange={e => setMostrarDashboard(e.target.value === 'true')}>
+                    <option value="false">No mostrar</option>
+                    <option value="true">Mostrar en dashboard</option>
+                  </select>
+                  <span style={{fontSize:11,color:'#64748b',marginTop:3,display:'block'}}>
+                    Muestra resumen de pagos/pendientes en el dashboard principal
+                  </span>
+                </div>
+              )}
             </div>
 
             {alert && <div className={`alert ${alert.type}`} style={{ marginBottom: 12 }}>{alert.msg}</div>}

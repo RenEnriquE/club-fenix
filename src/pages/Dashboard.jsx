@@ -35,6 +35,10 @@ export default function Dashboard({ isAdmin = true }) {
 
   const [personas, setPersonas] = useState(cached?.personas || [])
   const [pagos, setPagos] = useState(cached?.pagos || [])
+  const [actDashboard, setActDashboard] = useState([])
+  const [inscDashboard, setInscDashboard] = useState([])
+  const [saldoMovimientos, setSaldoMovimientos] = useState(null)
+  const [actSelDash, setActSelDash] = useState(null)
   const [loading, setLoading] = useState(!cached)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
@@ -45,11 +49,22 @@ export default function Dashboard({ isAdmin = true }) {
     else setRefreshing(true)
     Promise.all([
       supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero,f_ini_vig,f_reingreso').eq('vigente', 1),
-      supabase.from('pagos').select('id_socio,mes,monto,anio,id_actividad,fecha_pago').eq('anio', anio)
-    ]).then(([resP, resPg]) => {
+      supabase.from('pagos').select('id_socio,mes,monto,anio,id_actividad,fecha_pago').eq('anio', anio),
+        supabase.from('actividades').select('*').eq('mostrar_dashboard', true).eq('tipo_cobro', 'unico'),
+        supabase.from('actividad_inscripciones').select('*'),
+        supabase.from('movimientos').select('tipo,monto').eq('anio', anio)
+    ]).then(([resP, resPg, resActDash, resInscDash, resMov]) => {
       const p = resP.data || []
       const pg = resPg.data || []
       setPersonas(p); setPagos(pg)
+      setActDashboard(resActDash?.data || [])
+      setInscDashboard(resInscDash?.data || [])
+      // Calcular saldo movimientos
+      const movs = resMov?.data || []
+      const ingMovs = movs.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
+      const egrMovs = movs.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
+      const cuotasPagos = pg.filter(p=>Number(p.id_actividad)===0).reduce((a,p)=>a+p.monto,0)
+      setSaldoMovimientos(ingMovs + cuotasPagos - egrMovs)
       // Solo guardar en cache si hay datos reales
       if (p.length > 0) saveCache({ personas: p, pagos: pg })
       setLoading(false); setRefreshing(false)
@@ -152,6 +167,7 @@ export default function Dashboard({ isAdmin = true }) {
           {label:'Morosos', val:morosos, sub:`sin pago en ${anio}`, icon:'ti-alert-circle', cls:'red'},
           {label:'Pago parcial', val:parcial, sub:'meses pendientes', icon:'ti-clock', cls:'amber'},
           {label:isAdmin?`Ingresos ${anio}`:`Ingresos Cuotas ${anio}`, val:isAdmin?formatMoney(ingTotal):formatMoney(ingCuotas), sub:isAdmin?'total recaudado':'cuotas adultos y ninos', icon:'ti-coin', cls:'', small:true},
+          ...(isAdmin && saldoMovimientos !== null ? [{label:'Saldo en caja', val:formatMoney(saldoMovimientos), sub:'ingresos menos egresos', icon:'ti-wallet', cls: saldoMovimientos >= 0 ? 'green' : 'red', small:true}] : []),
         ].map((k,i) => (
           <div key={i} className={`kpi ${k.cls}`}>
             <div className="kpi-label">{k.label}</div>
@@ -161,6 +177,116 @@ export default function Dashboard({ isAdmin = true }) {
           </div>
         ))}
       </div>
+
+      {/* Actividades en dashboard */}
+      {isAdmin && actDashboard.length > 0 && (
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12,marginBottom:12}}>
+          {actDashboard.map(act => {
+            const insc = inscDashboard.filter(i => i.id_actividad === act.id_actividad)
+            const pagaron = insc.filter(i => i.pagado)
+            const pendientes = insc.filter(i => !i.pagado)
+            const recaudado = pagaron.reduce((a,i) => a+i.monto, 0)
+            const porCobrar = pendientes.reduce((a,i) => a+i.monto, 0)
+            return (
+              <div key={act.id_actividad} className="card"
+                style={{cursor:'pointer',border:'1.5px solid #bfdbfe',background:'#eff6ff'}}
+                onClick={() => setActSelDash(act)}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:14,color:'#1d4ed8'}}><i className="ti ti-ticket" style={{marginRight:6}}></i>{act.nombre}</div>
+                    <div style={{fontSize:11,color:'#64748b',marginTop:2}}>Toca para ver detalle</div>
+                  </div>
+                  <i className="ti ti-chevron-right" style={{color:'#93c5fd',fontSize:16}}></i>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                  {[
+                    {label:'Asignadas',val:insc.length,color:'#1d4ed8'},
+                    {label:'Pagaron',val:pagaron.length,color:'#16a34a'},
+                    {label:'Pendientes',val:pendientes.length,color:'#dc2626'},
+                  ].map((k,i) => (
+                    <div key={i} style={{textAlign:'center'}}>
+                      <div style={{fontSize:20,fontWeight:700,color:k.color}}>{k.val}</div>
+                      <div style={{fontSize:10,color:'#64748b'}}>{k.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between',marginTop:10,paddingTop:8,borderTop:'0.5px solid #bfdbfe',fontSize:12}}>
+                  <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(recaudado)} recaudado</span>
+                  <span style={{color:'#d97706',fontWeight:600}}>{formatMoney(porCobrar)} pendiente</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Modal detalle actividad */}
+      {actSelDash && (() => {
+        const insc = inscDashboard.filter(i => i.id_actividad === actSelDash.id_actividad)
+        const pagaron = insc.filter(i => i.pagado).sort((a,b) => a.num_referencia?.localeCompare(b.num_referencia))
+        const pendientes = insc.filter(i => !i.pagado).sort((a,b) => a.num_referencia?.localeCompare(b.num_referencia))
+        const getNombre = id => { const p = personas.find(p=>p.id_caif===id); return p?p.nombre_comp:`ID ${id}` }
+        return (
+          <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setActSelDash(null)}>
+            <div className="modal" style={{width:'min(600px,95vw)',maxHeight:'85vh',overflowY:'auto'}}>
+              <div className="modal-header">
+                <h2><i className="ti ti-ticket" style={{marginRight:8,color:'#1d4ed8'}}></i>{actSelDash.nombre}</h2>
+                <button className="modal-close" onClick={()=>setActSelDash(null)}>&times;</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
+                {[
+                  {label:'Total',val:insc.length,color:'#1d4ed8',bg:'#eff6ff'},
+                  {label:'Pagaron',val:pagaron.length,color:'#16a34a',bg:'#f0fdf4'},
+                  {label:'Pendientes',val:pendientes.length,color:'#dc2626',bg:'#fef2f2'},
+                ].map((k,i)=>(
+                  <div key={i} style={{background:k.bg,borderRadius:8,padding:'10px',textAlign:'center'}}>
+                    <div style={{fontSize:22,fontWeight:700,color:k.color}}>{k.val}</div>
+                    <div style={{fontSize:11,color:'#64748b'}}>{k.label}</div>
+                  </div>
+                ))}
+              </div>
+              {pendientes.length > 0 && (
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:12,fontWeight:700,color:'#dc2626',textTransform:'uppercase',marginBottom:8}}>Pendientes de pago</div>
+                  <table className="tbl" style={{fontSize:12}}>
+                    <thead><tr><th>Socio</th><th style={{width:100}}>N referencia</th><th style={{width:90,textAlign:'right'}}>Monto</th></tr></thead>
+                    <tbody>
+                      {pendientes.map(i=>(
+                        <tr key={i.id_inscripcion}>
+                          <td>{getNombre(i.id_socio)}</td>
+                          <td style={{fontWeight:700,color:'#dc2626',fontFamily:'monospace'}}>{i.num_referencia}</td>
+                          <td style={{textAlign:'right',color:'#d97706',fontWeight:600}}>{formatMoney(i.monto)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {pagaron.length > 0 && (
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,color:'#16a34a',textTransform:'uppercase',marginBottom:8}}>Ya pagaron</div>
+                  <table className="tbl" style={{fontSize:12}}>
+                    <thead><tr><th>Socio</th><th style={{width:100}}>N referencia</th><th style={{width:90,textAlign:'right'}}>Monto</th><th style={{width:90}}>Fecha</th></tr></thead>
+                    <tbody>
+                      {pagaron.map(i=>(
+                        <tr key={i.id_inscripcion}>
+                          <td>{getNombre(i.id_socio)}</td>
+                          <td style={{fontWeight:700,color:'#16a34a',fontFamily:'monospace'}}>{i.num_referencia}</td>
+                          <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{formatMoney(i.monto)}</td>
+                          <td style={{color:'var(--text-3)',fontSize:11}}>{i.fecha_pago||'-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div style={{display:'flex',justifyContent:'flex-end',marginTop:16}}>
+                <button className="btn" onClick={()=>setActSelDash(null)}>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Graficos */}
       <div className="two-col">
