@@ -450,12 +450,12 @@ export default function Pagos({ isAdmin = true }) {
 
             <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-end',marginTop:12}}>
               <div className="form-group" style={{flex:'1',minWidth:150}}><label>Fecha de pago</label><input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}/></div>
-              <div className="form-group" style={{flex:'1',minWidth:120}}><label>Monto por mes ($)</label><input type="number" value={monto} onChange={e=>setMonto(e.target.value)}/></div>
+              <div className="form-group" style={{flex:'1',minWidth:120}}><label>{esUnicoInd ? 'Monto ($)' : 'Monto por mes ($)'}</label><input type="number" value={monto} onChange={e=>setMonto(e.target.value)}/></div>
               <div className="form-group" style={{flex:'1',minWidth:140}}><label>Metodo</label>
                 <select value={metodo} onChange={e=>setMetodo(e.target.value)}><option>Transferencia</option><option>Efectivo</option><option>Cheque</option></select>
               </div>
               {metodo==='Transferencia'&&<div className="form-group" style={{flex:'1',minWidth:140}}><label>N transaccion</label><input type="text" value={numTrans} onChange={e=>setNumTrans(e.target.value)} placeholder="Opcional"/></div>}
-              {isAdmin && <button className="btn primary" onClick={registrarInd} disabled={loadingPago||mesesSel.length===0} style={{marginBottom:1}}>
+              {isAdmin && <button className="btn primary" onClick={registrarInd} disabled={loadingPago||(esUnicoInd?!numRefInd.trim():mesesSel.length===0)} style={{marginBottom:1}}>
                 {loadingPago?<><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Guardando...</>:<><i className="ti ti-check"></i>Registrar {mesesSel.length>0?`(${mesesSel.length})`:''}</>}
               </button>}
             </div>
