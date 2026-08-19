@@ -62,6 +62,7 @@ export default function Pagos({ isAdmin = true }) {
   const [pagosInd, setPagosInd] = useState([])
   const [anio, setAnio] = useState(new Date().getFullYear())
   const [mesesSel, setMesesSel] = useState([])
+  const [numRefInd, setNumRefInd] = useState('')
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [monto, setMonto] = useState(CUOTA)
   const [metodo, setMetodo] = useState('Transferencia')
@@ -198,11 +199,29 @@ export default function Pagos({ isAdmin = true }) {
   }
 
   async function registrarInd() {
-    if (!socioSel||mesesSel.length===0){setAlertInd({type:'error',msg:'Selecciona al menos un mes.'});return}
+    if (!socioSel){setAlertInd({type:'error',msg:'Selecciona un socio.'});return}
+    if (!esUnicoInd && mesesSel.length===0){setAlertInd({type:'error',msg:'Selecciona al menos un mes.'});return}
+    if (esUnicoInd && !numRefInd.trim()){setAlertInd({type:'error',msg:'Ingresa el numero de referencia.'});return}
     setLoadingPago(true)
     try {
       let nextId = await getNextPagoId()
       const nuevos = []
+      if (esUnicoInd) {
+        // Pago unico
+        const { data: lastP } = await supabase.from('pagos').select('id_pago').order('id_pago',{ascending:false}).limit(1)
+        const nextId = (lastP?.[0]?.id_pago||0)+1
+        const fp = new Date(fechaPago+'T12:00:00-04:00')
+        await supabase.from('pagos').insert([{
+          id_pago: nextId, id_socio: socioSel.id_caif,
+          periodo: fp.getFullYear()*100+(fp.getMonth()+1),
+          fecha_pago: fechaPago, monto: Number(montoInd),
+          tipo_pago: metodoInd, banco: bancoInd||null,
+          num_transacc: numRefInd||null, cuenta:'CAIF',
+          anio: fp.getFullYear(), mes: fp.getMonth()+1,
+          id_actividad: Number(actividadInd)
+        }])
+        setNumRefInd('')
+      } else {
       for (const mes of mesesSel) {
         const res = await insertPago({
           id_pago: nextId++,
@@ -220,10 +239,16 @@ export default function Pagos({ isAdmin = true }) {
         })
         nuevos.push(res)
       }
-      setPagosInd(prev=>[...prev,...nuevos])
-      const nomAct = actividades.find(a=>a.id_actividad===Number(actividadInd))?.nombre || 'Cuotas'
-      setAlertInd({type:'success',msg:`&#10003; ${mesesSel.map(m=>MESES[m-1]).join(', ')} ${anio} [${nomAct}] - ${formatMoney(monto*mesesSel.length)}`})
-      setMesesSel([]); setNumTrans('')
+      if (!esUnicoInd) {
+        setPagosInd(prev=>[...prev,...nuevos])
+        const nomAct = actividades.find(a=>a.id_actividad===Number(actividadInd))?.nombre || 'Cuotas'
+        setAlertInd({type:'success',msg:`Registrado: ${mesesSel.map(m=>MESES[m-1]).join(', ')} ${anio} [${nomAct}] - ${formatMoney(monto*mesesSel.length)}`})
+        setMesesSel([])
+      } else {
+        const nomAct = actividades.find(a=>a.id_actividad===Number(actividadInd))?.nombre || ''
+        setAlertInd({type:'success',msg:`Pago registrado: ${nomAct} N ${numRefInd} - ${formatMoney(Number(montoInd))}`})
+      }
+      setNumTrans('')
     } catch(e){setAlertInd({type:'error',msg:'Error: '+e.message})}
     finally{setLoadingPago(false);setTimeout(()=>setAlertInd(null),4000)}
   }
@@ -322,6 +347,8 @@ export default function Pagos({ isAdmin = true }) {
   const idsEnGrupo = entries.map(e=>e.socio.id_caif)
 
   const esCuotaInd = Number(actividadInd) === 0
+  const actividadIndObj = actividades.find(a => a.id_actividad === Number(actividadInd))
+  const esUnicoInd = actividadIndObj?.tipo_cobro === 'unico'
   const esCuotaG = Number(actividadG) === 0
 
   return (
@@ -381,7 +408,7 @@ export default function Pagos({ isAdmin = true }) {
               )}
             </div>
 
-            {/* Selector de año solo para cuotas */}
+            {/* Selector de año solo para cuotas/mensuales */}
             {esCuotaInd && (
               <>
                 <div className="year-tabs">{AÑOS.map(a=><button key={a} className={`year-tab ${a===anio?'active':''}`} onClick={()=>{setAnio(a);setMesesSel([])}}>{a}</button>)}</div>
@@ -393,8 +420,8 @@ export default function Pagos({ isAdmin = true }) {
               </>
             )}
 
-            {/* Para actividades no-cuota: selector de mes simplificado (solo el periodo) */}
-            {!esCuotaInd && (
+            {/* Para actividades no-cuota mensual: selector de mes */}
+            {!esCuotaInd && !esUnicoInd && (
               <>
                 <p style={{fontSize:12,color:'#92400e',marginBottom:8,background:'#fffbeb',padding:'6px 10px',borderRadius:6,border:'0.5px solid #fde68a'}}>
                   <i className="ti ti-info-circle" style={{marginRight:4}}></i>
@@ -406,6 +433,19 @@ export default function Pagos({ isAdmin = true }) {
                     onClick={()=>setMesesSel(prev=>prev.includes(n)?prev.filter(x=>x!==n):[...prev,n])}>{m.substring(0,3)}</button>
                 )})}</div>
               </>
+            )}
+            {/* Actividad de pago unico: campo de numero de referencia */}
+            {esUnicoInd && (
+              <div style={{background:'#eff6ff',border:'0.5px solid #bfdbfe',borderRadius:8,padding:'12px',marginBottom:12}}>
+                <div style={{fontSize:12,color:'#1d4ed8',fontWeight:600,marginBottom:8}}>
+                  <i className="ti ti-ticket" style={{marginRight:6}}></i>Pago unico - {actividadIndObj?.nombre}
+                </div>
+                <div className="form-group" style={{marginBottom:0}}>
+                  <label style={{fontSize:12}}>N de referencia (N rifa)</label>
+                  <input value={numRefInd} onChange={e=>setNumRefInd(e.target.value)}
+                    placeholder="Ej: 001, 002..." style={{marginTop:4}}/>
+                </div>
+              </div>
             )}
 
             <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-end',marginTop:12}}>
@@ -425,8 +465,8 @@ export default function Pagos({ isAdmin = true }) {
           <div className="card">
             <div className="card-title"><i className="ti ti-history"></i>Historial &mdash; {anio}</div>
             {pagosAnio.length===0?<div className="empty"><i className="ti ti-calendar-x"></i>Sin pagos en {anio}</div>:(
-              <div className="tbl-scroll"><table className="tbl">
-                <thead><tr><th style={{width:90}}>Mes</th><th style={{width:100}}>Fecha</th><th style={{width:90}}>Monto</th><th style={{width:110}}>Metodo</th><th>Actividad</th><th>N Trans.</th><th style={{width:76,minWidth:76}}></th></tr></thead>
+              <div className="tbl-wrap"><table className="tbl">
+                <thead><tr><th style={{width:90}}>Mes</th><th style={{width:100}}>Fecha</th><th style={{width:90}}>Monto</th><th style={{width:110}}>Metodo</th><th>Actividad</th><th>N Trans.</th><th style={{width:60}}></th></tr></thead>
                 <tbody>
                   {pagosAnio.sort((a,b)=>{ const fd=new Date(b.fecha_pago||0)-new Date(a.fecha_pago||0); return fd!==0?fd:b.mes-a.mes }).map(p=>{
                     const nomAct = actividades.find(a=>a.id_actividad===Number(p.id_actividad))?.nombre || 'Cuotas'
@@ -444,7 +484,7 @@ export default function Pagos({ isAdmin = true }) {
                           }
                         </td>
                         <td>{p.num_transacc||'—'}</td>
-                        <td style={{whiteSpace:'nowrap'}}>
+                        <td>
                           <div style={{display:'flex',gap:4}}>
 {isAdmin && <><button className="btn sm" onClick={()=>abrirEdicion(p)} title="Editar"><i className="ti ti-pencil"></i></button>
                             <button className="btn sm danger" onClick={()=>eliminarPagoInd(p.id_pago)} title="Eliminar"><i className="ti ti-trash"></i></button></>}
