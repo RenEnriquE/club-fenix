@@ -262,14 +262,14 @@ export default function Egresos() {
               <div className="card">
                 <div className="card-title"><i className="ti ti-layout-list"></i>Por categoria</div>
                 <div style={{ overflowX: 'auto' }}>
-                  <table className="tbl">
+                  <table className="tbl" style={{minWidth:480}}>
                     <thead>
                       <tr>
-                        <th>Categoria</th>
-                        <th style={{ width: 110, textAlign: 'right' }}>Ingresos</th>
-                        <th style={{ width: 110, textAlign: 'right' }}>Egresos</th>
-                        <th style={{ width: 110, textAlign: 'right' }}>Saldo</th>
-                        <th style={{ width: 60, textAlign: 'center' }}>Movs</th>
+                        <th style={{minWidth:140}}>Categoria</th>
+                        <th style={{ width: 95, textAlign: 'right' }}>Ingresos</th>
+                        <th style={{ width: 95, textAlign: 'right' }}>Egresos</th>
+                        <th style={{ width: 95, textAlign: 'right' }}>Saldo</th>
+                        <th style={{ width: 45, textAlign: 'center' }}>Movs</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -433,10 +433,10 @@ export default function Egresos() {
                 <div className="card">
                   <div className="card-title"><i className="ti ti-calendar-stats"></i>Por mes</div>
                   <div style={{ overflowX: 'auto' }}>
-                    <table className="tbl">
+                    <table className="tbl" style={{minWidth:420}}>e="tbl">
                       <thead>
                         <tr>
-                          <th>Mes</th>
+                          <th style={{minWidth:110}}>Mes</th>
                           <th style={{ width: 110, textAlign: 'right' }}>Ingresos</th>
                           <th style={{ width: 110, textAlign: 'right' }}>Egresos</th>
                           <th style={{ width: 110, textAlign: 'right' }}>Saldo</th>
