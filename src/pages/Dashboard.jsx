@@ -59,11 +59,17 @@ export default function Dashboard({ isAdmin = true }) {
       setPersonas(p); setPagos(pg)
       setActDashboard(resActDash?.data || [])
       setInscDashboard(resInscDash?.data || [])
-      // Calcular saldo movimientos = todos los pagos (cualquier actividad) + ingresos manuales - egresos
+      // Calcular saldo = ingresos manuales + pagos con fecha_pago en el año - egresos
       const movs = resMov?.data || []
       const ingMovs = movs.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
       const egrMovs = movs.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
-      const todosPagos = pg.reduce((a,p)=>a+p.monto,0) // todos los pagos del año
+      // Filtrar pagos por fecha_pago real del año
+      const pagosFiltradosFecha = pg.filter(p => {
+        if (!p.fecha_pago) return p.anio === anio
+        const fp = new Date(p.fecha_pago + 'T12:00:00-04:00')
+        return fp.getFullYear() === anio
+      })
+      const todosPagos = pagosFiltradosFecha.reduce((a,p)=>a+p.monto,0)
       setSaldoMovimientos(ingMovs + todosPagos - egrMovs)
       // Solo guardar en cache si hay datos reales
       if (p.length > 0) saveCache({ personas: p, pagos: pg })
