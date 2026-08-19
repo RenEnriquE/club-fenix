@@ -19,7 +19,7 @@ export default function Actividades() {
 
   async function cargar() {
     setLoading(true)
-    const { data } = await supabase.from('actividades').select('*').order('id_actividad')
+    const { data } = await supabase.from('actividades').select('*').order('id_actividad', { ascending: false })
     setActividades(data || [])
     setLoading(false)
   }
@@ -139,7 +139,10 @@ export default function Actividades() {
                 </tr>
               </thead>
               <tbody>
-                {actividades.map(act => (
+                {[
+                  ...actividades.filter(a => a.id_actividad === 0),
+                  ...actividades.filter(a => a.id_actividad !== 0)
+                ].map(act => (
                   <tr key={act.id_actividad}>
                     <td style={{ color: 'var(--text-3)', fontSize: 12 }}>{act.id_actividad}</td>
                     <td>
