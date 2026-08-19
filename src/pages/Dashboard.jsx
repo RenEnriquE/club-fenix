@@ -52,19 +52,19 @@ export default function Dashboard({ isAdmin = true }) {
       supabase.from('pagos').select('id_socio,mes,monto,anio,id_actividad,fecha_pago').eq('anio', anio),
         supabase.from('actividades').select('*').eq('mostrar_dashboard', true).eq('tipo_cobro', 'unico'),
         supabase.from('actividad_inscripciones').select('*'),
-        supabase.from('movimientos').select('tipo,monto').eq('anio', anio)
+        supabase.from('movimientos').select('tipo,monto,fecha').gte('fecha', `${anio}-01-01`).lte('fecha', `${anio}-12-31`)
     ]).then(([resP, resPg, resActDash, resInscDash, resMov]) => {
       const p = resP.data || []
       const pg = resPg.data || []
       setPersonas(p); setPagos(pg)
       setActDashboard(resActDash?.data || [])
       setInscDashboard(resInscDash?.data || [])
-      // Calcular saldo movimientos
+      // Calcular saldo movimientos = todos los pagos (cualquier actividad) + ingresos manuales - egresos
       const movs = resMov?.data || []
       const ingMovs = movs.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
       const egrMovs = movs.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
-      const cuotasPagos = pg.filter(p=>Number(p.id_actividad)===0).reduce((a,p)=>a+p.monto,0)
-      setSaldoMovimientos(ingMovs + cuotasPagos - egrMovs)
+      const todosPagos = pg.reduce((a,p)=>a+p.monto,0) // todos los pagos del año
+      setSaldoMovimientos(ingMovs + todosPagos - egrMovs)
       // Solo guardar en cache si hay datos reales
       if (p.length > 0) saveCache({ personas: p, pagos: pg })
       setLoading(false); setRefreshing(false)
