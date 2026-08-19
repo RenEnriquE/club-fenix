@@ -222,29 +222,29 @@ export default function Pagos({ isAdmin = true }) {
         }])
         setNumRefInd('')
       } else {
-      for (const mes of mesesSel) {
-        const res = await insertPago({
-          id_pago: nextId++,
-          id_socio: socioSel.id_caif,
-          periodo: anio*100+mes,
-          fecha_pago: fecha,
-          monto: Number(monto),
-          tipo_pago: metodo,
-          banco: null,
-          num_transacc: numTrans||null,
-          cuenta: 'CAIF',
-          anio,
-          mes,
-          id_actividad: Number(actividadInd)
-        })
-        nuevos.push(res)
-      }
-      if (!esUnicoInd) {
+        for (const mes of mesesSel) {
+          const res = await insertPago({
+            id_pago: nextId++,
+            id_socio: socioSel.id_caif,
+            periodo: anio*100+mes,
+            fecha_pago: fecha,
+            monto: Number(monto),
+            tipo_pago: metodo,
+            banco: null,
+            num_transacc: numTrans||null,
+            cuenta: 'CAIF',
+            anio,
+            mes,
+            id_actividad: Number(actividadInd)
+          })
+          nuevos.push(res)
+        }
         setPagosInd(prev=>[...prev,...nuevos])
         const nomAct = actividades.find(a=>a.id_actividad===Number(actividadInd))?.nombre || 'Cuotas'
         setAlertInd({type:'success',msg:`Registrado: ${mesesSel.map(m=>MESES[m-1]).join(', ')} ${anio} [${nomAct}] - ${formatMoney(monto*mesesSel.length)}`})
         setMesesSel([])
-      } else {
+      }
+      if (esUnicoInd) {
         const nomAct = actividades.find(a=>a.id_actividad===Number(actividadInd))?.nombre || ''
         setAlertInd({type:'success',msg:`Pago registrado: ${nomAct} N ${numRefInd} - ${formatMoney(Number(montoInd))}`})
       }
