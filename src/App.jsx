@@ -26,7 +26,7 @@ export default function App() {
     pagos: <Pagos isAdmin={isAdmin} />,
     socios: <Socios isAdmin={isAdmin} isCoach={isCoach} />,
     comite: <Comite isAdmin={isAdmin} />,
-    egresos: isAdmin ? <Egresos /> : (
+    egresos: (isAdmin || isCoach) ? <Egresos isAdmin={isAdmin} /> : (
       <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
     ),
     torneos: isAdmin ? <Torneos /> : (
@@ -62,7 +62,7 @@ export default function App() {
           {key:'socios', icon:'ti-users', label:'Socios'},
           {key:'pagos', icon:'ti-cash', label:'Pagos'},
           {key:'comite', icon:'ti-report', label:'Comite'},
-          ...(isAdmin ? [{key:'egresos', icon:'ti-arrows-exchange', label:'Movimientos'}] : []),
+          ...((isAdmin || isCoach) ? [{key:'egresos', icon:'ti-arrows-exchange', label:'Movimientos'}] : []),
           ...(isAdmin ? [{key:'torneos', icon:'ti-trophy', label:'Torneos'}] : []),
           ...(isAdmin ? [{key:'actividades', icon:'ti-category', label:'Actividades'}] : []),
         ].map(btn => (

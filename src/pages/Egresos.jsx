@@ -12,7 +12,7 @@ function generarAnios() {
   return anios
 }
 
-export default function Egresos() {
+export default function Egresos({ isAdmin = true }) {
   const [vista, setVista] = useState('resumen') // 'resumen' | 'detalle' | 'categorias'
   const [anio, setAnio] = useState(new Date().getFullYear())
   const [mes, setMes] = useState(null) // null = todos
@@ -216,7 +216,7 @@ export default function Egresos() {
             {[
               { key: 'resumen', icon: 'ti-chart-bar', label: 'Resumen' },
               { key: 'detalle', icon: 'ti-list', label: 'Detalle' },
-              { key: 'categorias', icon: 'ti-tag', label: 'Categorias' },
+              ...(isAdmin ? [{ key: 'categorias', icon: 'ti-tag', label: 'Categorias' }] : []),
             ].map(t => (
               <button key={t.key} className={`btn ${vista === t.key ? 'primary' : ''}`}
                 onClick={() => setVista(t.key)} style={{ fontSize: 12, padding: '6px 12px' }}>
@@ -225,9 +225,11 @@ export default function Egresos() {
             ))}
           </div>
         </div>
-        <button className="btn primary" onClick={() => setEditando({})}>
-          <i className="ti ti-plus"></i>Nuevo movimiento
-        </button>
+        {isAdmin && (
+          <button className="btn primary" onClick={() => setEditando({})}>
+            <i className="ti ti-plus"></i>Nuevo movimiento
+          </button>
+        )}
       </div>
 
       {alert && <div className={`alert ${alert.type}`} style={{ marginBottom: 12 }}>{alert.msg}</div>}
@@ -597,7 +599,7 @@ export default function Egresos() {
                         <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-3)' }}
                           title={m.obs}>{m.obs}</td>
                         <td>
-                          {m.editable && (
+                          {m.editable && isAdmin && (
                             <div style={{ display: 'flex', gap: 4 }}>
                               <button className="btn sm" onClick={() => setEditando(m.raw)} title="Editar"><i className="ti ti-pencil"></i></button>
                               <button className="btn sm danger" onClick={() => eliminar(m.id)} title="Eliminar"><i className="ti ti-trash"></i></button>
