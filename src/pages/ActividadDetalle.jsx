@@ -28,9 +28,17 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     setLoading(true)
     const [{ data: insc }, { data: pers }] = await Promise.all([
       supabase.from('actividad_inscripciones').select('*').eq('id_actividad', actividad.id_actividad).order('created_at'),
-      supabase.from('personas').select('id_caif,nombre_comp,nombre,apellido,ap_mat,apodo,atleta,celular').eq('vigente', 1).order('nombre_comp')
+      supabase.from('personas').select('*').order('nombre_comp')
     ])
-    setInscripciones(insc || [])
+    const inscOrdenadas = (insc || []).sort((a,b) => {
+      const na = a.num_referencia || ''
+      const nb = b.num_referencia || ''
+      // Intentar orden numérico, sino alfabético
+      const numA = parseInt(na), numB = parseInt(nb)
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB
+      return na.localeCompare(nb)
+    })
+    setInscripciones(inscOrdenadas)
     setPersonas(pers || [])
     setLoading(false)
   }
@@ -110,7 +118,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
 
   function nombreSocio(idSocio) {
     const p = personas.find(p => p.id_caif === idSocio)
-    return p ? nombreMostrar(p) : `ID ${idSocio}`
+    return p ? (p.nombre_comp || `ID ${idSocio}`) : `ID ${idSocio}`
   }
 
   function mostrarAlert(type, msg) {
