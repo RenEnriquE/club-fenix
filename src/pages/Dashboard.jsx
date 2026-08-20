@@ -50,10 +50,11 @@ export default function Dashboard({ isAdmin = true }) {
     Promise.all([
       supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero,f_ini_vig,f_reingreso').eq('vigente', 1),
       supabase.from('pagos').select('id_socio,mes,monto,anio,id_actividad,fecha_pago').eq('anio', anio),
+        supabase.from('pagos').select('monto').gte('fecha_pago', `${anio}-01-01`).lte('fecha_pago', `${anio}-12-31`),
         supabase.from('actividades').select('*').eq('mostrar_dashboard', true).eq('tipo_cobro', 'unico'),
         supabase.from('actividad_inscripciones').select('*'),
         supabase.from('movimientos').select('tipo,monto,fecha').gte('fecha', `${anio}-01-01`).lte('fecha', `${anio}-12-31`)
-    ]).then(([resP, resPg, resActDash, resInscDash, resMov]) => {
+    ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resMov]) => {
       const p = resP.data || []
       const pg = resPg.data || []
       setPersonas(p); setPagos(pg)
@@ -63,13 +64,8 @@ export default function Dashboard({ isAdmin = true }) {
       const movs = resMov?.data || []
       const ingMovs = movs.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
       const egrMovs = movs.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
-      // Filtrar pagos por fecha_pago real del año
-      const pagosFiltradosFecha = pg.filter(p => {
-        if (!p.fecha_pago) return p.anio === anio
-        const fp = new Date(p.fecha_pago + 'T12:00:00-04:00')
-        return fp.getFullYear() === anio
-      })
-      const todosPagos = pagosFiltradosFecha.reduce((a,p)=>a+p.monto,0)
+      // Pagos filtrados por fecha_pago real del año para el saldo
+      const todosPagos = (resPgSaldo?.data||[]).reduce((a,p)=>a+p.monto,0)
       setSaldoMovimientos(ingMovs + todosPagos - egrMovs)
       // Solo guardar en cache si hay datos reales
       if (p.length > 0) saveCache({ personas: p, pagos: pg })
