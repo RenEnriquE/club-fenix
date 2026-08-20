@@ -296,15 +296,25 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                     <td style={{ color: 'var(--text-3)' }}>{insc.fecha_pago || '-'}</td>
                     <td style={{ color: 'var(--text-3)', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{insc.obs || '-'}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                         {!insc.pagado && (
-                          <button className="btn sm primary" onClick={() => { setModalPago(insc); setFechaPago(new Date().toISOString().split('T')[0]) }}
-                            style={{ fontSize: 11, padding: '3px 8px' }}>
-                            <i className="ti ti-cash"></i>Pago
+                          <button className="btn sm primary"
+                            onClick={() => { setModalPago(insc); setFechaPago(new Date().toISOString().split('T')[0]) }}
+                            title="Registrar pago"
+                            style={{ padding: '5px 10px' }}>
+                            <i className="ti ti-cash"></i>
                           </button>
                         )}
+                        {insc.pagado && (
+                          <span style={{fontSize:11,color:'#16a34a',fontWeight:600,padding:'5px 4px'}}>
+                            <i className="ti ti-check"></i>
+                          </span>
+                        )}
                         {!insc.pagado && (
-                          <button className="btn sm danger" onClick={() => eliminarInscripcion(insc)} style={{ padding: '3px 6px' }}>
+                          <button className="btn sm danger"
+                            onClick={() => eliminarInscripcion(insc)}
+                            title="Eliminar inscripcion"
+                            style={{ padding: '5px 8px' }}>
                             <i className="ti ti-trash"></i>
                           </button>
                         )}
