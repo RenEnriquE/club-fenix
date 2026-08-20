@@ -257,72 +257,47 @@ export default function ActividadDetalle({ actividad, onVolver }) {
             <table className="tbl" style={{ fontSize: 12 }}>
               <thead>
                 <tr>
-                  <th>Socio</th>
-                  <th style={{ width: 90 }}>N referencia</th>
-                  <th style={{ width: 90, textAlign: 'right' }}>Monto</th>
+                  <th style={{minWidth:160}}>Socio</th>
+                  <th style={{ width: 80, textAlign: 'right' }}>Monto</th>
                   <th style={{ width: 80 }}>Estado</th>
-                  <th style={{ width: 95 }}>Fecha pago</th>
-                  <th>Obs</th>
                   <th style={{ width: 80 }}></th>
                 </tr>
               </thead>
               <tbody>
                 {inscripciones.map(insc => (
                   <tr key={insc.id_inscripcion}>
-                    <td style={{ fontWeight: 500 }}>{nombreSocio(insc.id_socio)}</td>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8' }}>
-                      {editandoRef === insc.id_inscripcion ? (
-                        <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                          <input value={refTemp} onChange={e=>setRefTemp(e.target.value)}
-                            onKeyDown={e=>{if(e.key==='Enter')guardarRef(insc.id_inscripcion);if(e.key==='Escape')setEditandoRef(null)}}
-                            autoFocus style={{width:70,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:12,fontFamily:'monospace'}}/>
-                          <button className="btn sm" onClick={()=>guardarRef(insc.id_inscripcion)} disabled={savingRef}
-                            style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
-                            {savingRef?'...': <i className="ti ti-check"></i>}
-                          </button>
-                          <button className="btn sm" onClick={()=>setEditandoRef(null)} style={{padding:'3px 6px'}}>
-                            <i className="ti ti-x"></i>
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{display:'flex',alignItems:'center',gap:6}}>
-                          <span style={{fontFamily:'monospace',fontWeight:700,color:'#1d4ed8'}}>{insc.num_referencia}</span>
-                          <button className="btn sm" onClick={()=>{setEditandoRef(insc.id_inscripcion);setRefTemp(insc.num_referencia)}}
-                            title="Editar numero" style={{padding:'2px 5px',fontSize:10,color:'#64748b',borderColor:'#e2e8f0',background:'#f8fafc'}}>
-                            <i className="ti ti-pencil"></i>
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'right', color: insc.pagado ? '#16a34a' : '#d97706', fontWeight: 600 }}>{formatMoney(insc.monto)}</td>
+                    {/* Celda principal: nombre + numero + fecha + obs */}
                     <td>
-                      <span style={{
-                        fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-                        background: insc.pagado ? '#f0fdf4' : '#fef2f2',
-                        color: insc.pagado ? '#16a34a' : '#dc2626',
-                        border: `0.5px solid ${insc.pagado ? '#a7f3d0' : '#fecaca'}`
-                      }}>
-                        {insc.pagado ? 'Pagado' : 'Pendiente'}
-                      </span>
-                    </td>
-                    <td style={{ color: 'var(--text-3)' }}>{insc.fecha_pago || '-'}</td>
-                    <td style={{ color: 'var(--text-3)', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{insc.obs || '-'}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        {!insc.pagado && (
-                          <button className="btn sm primary"
-                            onClick={() => { setModalPago(insc); setFechaPago(new Date().toISOString().split('T')[0]) }}
-                            title="Registrar pago"
-                            style={{ padding: '5px 10px' }}>
-                            <i className="ti ti-cash"></i>
-                          </button>
+                      <div style={{fontWeight:600,fontSize:13}}>{nombreSocio(insc.id_socio)}</div>
+                      <div style={{display:'flex',gap:6,alignItems:'center',marginTop:3,flexWrap:'wrap'}}>
+                        {editandoRef === insc.id_inscripcion ? (
+                          <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                            <input value={refTemp} onChange={e=>setRefTemp(e.target.value)}
+                              onKeyDown={e=>{if(e.key==='Enter')guardarRef(insc.id_inscripcion);if(e.key==='Escape')setEditandoRef(null)}}
+                              autoFocus style={{width:70,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:12,fontFamily:'monospace'}}/>
+                            <button className="btn sm" onClick={()=>guardarRef(insc.id_inscripcion)} disabled={savingRef}
+                              style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
+                              {savingRef?'...':<i className="ti ti-check"></i>}
+                            </button>
+                            <button className="btn sm" onClick={()=>setEditandoRef(null)} style={{padding:'3px 6px'}}>
+                              <i className="ti ti-x"></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{display:'flex',alignItems:'center',gap:4}}>
+                            <span style={{fontFamily:'monospace',fontWeight:700,color:'#1d4ed8',fontSize:13}}>#{insc.num_referencia}</span>
+                            <button className="btn sm" onClick={()=>{setEditandoRef(insc.id_inscripcion);setRefTemp(insc.num_referencia)}}
+                              title="Editar numero" style={{padding:'1px 4px',fontSize:10,color:'#64748b',borderColor:'#e2e8f0',background:'#f8fafc'}}>
+                              <i className="ti ti-pencil"></i>
+                            </button>
+                          </div>
                         )}
-                        {insc.pagado && (
+                        {insc.fecha_pago && (
                           editandoFecha === insc.id_inscripcion ? (
                             <div style={{display:'flex',gap:4,alignItems:'center'}}>
                               <input type="date" value={fechaTemp} onChange={e=>setFechaTemp(e.target.value)}
                                 onKeyDown={e=>{if(e.key==='Enter')guardarFechaPago(insc.id_inscripcion);if(e.key==='Escape')setEditandoFecha(null)}}
-                                autoFocus style={{width:120,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:11,fontFamily:'inherit'}}/>
+                                autoFocus style={{width:120,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:11}}/>
                               <button className="btn sm" onClick={()=>guardarFechaPago(insc.id_inscripcion)} disabled={savingFecha}
                                 style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
                                 {savingFecha?'...':<i className="ti ti-check"></i>}
@@ -332,18 +307,47 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                               </button>
                             </div>
                           ) : (
-                            <button className="btn sm" onClick={()=>{setEditandoFecha(insc.id_inscripcion);setFechaTemp(insc.fecha_pago||'')}}
-                              title="Editar fecha de pago"
-                              style={{padding:'5px 8px',color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
-                              <i className="ti ti-calendar-edit"></i>
-                            </button>
+                            <span style={{fontSize:11,color:'var(--text-3)',cursor:'pointer'}}
+                              onClick={()=>{setEditandoFecha(insc.id_inscripcion);setFechaTemp(insc.fecha_pago||'')}}
+                              title="Editar fecha">
+                              {insc.fecha_pago} <i className="ti ti-pencil" style={{fontSize:9}}></i>
+                            </span>
                           )
+                        )}
+                        {insc.obs && <span style={{fontSize:11,color:'var(--text-3)',fontStyle:'italic'}}>{insc.obs}</span>}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right', color: insc.pagado ? '#16a34a' : '#d97706', fontWeight: 600, whiteSpace:'nowrap' }}>{formatMoney(insc.monto)}</td>
+                    <td>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, whiteSpace:'nowrap',
+                        background: insc.pagado ? '#f0fdf4' : '#fef2f2',
+                        color: insc.pagado ? '#16a34a' : '#dc2626',
+                        border: `0.5px solid ${insc.pagado ? '#a7f3d0' : '#fecaca'}`
+                      }}>
+                        {insc.pagado ? 'Pagado' : 'Pendiente'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        {!insc.pagado && (
+                          <button className="btn sm primary"
+                            onClick={() => { setModalPago(insc); setFechaPago(new Date().toISOString().split('T')[0]) }}
+                            title="Registrar pago" style={{ padding: '5px 10px' }}>
+                            <i className="ti ti-cash"></i>
+                          </button>
+                        )}
+                        {insc.pagado && !editandoFecha && (
+                          <button className="btn sm" onClick={()=>{setEditandoFecha(insc.id_inscripcion);setFechaTemp(insc.fecha_pago||'')}}
+                            title="Editar fecha de pago"
+                            style={{padding:'5px 8px',color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
+                            <i className="ti ti-calendar-edit"></i>
+                          </button>
                         )}
                         {!insc.pagado && (
                           <button className="btn sm danger"
                             onClick={() => eliminarInscripcion(insc)}
-                            title="Eliminar inscripcion"
-                            style={{ padding: '5px 8px' }}>
+                            title="Eliminar inscripcion" style={{ padding: '5px 8px' }}>
                             <i className="ti ti-trash"></i>
                           </button>
                         )}
