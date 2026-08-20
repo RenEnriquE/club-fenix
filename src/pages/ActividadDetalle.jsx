@@ -60,18 +60,21 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     if (!formInsc.monto || Number(formInsc.monto) <= 0) { mostrarAlert('error', 'El monto debe ser mayor a 0.'); return }
     setSavingInsc(true)
     try {
-      await supabase.from('actividad_inscripciones').insert([{
+      // Separar por coma para manejar múltiples rifas
+      const numeros = formInsc.num_referencia.split(',').map(n => n.trim()).filter(Boolean)
+      const registros = numeros.map(num => ({
         id_actividad: actividad.id_actividad,
         id_socio: socioSel.id_caif,
-        num_referencia: formInsc.num_referencia.trim(),
+        num_referencia: num,
         monto: Number(formInsc.monto),
         pagado: false,
         obs: formInsc.obs || null
-      }])
+      }))
+      await supabase.from('actividad_inscripciones').insert(registros)
       setSocioSel(null)
       setBusqueda('')
       setFormInsc({ num_referencia: '', monto: actividad.monto_default || '', obs: '' })
-      mostrarAlert('success', 'Socio inscrito.')
+      mostrarAlert('success', numeros.length > 1 ? `${numeros.length} rifas asignadas.` : 'Rifa asignada.')
       cargar()
     } catch (e) { mostrarAlert('error', 'Error: ' + e.message) }
     finally { setSavingInsc(false) }
@@ -197,7 +200,10 @@ export default function ActividadDetalle({ actividad, onVolver }) {
           <div className="form-group">
             <label>N referencia (N rifa) *</label>
             <input value={formInsc.num_referencia} onChange={e => setFormInsc(f => ({ ...f, num_referencia: e.target.value }))}
-              placeholder="Ej: 001, 002..." />
+              placeholder="Ej: 001  o  16, 51, 52 para varias" />
+            <span style={{fontSize:11,color:'#64748b',marginTop:3,display:'block'}}>
+              Para varias rifas separa con coma: <strong>16, 51, 52</strong>
+            </span>
           </div>
           <div className="form-group">
             <label>Monto ($) *</label>
