@@ -14,7 +14,8 @@ function generarAnios() {
 
 export default function Egresos({ isAdmin = true }) {
   const [vista, setVista] = useState('resumen') // 'resumen' | 'detalle' | 'categorias'
-  const [anio, setAnio] = useState(new Date().getFullYear())
+  const anioActual = new Date().getFullYear()
+  const [anio, setAnio] = useState(anioActual)
   const [mes, setMes] = useState(null) // null = todos
   const [movimientos, setMovimientos] = useState([])
   const [categorias, setCategorias] = useState([])
@@ -201,10 +202,14 @@ export default function Egresos({ isAdmin = true }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Selector anio */}
-          <select value={anio} onChange={e => setAnio(Number(e.target.value))}
-            style={{ padding: '6px 10px', border: '0.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-            {generarAnios().map(a => <option key={a}>{a}</option>)}
-          </select>
+          {isAdmin ? (
+            <select value={anio} onChange={e => setAnio(Number(e.target.value))}
+              style={{ padding: '6px 10px', border: '0.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+              {generarAnios().map(a => <option key={a}>{a}</option>)}
+            </select>
+          ) : (
+            <span style={{padding:'6px 10px',fontWeight:600,color:'#1a5e3a',fontSize:13}}>{anioActual}</span>
+          )}
           {/* Selector mes */}
           <select value={mes || ''} onChange={e => setMes(e.target.value ? Number(e.target.value) : null)}
             style={{ padding: '6px 10px', border: '0.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
