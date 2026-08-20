@@ -252,7 +252,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   <div style={{fontSize:12,fontWeight:700,color:'#dc2626',textTransform:'uppercase',marginBottom:8}}>Pendientes de pago</div>
                   <div style={{overflowX:'auto'}}>
                   <table className="tbl" style={{fontSize:12,minWidth:340}}>
-                    <thead><tr><th style={{minWidth:200}}>Socio</th><th style={{width:110}}>N referencia</th><th style={{width:90,textAlign:'right'}}>Monto</th></tr></thead>
+                    <thead><tr><th style={{minWidth:200}}>Socio</th><th style={{width:70}}>N ref</th><th style={{width:90,textAlign:'right'}}>Monto</th></tr></thead>
                     <tbody>
                       {pendientes.map(i=>(
                         <tr key={i.id_inscripcion}>
@@ -271,7 +271,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   <div style={{fontSize:12,fontWeight:700,color:'#16a34a',textTransform:'uppercase',marginBottom:8}}>Ya pagaron</div>
                   <div style={{overflowX:'auto'}}>
                   <table className="tbl" style={{fontSize:12,minWidth:380}}>
-                    <thead><tr><th style={{minWidth:200}}>Socio</th><th style={{width:110}}>N referencia</th><th style={{width:90,textAlign:'right'}}>Monto</th><th style={{width:90}}>Fecha</th></tr></thead>
+                    <thead><tr><th style={{minWidth:200}}>Socio</th><th style={{width:70}}>N ref</th><th style={{width:90,textAlign:'right'}}>Monto</th><th style={{width:90}}>Fecha</th></tr></thead>
                     <tbody>
                       {pagaron.map(i=>(
                         <tr key={i.id_inscripcion}>
