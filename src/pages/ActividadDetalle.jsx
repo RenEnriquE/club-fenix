@@ -24,6 +24,9 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const [editandoRef, setEditandoRef] = useState(null) // id_inscripcion
   const [refTemp, setRefTemp] = useState('')
   const [savingRef, setSavingRef] = useState(false)
+  const [editandoFecha, setEditandoFecha] = useState(null)
+  const [fechaTemp, setFechaTemp] = useState('')
+  const [savingFecha, setSavingFecha] = useState(false)
 
   useEffect(() => { cargar() }, [])
 
@@ -89,6 +92,15 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     await supabase.from('actividad_inscripciones').update({ num_referencia: refTemp.trim() }).eq('id_inscripcion', id_inscripcion)
     setEditandoRef(null)
     setSavingRef(false)
+    cargar()
+  }
+
+  async function guardarFechaPago(id_inscripcion) {
+    if (!fechaTemp) return
+    setSavingFecha(true)
+    await supabase.from('actividad_inscripciones').update({ fecha_pago: fechaTemp }).eq('id_inscripcion', id_inscripcion)
+    setEditandoFecha(null)
+    setSavingFecha(false)
     cargar()
   }
 
@@ -306,9 +318,26 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                           </button>
                         )}
                         {insc.pagado && (
-                          <span style={{fontSize:11,color:'#16a34a',fontWeight:600,padding:'5px 4px'}}>
-                            <i className="ti ti-check"></i>
-                          </span>
+                          editandoFecha === insc.id_inscripcion ? (
+                            <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                              <input type="date" value={fechaTemp} onChange={e=>setFechaTemp(e.target.value)}
+                                onKeyDown={e=>{if(e.key==='Enter')guardarFechaPago(insc.id_inscripcion);if(e.key==='Escape')setEditandoFecha(null)}}
+                                autoFocus style={{width:120,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:11,fontFamily:'inherit'}}/>
+                              <button className="btn sm" onClick={()=>guardarFechaPago(insc.id_inscripcion)} disabled={savingFecha}
+                                style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
+                                {savingFecha?'...':<i className="ti ti-check"></i>}
+                              </button>
+                              <button className="btn sm" onClick={()=>setEditandoFecha(null)} style={{padding:'3px 6px'}}>
+                                <i className="ti ti-x"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <button className="btn sm" onClick={()=>{setEditandoFecha(insc.id_inscripcion);setFechaTemp(insc.fecha_pago||'')}}
+                              title="Editar fecha de pago"
+                              style={{padding:'5px 8px',color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
+                              <i className="ti ti-calendar-edit"></i>
+                            </button>
+                          )
                         )}
                         {!insc.pagado && (
                           <button className="btn sm danger"
