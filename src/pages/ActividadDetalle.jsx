@@ -21,6 +21,9 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   // Form pago
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0])
   const [savingPago, setSavingPago] = useState(false)
+  const [editandoRef, setEditandoRef] = useState(null) // id_inscripcion
+  const [refTemp, setRefTemp] = useState('')
+  const [savingRef, setSavingRef] = useState(false)
 
   useEffect(() => { cargar() }, [])
 
@@ -78,6 +81,15 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       cargar()
     } catch (e) { mostrarAlert('error', 'Error: ' + e.message) }
     finally { setSavingInsc(false) }
+  }
+
+  async function guardarRef(id_inscripcion) {
+    if (!refTemp.trim()) return
+    setSavingRef(true)
+    await supabase.from('actividad_inscripciones').update({ num_referencia: refTemp.trim() }).eq('id_inscripcion', id_inscripcion)
+    setEditandoRef(null)
+    setSavingRef(false)
+    cargar()
   }
 
   async function registrarPago(insc) {
@@ -246,7 +258,30 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                 {inscripciones.map(insc => (
                   <tr key={insc.id_inscripcion}>
                     <td style={{ fontWeight: 500 }}>{nombreSocio(insc.id_socio)}</td>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8' }}>{insc.num_referencia}</td>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8' }}>
+                      {editandoRef === insc.id_inscripcion ? (
+                        <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                          <input value={refTemp} onChange={e=>setRefTemp(e.target.value)}
+                            onKeyDown={e=>{if(e.key==='Enter')guardarRef(insc.id_inscripcion);if(e.key==='Escape')setEditandoRef(null)}}
+                            autoFocus style={{width:70,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:12,fontFamily:'monospace'}}/>
+                          <button className="btn sm" onClick={()=>guardarRef(insc.id_inscripcion)} disabled={savingRef}
+                            style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
+                            {savingRef?'...': <i className="ti ti-check"></i>}
+                          </button>
+                          <button className="btn sm" onClick={()=>setEditandoRef(null)} style={{padding:'3px 6px'}}>
+                            <i className="ti ti-x"></i>
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <span style={{fontFamily:'monospace',fontWeight:700,color:'#1d4ed8'}}>{insc.num_referencia}</span>
+                          <button className="btn sm" onClick={()=>{setEditandoRef(insc.id_inscripcion);setRefTemp(insc.num_referencia)}}
+                            title="Editar numero" style={{padding:'2px 5px',fontSize:10,color:'#64748b',borderColor:'#e2e8f0',background:'#f8fafc'}}>
+                            <i className="ti ti-pencil"></i>
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td style={{ textAlign: 'right', color: insc.pagado ? '#16a34a' : '#d97706', fontWeight: 600 }}>{formatMoney(insc.monto)}</td>
                     <td>
                       <span style={{
