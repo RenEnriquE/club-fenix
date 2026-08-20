@@ -230,7 +230,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         const getNombre = id => { const p = personas.find(p=>p.id_caif===id); return p?p.nombre_comp:`ID ${id}` }
         return (
           <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setActSelDash(null)}>
-            <div className="modal" style={{width:'min(600px,95vw)',maxHeight:'85vh',overflowY:'auto'}}>
+            <div className="modal" style={{width:'min(720px,95vw)',maxHeight:'90vh',overflowY:'auto'}}>
               <div className="modal-header">
                 <h2><i className="ti ti-ticket" style={{marginRight:8,color:'#1d4ed8'}}></i>{actSelDash.nombre}</h2>
                 <button className="modal-close" onClick={()=>setActSelDash(null)}>&times;</button>
@@ -250,8 +250,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               {pendientes.length > 0 && (
                 <div style={{marginBottom:16}}>
                   <div style={{fontSize:12,fontWeight:700,color:'#dc2626',textTransform:'uppercase',marginBottom:8}}>Pendientes de pago</div>
-                  <table className="tbl" style={{fontSize:12}}>
-                    <thead><tr><th>Socio</th><th style={{width:100}}>N referencia</th><th style={{width:90,textAlign:'right'}}>Monto</th></tr></thead>
+                  <div style={{overflowX:'auto'}}>
+                  <table className="tbl" style={{fontSize:12,minWidth:340}}>
+                    <thead><tr><th style={{minWidth:200}}>Socio</th><th style={{width:110}}>N referencia</th><th style={{width:90,textAlign:'right'}}>Monto</th></tr></thead>
                     <tbody>
                       {pendientes.map(i=>(
                         <tr key={i.id_inscripcion}>
@@ -262,13 +263,15 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
               {pagaron.length > 0 && (
                 <div>
                   <div style={{fontSize:12,fontWeight:700,color:'#16a34a',textTransform:'uppercase',marginBottom:8}}>Ya pagaron</div>
-                  <table className="tbl" style={{fontSize:12}}>
-                    <thead><tr><th>Socio</th><th style={{width:100}}>N referencia</th><th style={{width:90,textAlign:'right'}}>Monto</th><th style={{width:90}}>Fecha</th></tr></thead>
+                  <div style={{overflowX:'auto'}}>
+                  <table className="tbl" style={{fontSize:12,minWidth:380}}>
+                    <thead><tr><th style={{minWidth:200}}>Socio</th><th style={{width:110}}>N referencia</th><th style={{width:90,textAlign:'right'}}>Monto</th><th style={{width:90}}>Fecha</th></tr></thead>
                     <tbody>
                       {pagaron.map(i=>(
                         <tr key={i.id_inscripcion}>
@@ -280,6 +283,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
               <div style={{display:'flex',justifyContent:'flex-end',marginTop:16}}>
