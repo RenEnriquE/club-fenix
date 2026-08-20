@@ -28,7 +28,7 @@ function saveCache(data) {
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS_SEMANA = ['dom','lun','mar','mie','jue','vie','sab']
 
-export default function Dashboard({ isAdmin = true }) {
+export default function Dashboard({ isAdmin = true, isCoach = false }) {
   const anio = new Date().getFullYear()
   const mesActual = new Date().getMonth() + 1
   const cached = loadCache()
@@ -169,7 +169,7 @@ export default function Dashboard({ isAdmin = true }) {
           {label:'Morosos', val:morosos, sub:`sin pago en ${anio}`, icon:'ti-alert-circle', cls:'red'},
           {label:'Pago parcial', val:parcial, sub:'meses pendientes', icon:'ti-clock', cls:'amber'},
           {label:isAdmin?`Ingresos ${anio}`:`Ingresos Cuotas ${anio}`, val:isAdmin?formatMoney(ingTotal):formatMoney(ingCuotas), sub:isAdmin?'total recaudado':'cuotas adultos y ninos', icon:'ti-coin', cls:'', small:true},
-          ...(isAdmin && saldoMovimientos !== null ? [{label:'Saldo en caja', val:formatMoney(saldoMovimientos), sub:'ingresos menos egresos', icon:'ti-wallet', cls: saldoMovimientos >= 0 ? 'green' : 'red', small:true}] : []),
+          ...((isAdmin || isCoach) && saldoMovimientos !== null ? [{label:'Saldo en caja', val:formatMoney(saldoMovimientos), sub:'ingresos menos egresos', icon:'ti-wallet', cls: saldoMovimientos >= 0 ? 'green' : 'red', small:true}] : []),
         ].map((k,i) => (
           <div key={i} className={`kpi ${k.cls}`}>
             <div className="kpi-label">{k.label}</div>
@@ -181,7 +181,7 @@ export default function Dashboard({ isAdmin = true }) {
       </div>
 
       {/* Actividades en dashboard */}
-      {isAdmin && actDashboard.length > 0 && (
+      {(isAdmin || isCoach) && actDashboard.length > 0 && (
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12,marginBottom:12}}>
           {actDashboard.map(act => {
             const insc = inscDashboard.filter(i => i.id_actividad === act.id_actividad)
