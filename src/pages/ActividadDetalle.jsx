@@ -1,32 +1,39 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { formatMoney, nombreMostrar } from '../lib/helpers'
-
-const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+import { formatMoney } from '../lib/helpers'
 
 export default function ActividadDetalle({ actividad, onVolver }) {
   const [inscripciones, setInscripciones] = useState([])
+  const [asistentes, setAsistentes] = useState([]) // todos los asistentes
   const [personas, setPersonas] = useState([])
   const [loading, setLoading] = useState(true)
-  const [busqueda, setBusqueda] = useState('')
-  const [resultados, setResultados] = useState([])
-  const [modalPago, setModalPago] = useState(null)
   const [alert, setAlert] = useState(null)
 
-  // Form inscripcion
-  const [formInsc, setFormInsc] = useState({ num_referencia: '', monto: actividad.monto_default || '', obs: '' })
-  const [tipoAsistente, setTipoAsistente] = useState('socio') // 'socio' | 'externo'
-  const [nombreExterno, setNombreExterno] = useState('')
+  // Form pagador
   const [busquedaPagador, setBusquedaPagador] = useState('')
   const [resultadosPagador, setResultadosPagador] = useState([])
   const [pagadorSel, setPagadorSel] = useState(null)
-  const [socioSel, setSocioSel] = useState(null)
-  const [savingInsc, setSavingInsc] = useState(false)
+
+  // Lista de asistentes del pagador actual
+  const [listaAsistentes, setListaAsistentes] = useState([]) // [{tipo:'socio'|'externo', socio, nombre, id_temp}]
+  const [busquedaAsistente, setBusquedaAsistente] = useState('')
+  const [resultadosAsistente, setResultadosAsistente] = useState([])
+  const [nombreExterno, setNombreExterno] = useState('')
+  const [tipoAsistente, setTipoAsistente] = useState('socio')
 
   // Form pago
+  const [monto, setMonto] = useState(actividad.monto_default ? String(actividad.monto_default) : '')
+  const [numRef, setNumRef] = useState('')
+  const [obs, setObs] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // Modal pago
+  const [modalPago, setModalPago] = useState(null)
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0])
   const [savingPago, setSavingPago] = useState(false)
-  const [editandoRef, setEditandoRef] = useState(null) // id_inscripcion
+
+  // Edición inline
+  const [editandoRef, setEditandoRef] = useState(null)
   const [refTemp, setRefTemp] = useState('')
   const [savingRef, setSavingRef] = useState(false)
   const [editandoFecha, setEditandoFecha] = useState(null)
@@ -37,148 +44,150 @@ export default function ActividadDetalle({ actividad, onVolver }) {
 
   async function cargar() {
     setLoading(true)
-    const [{ data: insc }, { data: pers }] = await Promise.all([
+    const [{ data: insc }, { data: asis }, { data: pers }] = await Promise.all([
       supabase.from('actividad_inscripciones').select('*').eq('id_actividad', actividad.id_actividad).order('created_at'),
-      supabase.from('personas').select('*').order('nombre_comp')
+      supabase.from('actividad_asistentes').select('*'),
+      supabase.from('personas').select('id_caif,nombre_comp,atleta').order('nombre_comp')
     ])
-    const inscOrdenadas = (insc || []).sort((a,b) => {
-      const na = a.num_referencia || ''
-      const nb = b.num_referencia || ''
-      // Intentar orden numérico, sino alfabético
+    // Ordenar por num_referencia
+    const inscOrdenadas = (insc || []).sort((a, b) => {
+      const na = a.num_referencia || '', nb = b.num_referencia || ''
       const numA = parseInt(na), numB = parseInt(nb)
       if (!isNaN(numA) && !isNaN(numB)) return numA - numB
       return na.localeCompare(nb)
     })
     setInscripciones(inscOrdenadas)
+    setAsistentes(asis || [])
     setPersonas(pers || [])
     setLoading(false)
   }
 
-  // Buscar pagador (separado del asistente)
+  // Buscar pagador
   useEffect(() => {
     if (busquedaPagador.length < 2) { setResultadosPagador([]); return }
     const q = busquedaPagador.toLowerCase()
-    const res = personas.filter(p =>
-      (p.nombre_comp || '').toLowerCase().includes(q) ||
-      String(p.id_caif).includes(q)
-    ).slice(0, 6)
-    setResultadosPagador(res)
+    setResultadosPagador(personas.filter(p => (p.nombre_comp||'').toLowerCase().includes(q) || String(p.id_caif).includes(q)).slice(0, 6))
   }, [busquedaPagador, personas])
 
-  // Buscar socio asistente
+  // Buscar asistente socio
   useEffect(() => {
-    if (busqueda.length < 2) { setResultados([]); return }
-    const q = busqueda.toLowerCase()
-    const res = personas.filter(p =>
-      (p.nombre_comp || '').toLowerCase().includes(q) ||
-      String(p.id_caif).includes(q)
-    ).slice(0, 8)
-    setResultados(res)
-  }, [busqueda, personas])
+    if (busquedaAsistente.length < 2) { setResultadosAsistente([]); return }
+    const q = busquedaAsistente.toLowerCase()
+    setResultadosAsistente(personas.filter(p => (p.nombre_comp||'').toLowerCase().includes(q) || String(p.id_caif).includes(q)).slice(0, 6))
+  }, [busquedaAsistente, personas])
 
-  async function inscribir() {
-    // Validaciones
-    if (tipoAsistente === 'socio' && !socioSel) { mostrarAlert('error', 'Selecciona un socio asistente.'); return }
-    if (tipoAsistente === 'externo' && !nombreExterno.trim()) { mostrarAlert('error', 'Ingresa el nombre del asistente.'); return }
-    if (!formInsc.monto || Number(formInsc.monto) <= 0) { mostrarAlert('error', 'El monto debe ser mayor a 0.'); return }
-    setSavingInsc(true)
+  function agregarAsistente() {
+    if (tipoAsistente === 'socio') {
+      const sel = resultadosAsistente.find(p => busquedaAsistente.toLowerCase() === (p.nombre_comp||'').toLowerCase())
+      return // se maneja por clic en resultados
+    }
+    if (tipoAsistente === 'externo' && nombreExterno.trim()) {
+      const id_temp = Date.now()
+      setListaAsistentes(prev => [...prev, { tipo: 'externo', nombre: nombreExterno.trim(), id_temp }])
+      setNombreExterno('')
+    }
+  }
+
+  function agregarSocioAsistente(p) {
+    setListaAsistentes(prev => [...prev, { tipo: 'socio', socio: p, nombre: p.nombre_comp, id_temp: Date.now() }])
+    setBusquedaAsistente(''); setResultadosAsistente([])
+  }
+
+  function quitarAsistente(id_temp) {
+    setListaAsistentes(prev => prev.filter(a => a.id_temp !== id_temp))
+  }
+
+  // Calcular monto total automático
+  const cantAsistentes = listaAsistentes.length
+  const montoDefault = actividad.monto_default || 0
+  const montoTotal = cantAsistentes > 0 && montoDefault > 0 ? cantAsistentes * montoDefault : Number(monto) || 0
+
+  async function registrar() {
+    if (!pagadorSel) { mostrarAlert('error', 'Selecciona al pagador.'); return }
+    if (listaAsistentes.length === 0) { mostrarAlert('error', 'Agrega al menos un asistente.'); return }
+    if (montoTotal <= 0) { mostrarAlert('error', 'El monto debe ser mayor a 0.'); return }
+    setSaving(true)
     try {
-      // Separar nums de referencia si hay varios (para rifas)
-      const numRefs = formInsc.num_referencia ? formInsc.num_referencia.split(',').map(n => n.trim()).filter(Boolean) : ['']
-      const registros = numRefs.map(num => ({
+      // Crear inscripción para el pagador
+      const { data: inscData } = await supabase.from('actividad_inscripciones').insert([{
         id_actividad: actividad.id_actividad,
-        id_socio: tipoAsistente === 'socio' ? socioSel.id_caif : null,
-        nombre_asistente: tipoAsistente === 'externo' ? nombreExterno.trim() : null,
-        id_socio_pagador: pagadorSel?.id_caif || (tipoAsistente === 'socio' ? socioSel?.id_caif : null),
-        num_referencia: num || null,
-        monto: Number(formInsc.monto),
+        id_socio: pagadorSel.id_caif,
+        id_socio_pagador: pagadorSel.id_caif,
+        num_referencia: numRef || null,
+        monto: montoTotal,
         pagado: false,
-        obs: formInsc.obs || null
+        obs: obs || null
+      }]).select().single()
+
+      // Registrar asistentes
+      const asistentesData = listaAsistentes.map(a => ({
+        id_inscripcion: inscData.id_inscripcion,
+        id_socio: a.tipo === 'socio' ? a.socio.id_caif : null,
+        nombre_asistente: a.tipo === 'externo' ? a.nombre : null
       }))
-      await supabase.from('actividad_inscripciones').insert(registros)
+      await supabase.from('actividad_asistentes').insert(asistentesData)
+
       // Reset
-      setSocioSel(null); setBusqueda(''); setNombreExterno('')
-      setPagadorSel(null); setBusquedaPagador('')
-      setFormInsc({ num_referencia: '', monto: actividad.monto_default || '', obs: '' })
-      const cant = numRefs.length
-      mostrarAlert('success', cant > 1 ? `${cant} entradas registradas.` : 'Entrada registrada.')
+      setPagadorSel(null); setBusquedaPagador(''); setListaAsistentes([])
+      setNumRef(''); setObs(''); setMonto(actividad.monto_default ? String(actividad.monto_default) : '')
+      mostrarAlert('success', `Registrado: ${pagadorSel.nombre_comp} - ${listaAsistentes.length} asistente${listaAsistentes.length!==1?'s':''} - ${formatMoney(montoTotal)}`)
       cargar()
-    } catch (e) { mostrarAlert('error', 'Error: ' + e.message) }
-    finally { setSavingInsc(false) }
+    } catch(e) { mostrarAlert('error', 'Error: ' + e.message) }
+    finally { setSaving(false) }
+  }
+
+  async function registrarPago(insc) {
+    setSavingPago(true)
+    try {
+      const { data: lastP } = await supabase.from('pagos').select('id_pago').order('id_pago', { ascending: false }).limit(1)
+      const nextId = (lastP?.[0]?.id_pago || 0) + 1
+      const fp = new Date(fechaPago + 'T12:00:00-04:00')
+      await supabase.from('pagos').insert([{
+        id_pago: nextId, id_socio: insc.id_socio,
+        periodo: fp.getFullYear() * 100 + (fp.getMonth() + 1),
+        fecha_pago: fechaPago, monto: insc.monto,
+        tipo_pago: 'Transferencia', cuenta: 'CAIF',
+        anio: fp.getFullYear(), mes: fp.getMonth() + 1,
+        id_actividad: actividad.id_actividad,
+        num_transacc: insc.num_referencia
+      }])
+      await supabase.from('actividad_inscripciones').update({ pagado: true, fecha_pago: fechaPago }).eq('id_inscripcion', insc.id_inscripcion)
+      setModalPago(null)
+      mostrarAlert('success', 'Pago registrado.')
+      cargar()
+    } catch(e) { mostrarAlert('error', 'Error: ' + e.message) }
+    finally { setSavingPago(false) }
+  }
+
+  async function eliminarInscripcion(insc) {
+    if (insc.pagado) { mostrarAlert('error', 'No se puede eliminar: ya tiene pago registrado.'); return }
+    if (!confirm('Eliminar este registro?')) return
+    await supabase.from('actividad_asistentes').delete().eq('id_inscripcion', insc.id_inscripcion)
+    await supabase.from('actividad_inscripciones').delete().eq('id_inscripcion', insc.id_inscripcion)
+    cargar()
   }
 
   async function guardarRef(id_inscripcion) {
     if (!refTemp.trim()) return
     setSavingRef(true)
     await supabase.from('actividad_inscripciones').update({ num_referencia: refTemp.trim() }).eq('id_inscripcion', id_inscripcion)
-    setEditandoRef(null)
-    setSavingRef(false)
-    cargar()
+    setEditandoRef(null); setSavingRef(false); cargar()
   }
 
   async function guardarFechaPago(id_inscripcion) {
     if (!fechaTemp) return
     setSavingFecha(true)
     await supabase.from('actividad_inscripciones').update({ fecha_pago: fechaTemp }).eq('id_inscripcion', id_inscripcion)
-    setEditandoFecha(null)
-    setSavingFecha(false)
-    cargar()
+    setEditandoFecha(null); setSavingFecha(false); cargar()
   }
 
-  async function registrarPago(insc) {
-    setSavingPago(true)
-    try {
-      // Registrar en tabla pagos
-      const { data: lastPago } = await supabase.from('pagos').select('id_pago').order('id_pago', { ascending: false }).limit(1)
-      const nextId = (lastPago?.[0]?.id_pago || 0) + 1
-      const hoy = new Date(fechaPago+'T12:00:00-04:00')
-      await supabase.from('pagos').insert([{
-        id_pago: nextId,
-        id_socio: insc.id_socio,
-        periodo: hoy.getFullYear() * 100 + (hoy.getMonth() + 1),
-        fecha_pago: fechaPago,
-        monto: insc.monto,
-        tipo_pago: 'Transferencia',
-        cuenta: 'CAIF',
-        anio: hoy.getFullYear(),
-        mes: hoy.getMonth() + 1,
-        id_actividad: actividad.id_actividad,
-        num_transacc: insc.num_referencia
-      }])
-      // Marcar como pagado en inscripciones
-      await supabase.from('actividad_inscripciones').update({ pagado: true, fecha_pago: fechaPago }).eq('id_inscripcion', insc.id_inscripcion)
-      setModalPago(null)
-      mostrarAlert('success', 'Pago registrado.')
-      cargar()
-    } catch (e) { mostrarAlert('error', 'Error: ' + e.message) }
-    finally { setSavingPago(false) }
-  }
-
-  async function eliminarInscripcion(insc) {
-    if (!confirm(`Eliminar inscripcion de ${nombreAsistente(insc)}
-                          {nombrePagador(insc) && nombrePagador(insc) !== nombreAsistente(insc) && (
-                            <div style={{fontSize:10,color:'#64748b'}}>Pagado por: {nombrePagador(insc)}</div>
-                          )}?`)) return
-    if (insc.pagado) {
-      mostrarAlert('error', 'No se puede eliminar: ya tiene pago registrado.')
-      return
-    }
-    await supabase.from('actividad_inscripciones').delete().eq('id_inscripcion', insc.id_inscripcion)
-    cargar()
-  }
-
-  function nombreAsistente(insc) {
-    if (insc.nombre_asistente) return insc.nombre_asistente + ' (ext.)'
-    if (insc.id_socio) {
-      const p = personas.find(p => p.id_caif === insc.id_socio)
-      return p ? (p.nombre_comp || `ID ${insc.id_socio}`) : `ID ${insc.id_socio}`
-    }
-    return '-'
-  }
   function nombrePagador(insc) {
-    if (!insc.id_socio_pagador) return null
-    const p = personas.find(p => p.id_caif === insc.id_socio_pagador)
-    return p ? p.nombre_comp : null
+    const p = personas.find(p => p.id_caif === insc.id_socio)
+    return p ? p.nombre_comp : `ID ${insc.id_socio}`
+  }
+
+  function asistentesDeInsc(id_inscripcion) {
+    return asistentes.filter(a => a.id_inscripcion === id_inscripcion)
   }
 
   function mostrarAlert(type, msg) {
@@ -190,16 +199,16 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const totalPendientes = inscripciones.filter(i => !i.pagado).length
   const montoPagado = inscripciones.filter(i => i.pagado).reduce((a, i) => a + i.monto, 0)
   const montoPendiente = inscripciones.filter(i => !i.pagado).reduce((a, i) => a + i.monto, 0)
+  const totalAsistentes = inscripciones.reduce((a, i) => a + asistentesDeInsc(i.id_inscripcion).length, 0)
 
   return (
     <div className="content">
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <button className="btn" onClick={onVolver}><i className="ti ti-arrow-left"></i>Volver</button>
         <div>
           <h2 style={{ margin: 0, fontSize: 18, color: '#1a5e3a' }}>{actividad.nombre}</h2>
           <div style={{ fontSize: 12, color: '#64748b' }}>
-            Actividad de pago unico {actividad.monto_default ? `- ${formatMoney(actividad.monto_default)} por unidad` : ''}
+            {actividad.monto_default ? `$${Number(actividad.monto_default).toLocaleString('es-CL')} por persona` : 'Actividad de pago unico'}
           </div>
         </div>
       </div>
@@ -207,9 +216,10 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       {alert && <div className={`alert ${alert.type}`} style={{ marginBottom: 12 }}>{alert.msg}</div>}
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10, marginBottom: 16 }}>
         {[
-          { label: 'Total asignados', val: inscripciones.length, color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+          { label: 'Pagadores', val: inscripciones.length, color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+          { label: 'Asistentes', val: totalAsistentes, color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe' },
           { label: 'Pagaron', val: totalPagados, color: '#16a34a', bg: '#f0fdf4', border: '#a7f3d0' },
           { label: 'Pendientes', val: totalPendientes, color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
           { label: 'Recaudado', val: formatMoney(montoPagado), color: '#16a34a', bg: '#f0fdf4', border: '#a7f3d0' },
@@ -222,228 +232,235 @@ export default function ActividadDetalle({ actividad, onVolver }) {
         ))}
       </div>
 
-      {/* Formulario inscribir */}
+      {/* Formulario registro */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title"><i className="ti ti-user-plus"></i>Asignar a socio</div>
-        <div className="form-grid">
-          {/* Tipo de asistente */}
-          <div className="form-group full">
-            <label>Asistente</label>
-            <div style={{display:'flex',gap:8,marginBottom:8}}>
-              {['socio','externo'].map(t => (
-                <button key={t} type="button" onClick={()=>{setTipoAsistente(t);setSocioSel(null);setBusqueda('');setNombreExterno('')}}
-                  style={{flex:1,padding:'7px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:600,
-                    border:`1.5px solid ${tipoAsistente===t?'#1a5e3a':'#e2e8f0'}`,
-                    background:tipoAsistente===t?'#f0fdf4':'#f8fafc',
-                    color:tipoAsistente===t?'#1a5e3a':'#64748b'}}>
-                  {t==='socio'?'Socio del club':'Persona externa'}
-                </button>
+        <div className="card-title"><i className="ti ti-user-plus"></i>Registrar pago</div>
+
+        {/* 1. Pagador */}
+        <div className="form-group" style={{ position: 'relative', marginBottom: 12 }}>
+          <label style={{ fontWeight: 700 }}>1. Quien paga *</label>
+          {pagadorSel ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#eff6ff', border: '1.5px solid #1a5e3a', borderRadius: 8, padding: '8px 12px' }}>
+              <span style={{ flex: 1, fontWeight: 600 }}>{pagadorSel.nombre_comp}</span>
+              <button onClick={() => { setPagadorSel(null); setBusquedaPagador('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                <i className="ti ti-x"></i>
+              </button>
+            </div>
+          ) : (
+            <>
+              <input value={busquedaPagador} onChange={e => setBusquedaPagador(e.target.value)} placeholder="Buscar socio pagador..." />
+              {resultadosPagador.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,.1)', maxHeight: 200, overflowY: 'auto' }}>
+                  {resultadosPagador.map(p => (
+                    <div key={p.id_caif} onClick={() => { setPagadorSel(p); setBusquedaPagador(''); setResultadosPagador([]) }}
+                      style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid #f1f5f9' }} className="hoverable">
+                      <div style={{ fontWeight: 500 }}>{p.nombre_comp}</div>
+                      <div style={{ fontSize: 11, color: '#64748b' }}>{p.atleta}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* 2. Asistentes */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontWeight: 700, display: 'block', marginBottom: 8 }}>2. Asistentes que cubre *</label>
+
+          {/* Lista de asistentes agregados */}
+          {listaAsistentes.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {listaAsistentes.map(a => (
+                <div key={a.id_temp} style={{ display: 'flex', alignItems: 'center', gap: 6, background: a.tipo === 'socio' ? '#f0fdf4' : '#eff6ff', border: `0.5px solid ${a.tipo === 'socio' ? '#a7f3d0' : '#bfdbfe'}`, borderRadius: 6, padding: '4px 10px', fontSize: 12 }}>
+                  <i className={`ti ${a.tipo === 'socio' ? 'ti-user' : 'ti-user-question'}`} style={{ fontSize: 11, color: a.tipo === 'socio' ? '#16a34a' : '#1d4ed8' }}></i>
+                  <span style={{ fontWeight: 500 }}>{a.nombre}</span>
+                  <button onClick={() => quitarAsistente(a.id_temp)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 0, lineHeight: 1 }}>
+                    <i className="ti ti-x" style={{ fontSize: 11 }}></i>
+                  </button>
+                </div>
               ))}
             </div>
-            {/* Buscar socio */}
-            {tipoAsistente==='socio' && (
-              <div style={{position:'relative'}}>
-                {socioSel ? (
-                  <div style={{display:'flex',alignItems:'center',gap:8,background:'#f0fdf4',border:'1.5px solid #1a5e3a',borderRadius:8,padding:'8px 12px'}}>
-                    <span style={{flex:1,fontWeight:600}}>{socioSel.nombre_comp}</span>
-                    <button onClick={()=>{setSocioSel(null);setBusqueda('')}} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>
-                      <i className="ti ti-x"></i>
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Buscar socio por nombre o ID..."/>
-                    {resultados.length > 0 && (
-                      <div style={{position:'absolute',top:'100%',left:0,right:0,background:'#fff',border:'0.5px solid #e2e8f0',borderRadius:8,zIndex:10,boxShadow:'0 4px 12px rgba(0,0,0,.1)',maxHeight:200,overflowY:'auto'}}>
-                        {resultados.map(p => (
-                          <div key={p.id_caif} onClick={()=>{setSocioSel(p);setBusqueda('');setResultados([])}}
-                            style={{padding:'8px 12px',cursor:'pointer',borderBottom:'0.5px solid #f1f5f9'}} className="hoverable">
-                            <div style={{fontWeight:500}}>{p.nombre_comp}</div>
-                            <div style={{fontSize:11,color:'#64748b'}}>ID {p.id_caif} · {p.atleta}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-            {/* Nombre externo */}
-            {tipoAsistente==='externo' && (
-              <input value={nombreExterno} onChange={e=>setNombreExterno(e.target.value)}
-                placeholder="Nombre completo del asistente..."/>
-            )}
+          )}
+
+          {/* Agregar asistente */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            {['socio', 'externo'].map(t => (
+              <button key={t} type="button" onClick={() => { setTipoAsistente(t); setBusquedaAsistente(''); setNombreExterno('') }}
+                style={{ padding: '5px 12px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, border: `1.5px solid ${tipoAsistente === t ? '#1a5e3a' : '#e2e8f0'}`, background: tipoAsistente === t ? '#f0fdf4' : '#f8fafc', color: tipoAsistente === t ? '#1a5e3a' : '#64748b' }}>
+                {t === 'socio' ? 'Socio' : 'Externo'}
+              </button>
+            ))}
           </div>
 
-          {/* Pagador (opcional si es distinto al asistente) */}
-          <div className="form-group full" style={{position:'relative'}}>
-            <label>Pagador <span style={{fontSize:11,color:'#94a3b8',fontWeight:400}}>(opcional, si es distinto al asistente)</span></label>
-            {pagadorSel ? (
-              <div style={{display:'flex',alignItems:'center',gap:8,background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:8,padding:'8px 12px'}}>
-                <span style={{flex:1,fontWeight:600,color:'#1d4ed8'}}>{pagadorSel.nombre_comp}</span>
-                <button onClick={()=>{setPagadorSel(null);setBusquedaPagador('')}} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>
-                  <i className="ti ti-x"></i>
-                </button>
-              </div>
-            ) : (
-              <>
-                <input value={busquedaPagador} onChange={e=>setBusquedaPagador(e.target.value)}
-                  placeholder="Buscar quien paga (ej: Sandra)..."/>
-                {resultadosPagador.length > 0 && (
-                  <div style={{position:'absolute',top:'100%',left:0,right:0,background:'#fff',border:'0.5px solid #e2e8f0',borderRadius:8,zIndex:10,boxShadow:'0 4px 12px rgba(0,0,0,.1)',maxHeight:180,overflowY:'auto'}}>
-                    {resultadosPagador.map(p => (
-                      <div key={p.id_caif} onClick={()=>{setPagadorSel(p);setBusquedaPagador('');setResultadosPagador([])}}
-                        style={{padding:'8px 12px',cursor:'pointer',borderBottom:'0.5px solid #f1f5f9'}} className="hoverable">
-                        <div style={{fontWeight:500}}>{p.nombre_comp}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
+          {tipoAsistente === 'socio' && (
+            <div style={{ position: 'relative' }}>
+              <input value={busquedaAsistente} onChange={e => setBusquedaAsistente(e.target.value)} placeholder="Buscar socio asistente..." />
+              {resultadosAsistente.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,.1)', maxHeight: 180, overflowY: 'auto' }}>
+                  {resultadosAsistente.map(p => (
+                    <div key={p.id_caif} onClick={() => agregarSocioAsistente(p)}
+                      style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid #f1f5f9' }} className="hoverable">
+                      <div style={{ fontWeight: 500 }}>{p.nombre_comp}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {tipoAsistente === 'externo' && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input value={nombreExterno} onChange={e => setNombreExterno(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && nombreExterno.trim() && (setListaAsistentes(prev => [...prev, { tipo: 'externo', nombre: nombreExterno.trim(), id_temp: Date.now() }]), setNombreExterno(''))}
+                placeholder="Nombre del asistente externo..." style={{ flex: 1 }} />
+              <button className="btn" onClick={() => { if (nombreExterno.trim()) { setListaAsistentes(prev => [...prev, { tipo: 'externo', nombre: nombreExterno.trim(), id_temp: Date.now() }]); setNombreExterno('') } }}
+                disabled={!nombreExterno.trim()}>
+                <i className="ti ti-plus"></i>Agregar
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Monto y referencia */}
+        <div className="form-grid">
+          <div className="form-group">
+            <label style={{ fontWeight: 700 }}>3. Monto total ($) *</label>
+            <input type="number" value={cantAsistentes > 0 && montoDefault > 0 ? montoTotal : monto}
+              onChange={e => setMonto(e.target.value)}
+              readOnly={cantAsistentes > 0 && montoDefault > 0}
+              style={{ background: cantAsistentes > 0 && montoDefault > 0 ? '#f0fdf4' : '#fff' }} />
+            {cantAsistentes > 0 && montoDefault > 0 && (
+              <span style={{ fontSize: 11, color: '#16a34a', marginTop: 3, display: 'block' }}>
+                {cantAsistentes} x {formatMoney(montoDefault)} = {formatMoney(montoTotal)}
+              </span>
             )}
           </div>
-
           <div className="form-group">
-            <label>Monto ($) *</label>
-            <input type="number" value={formInsc.monto} onChange={e=>setFormInsc(f=>({...f,monto:e.target.value}))} placeholder="0"/>
-          </div>
-          <div className="form-group">
-            <label>N referencia <span style={{fontSize:11,color:'#94a3b8'}}>(opcional)</span></label>
-            <input value={formInsc.num_referencia} onChange={e=>setFormInsc(f=>({...f,num_referencia:e.target.value}))}
-              placeholder="Ej: 001 o varios: 16, 51, 52"/>
+            <label>N referencia <span style={{ fontSize: 11, color: '#94a3b8' }}>(opcional)</span></label>
+            <input value={numRef} onChange={e => setNumRef(e.target.value)} placeholder="Ej: 001" />
           </div>
           <div className="form-group full">
             <label>Observaciones</label>
-            <input value={formInsc.obs} onChange={e=>setFormInsc(f=>({...f,obs:e.target.value}))} placeholder="Opcional"/>
+            <input value={obs} onChange={e => setObs(e.target.value)} placeholder="Opcional" />
           </div>
         </div>
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-          <button className="btn primary" onClick={inscribir} disabled={savingInsc || !socioSel}>
-            {savingInsc ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>Guardando...</> : <><i className="ti ti-plus"></i>Asignar</>}
+          <button className="btn primary" onClick={registrar} disabled={saving || !pagadorSel || listaAsistentes.length === 0}>
+            {saving ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>Guardando...</> : <><i className="ti ti-check"></i>Registrar {listaAsistentes.length > 0 ? `(${listaAsistentes.length} asistente${listaAsistentes.length !== 1 ? 's' : ''} - ${formatMoney(montoTotal)})` : ''}</>}
           </button>
         </div>
       </div>
 
-      {/* Lista de inscripciones */}
+      {/* Lista */}
       <div className="card">
-        <div className="card-title"><i className="ti ti-list"></i>Listado de asignados</div>
+        <div className="card-title"><i className="ti ti-list"></i>Listado de registros</div>
         {loading ? (
           <div className="loading-center"><div className="spinner"></div></div>
         ) : inscripciones.length === 0 ? (
-          <div className="empty"><i className="ti ti-ticket-off"></i>Sin asignaciones aun</div>
+          <div className="empty"><i className="ti ti-ticket-off"></i>Sin registros aun</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table className="tbl" style={{ fontSize: 12 }}>
+            <table className="tbl" style={{ fontSize: 12, minWidth: 500 }}>
               <thead>
                 <tr>
-                  <th style={{minWidth:160}}>Socio</th>
-                  <th style={{ width: 80, textAlign: 'right' }}>Monto</th>
+                  <th style={{ minWidth: 160 }}>Pagador / Asistentes</th>
+                  <th style={{ width: 90, textAlign: 'right' }}>Monto</th>
                   <th style={{ width: 80 }}>Estado</th>
-                  <th style={{ width: 80 }}></th>
+                  <th style={{ width: 80 }}>Fecha pago</th>
+                  <th style={{ width: 90 }}></th>
                 </tr>
               </thead>
               <tbody>
-                {inscripciones.map(insc => (
-                  <tr key={insc.id_inscripcion}>
-                    {/* Celda principal: nombre + numero + fecha + obs */}
-                    <td>
-                      <div style={{fontWeight:600,fontSize:13}}>{nombreAsistente(insc)}
-                          {nombrePagador(insc) && nombrePagador(insc) !== nombreAsistente(insc) && (
-                            <div style={{fontSize:10,color:'#64748b'}}>Pagado por: {nombrePagador(insc)}</div>
-                          )}</div>
-                      <div style={{display:'flex',gap:6,alignItems:'center',marginTop:3,flexWrap:'wrap'}}>
-                        {editandoRef === insc.id_inscripcion ? (
-                          <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                            <input value={refTemp} onChange={e=>setRefTemp(e.target.value)}
-                              onKeyDown={e=>{if(e.key==='Enter')guardarRef(insc.id_inscripcion);if(e.key==='Escape')setEditandoRef(null)}}
-                              autoFocus style={{width:70,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:12,fontFamily:'monospace'}}/>
-                            <button className="btn sm" onClick={()=>guardarRef(insc.id_inscripcion)} disabled={savingRef}
-                              style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
-                              {savingRef?'...':<i className="ti ti-check"></i>}
-                            </button>
-                            <button className="btn sm" onClick={()=>setEditandoRef(null)} style={{padding:'3px 6px'}}>
-                              <i className="ti ti-x"></i>
-                            </button>
+                {inscripciones.map(insc => {
+                  const asistInsc = asistentesDeInsc(insc.id_inscripcion)
+                  return (
+                    <tr key={insc.id_inscripcion}>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{nombrePagador(insc)}</div>
+                        {asistInsc.length > 0 && (
+                          <div style={{ marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {asistInsc.map((a, i) => {
+                              const nombre = a.id_socio ? (personas.find(p => p.id_caif === a.id_socio)?.nombre_comp || `ID ${a.id_socio}`) : a.nombre_asistente
+                              return (
+                                <span key={i} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: a.id_socio ? '#f0fdf4' : '#eff6ff', color: a.id_socio ? '#16a34a' : '#1d4ed8', border: `0.5px solid ${a.id_socio ? '#a7f3d0' : '#bfdbfe'}` }}>
+                                  {nombre}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {insc.num_referencia && (
+                          <div style={{ marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {editandoRef === insc.id_inscripcion ? (
+                              <>
+                                <input value={refTemp} onChange={e => setRefTemp(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') guardarRef(insc.id_inscripcion); if (e.key === 'Escape') setEditandoRef(null) }}
+                                  autoFocus style={{ width: 70, padding: '2px 6px', border: '1.5px solid #1a5e3a', borderRadius: 6, fontSize: 11, fontFamily: 'monospace' }} />
+                                <button className="btn sm" onClick={() => guardarRef(insc.id_inscripcion)} style={{ padding: '2px 6px', background: '#1a5e3a', color: '#fff', borderColor: '#1a5e3a' }}><i className="ti ti-check"></i></button>
+                                <button className="btn sm" onClick={() => setEditandoRef(null)} style={{ padding: '2px 6px' }}><i className="ti ti-x"></i></button>
+                              </>
+                            ) : (
+                              <span style={{ fontSize: 10, color: '#64748b', cursor: 'pointer' }} onClick={() => { setEditandoRef(insc.id_inscripcion); setRefTemp(insc.num_referencia) }}>
+                                #{insc.num_referencia} <i className="ti ti-pencil" style={{ fontSize: 9 }}></i>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {insc.obs && <div style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', marginTop: 2 }}>{insc.obs}</div>}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 600, color: insc.pagado ? '#16a34a' : '#d97706' }}>{formatMoney(insc.monto)}</td>
+                      <td>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: insc.pagado ? '#f0fdf4' : '#fef2f2', color: insc.pagado ? '#16a34a' : '#dc2626', border: `0.5px solid ${insc.pagado ? '#a7f3d0' : '#fecaca'}` }}>
+                          {insc.pagado ? 'Pagado' : 'Pendiente'}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 11 }}>
+                        {editandoFecha === insc.id_inscripcion ? (
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <input type="date" value={fechaTemp} onChange={e => setFechaTemp(e.target.value)} autoFocus
+                              style={{ width: 110, padding: '2px 4px', border: '1.5px solid #1a5e3a', borderRadius: 6, fontSize: 10 }} />
+                            <button className="btn sm" onClick={() => guardarFechaPago(insc.id_inscripcion)} style={{ padding: '2px 4px', background: '#1a5e3a', color: '#fff', borderColor: '#1a5e3a' }}><i className="ti ti-check"></i></button>
+                            <button className="btn sm" onClick={() => setEditandoFecha(null)} style={{ padding: '2px 4px' }}><i className="ti ti-x"></i></button>
                           </div>
                         ) : (
-                          <div style={{display:'flex',alignItems:'center',gap:4}}>
-                            <span style={{fontFamily:'monospace',fontWeight:700,color:'#1d4ed8',fontSize:13}}>#{insc.num_referencia}</span>
-                            <button className="btn sm" onClick={()=>{setEditandoRef(insc.id_inscripcion);setRefTemp(insc.num_referencia)}}
-                              title="Editar numero" style={{padding:'1px 4px',fontSize:10,color:'#64748b',borderColor:'#e2e8f0',background:'#f8fafc'}}>
-                              <i className="ti ti-pencil"></i>
+                          <span style={{ cursor: 'pointer', color: 'var(--text-3)' }} onClick={() => { setEditandoFecha(insc.id_inscripcion); setFechaTemp(insc.fecha_pago || '') }}>
+                            {insc.fecha_pago || '-'} <i className="ti ti-pencil" style={{ fontSize: 9 }}></i>
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                          {!insc.pagado && (
+                            <button className="btn sm primary" onClick={() => { setModalPago(insc); setFechaPago(new Date().toISOString().split('T')[0]) }}
+                              title="Registrar pago" style={{ padding: '5px 8px' }}>
+                              <i className="ti ti-cash"></i>
                             </button>
-                          </div>
-                        )}
-                        {insc.fecha_pago && (
-                          editandoFecha === insc.id_inscripcion ? (
-                            <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                              <input type="date" value={fechaTemp} onChange={e=>setFechaTemp(e.target.value)}
-                                onKeyDown={e=>{if(e.key==='Enter')guardarFechaPago(insc.id_inscripcion);if(e.key==='Escape')setEditandoFecha(null)}}
-                                autoFocus style={{width:120,padding:'3px 6px',border:'1.5px solid #1a5e3a',borderRadius:6,fontSize:11}}/>
-                              <button className="btn sm" onClick={()=>guardarFechaPago(insc.id_inscripcion)} disabled={savingFecha}
-                                style={{padding:'3px 6px',background:'#1a5e3a',color:'#fff',borderColor:'#1a5e3a'}}>
-                                {savingFecha?'...':<i className="ti ti-check"></i>}
-                              </button>
-                              <button className="btn sm" onClick={()=>setEditandoFecha(null)} style={{padding:'3px 6px'}}>
-                                <i className="ti ti-x"></i>
-                              </button>
-                            </div>
-                          ) : (
-                            <span style={{fontSize:11,color:'var(--text-3)',cursor:'pointer'}}
-                              onClick={()=>{setEditandoFecha(insc.id_inscripcion);setFechaTemp(insc.fecha_pago||'')}}
-                              title="Editar fecha">
-                              {insc.fecha_pago} <i className="ti ti-pencil" style={{fontSize:9}}></i>
-                            </span>
-                          )
-                        )}
-                        {insc.obs && <span style={{fontSize:11,color:'var(--text-3)',fontStyle:'italic'}}>{insc.obs}</span>}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'right', color: insc.pagado ? '#16a34a' : '#d97706', fontWeight: 600, whiteSpace:'nowrap' }}>{formatMoney(insc.monto)}</td>
-                    <td>
-                      <span style={{
-                        fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, whiteSpace:'nowrap',
-                        background: insc.pagado ? '#f0fdf4' : '#fef2f2',
-                        color: insc.pagado ? '#16a34a' : '#dc2626',
-                        border: `0.5px solid ${insc.pagado ? '#a7f3d0' : '#fecaca'}`
-                      }}>
-                        {insc.pagado ? 'Pagado' : 'Pendiente'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        {!insc.pagado && (
-                          <button className="btn sm primary"
-                            onClick={() => { setModalPago(insc); setFechaPago(new Date().toISOString().split('T')[0]) }}
-                            title="Registrar pago" style={{ padding: '5px 10px' }}>
-                            <i className="ti ti-cash"></i>
-                          </button>
-                        )}
-                        {insc.pagado && !editandoFecha && (
-                          <button className="btn sm" onClick={()=>{setEditandoFecha(insc.id_inscripcion);setFechaTemp(insc.fecha_pago||'')}}
-                            title="Editar fecha de pago"
-                            style={{padding:'5px 8px',color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
-                            <i className="ti ti-calendar-edit"></i>
-                          </button>
-                        )}
-                        {!insc.pagado && (
-                          <button className="btn sm danger"
-                            onClick={() => eliminarInscripcion(insc)}
-                            title="Eliminar inscripcion" style={{ padding: '5px 8px' }}>
-                            <i className="ti ti-trash"></i>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          )}
+                          {insc.pagado && (
+                            <button className="btn sm" onClick={() => { setEditandoFecha(insc.id_inscripcion); setFechaTemp(insc.fecha_pago || '') }}
+                              title="Editar fecha" style={{ padding: '5px 8px', color: '#16a34a', borderColor: '#a7f3d0', background: '#f0fdf4' }}>
+                              <i className="ti ti-calendar-edit"></i>
+                            </button>
+                          )}
+                          {!insc.pagado && (
+                            <button className="btn sm danger" onClick={() => eliminarInscripcion(insc)} title="Eliminar" style={{ padding: '5px 8px' }}>
+                              <i className="ti ti-trash"></i>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Modal registrar pago */}
+      {/* Modal pago */}
       {modalPago && (
         <div className="modal-bg open" onClick={e => e.target === e.currentTarget && setModalPago(null)}>
           <div className="modal">
@@ -452,10 +469,8 @@ export default function ActividadDetalle({ actividad, onVolver }) {
               <button className="modal-close" onClick={() => setModalPago(null)}>&times;</button>
             </div>
             <div style={{ background: '#f0fdf4', border: '0.5px solid #a7f3d0', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-              <div style={{ fontWeight: 600 }}>{nombreSocio(modalPago.id_socio)}</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                {actividad.nombre} · N {modalPago.num_referencia} · {formatMoney(modalPago.monto)}
-              </div>
+              <div style={{ fontWeight: 600 }}>{nombrePagador(modalPago)}</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{actividad.nombre} · {formatMoney(modalPago.monto)}</div>
             </div>
             <div className="form-group" style={{ marginBottom: 16 }}>
               <label>Fecha de pago</label>
