@@ -15,6 +15,11 @@ export default function ActividadDetalle({ actividad, onVolver }) {
 
   // Form inscripcion
   const [formInsc, setFormInsc] = useState({ num_referencia: '', monto: actividad.monto_default || '', obs: '' })
+  const [tipoAsistente, setTipoAsistente] = useState('socio') // 'socio' | 'externo'
+  const [nombreExterno, setNombreExterno] = useState('')
+  const [busquedaPagador, setBusquedaPagador] = useState('')
+  const [resultadosPagador, setResultadosPagador] = useState([])
+  const [pagadorSel, setPagadorSel] = useState(null)
   const [socioSel, setSocioSel] = useState(null)
   const [savingInsc, setSavingInsc] = useState(false)
 
@@ -49,7 +54,18 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     setLoading(false)
   }
 
-  // Buscar socio
+  // Buscar pagador (separado del asistente)
+  useEffect(() => {
+    if (busquedaPagador.length < 2) { setResultadosPagador([]); return }
+    const q = busquedaPagador.toLowerCase()
+    const res = personas.filter(p =>
+      (p.nombre_comp || '').toLowerCase().includes(q) ||
+      String(p.id_caif).includes(q)
+    ).slice(0, 6)
+    setResultadosPagador(res)
+  }, [busquedaPagador, personas])
+
+  // Buscar socio asistente
   useEffect(() => {
     if (busqueda.length < 2) { setResultados([]); return }
     const q = busqueda.toLowerCase()
@@ -61,26 +77,31 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   }, [busqueda, personas])
 
   async function inscribir() {
-    if (!socioSel) { mostrarAlert('error', 'Selecciona un socio.'); return }
-    if (!formInsc.num_referencia.trim()) { mostrarAlert('error', 'El numero de referencia es obligatorio.'); return }
+    // Validaciones
+    if (tipoAsistente === 'socio' && !socioSel) { mostrarAlert('error', 'Selecciona un socio asistente.'); return }
+    if (tipoAsistente === 'externo' && !nombreExterno.trim()) { mostrarAlert('error', 'Ingresa el nombre del asistente.'); return }
     if (!formInsc.monto || Number(formInsc.monto) <= 0) { mostrarAlert('error', 'El monto debe ser mayor a 0.'); return }
     setSavingInsc(true)
     try {
-      // Separar por coma para manejar múltiples rifas
-      const numeros = formInsc.num_referencia.split(',').map(n => n.trim()).filter(Boolean)
-      const registros = numeros.map(num => ({
+      // Separar nums de referencia si hay varios (para rifas)
+      const numRefs = formInsc.num_referencia ? formInsc.num_referencia.split(',').map(n => n.trim()).filter(Boolean) : ['']
+      const registros = numRefs.map(num => ({
         id_actividad: actividad.id_actividad,
-        id_socio: socioSel.id_caif,
-        num_referencia: num,
+        id_socio: tipoAsistente === 'socio' ? socioSel.id_caif : null,
+        nombre_asistente: tipoAsistente === 'externo' ? nombreExterno.trim() : null,
+        id_socio_pagador: pagadorSel?.id_caif || (tipoAsistente === 'socio' ? socioSel?.id_caif : null),
+        num_referencia: num || null,
         monto: Number(formInsc.monto),
         pagado: false,
         obs: formInsc.obs || null
       }))
       await supabase.from('actividad_inscripciones').insert(registros)
-      setSocioSel(null)
-      setBusqueda('')
+      // Reset
+      setSocioSel(null); setBusqueda(''); setNombreExterno('')
+      setPagadorSel(null); setBusquedaPagador('')
       setFormInsc({ num_referencia: '', monto: actividad.monto_default || '', obs: '' })
-      mostrarAlert('success', numeros.length > 1 ? `${numeros.length} rifas asignadas.` : 'Rifa asignada.')
+      const cant = numRefs.length
+      mostrarAlert('success', cant > 1 ? `${cant} entradas registradas.` : 'Entrada registrada.')
       cargar()
     } catch (e) { mostrarAlert('error', 'Error: ' + e.message) }
     finally { setSavingInsc(false) }
@@ -134,7 +155,10 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   }
 
   async function eliminarInscripcion(insc) {
-    if (!confirm(`Eliminar inscripcion de ${nombreSocio(insc.id_socio)}?`)) return
+    if (!confirm(`Eliminar inscripcion de ${nombreAsistente(insc)}
+                          {nombrePagador(insc) && nombrePagador(insc) !== nombreAsistente(insc) && (
+                            <div style={{fontSize:10,color:'#64748b'}}>Pagado por: {nombrePagador(insc)}</div>
+                          )}?`)) return
     if (insc.pagado) {
       mostrarAlert('error', 'No se puede eliminar: ya tiene pago registrado.')
       return
@@ -143,9 +167,18 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     cargar()
   }
 
-  function nombreSocio(idSocio) {
-    const p = personas.find(p => p.id_caif === idSocio)
-    return p ? (p.nombre_comp || `ID ${idSocio}`) : `ID ${idSocio}`
+  function nombreAsistente(insc) {
+    if (insc.nombre_asistente) return insc.nombre_asistente + ' (ext.)'
+    if (insc.id_socio) {
+      const p = personas.find(p => p.id_caif === insc.id_socio)
+      return p ? (p.nombre_comp || `ID ${insc.id_socio}`) : `ID ${insc.id_socio}`
+    }
+    return '-'
+  }
+  function nombrePagador(insc) {
+    if (!insc.id_socio_pagador) return null
+    const p = personas.find(p => p.id_caif === insc.id_socio_pagador)
+    return p ? p.nombre_comp : null
   }
 
   function mostrarAlert(type, msg) {
@@ -193,27 +226,75 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title"><i className="ti ti-user-plus"></i>Asignar a socio</div>
         <div className="form-grid">
-          {/* Buscar socio */}
-          <div className="form-group full" style={{ position: 'relative' }}>
-            <label>Buscar socio *</label>
-            {socioSel ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f0fdf4', border: '1.5px solid #1a5e3a', borderRadius: 8, padding: '8px 12px' }}>
-                <span style={{ flex: 1, fontWeight: 600 }}>{nombreMostrar(socioSel)}</span>
-                <button onClick={() => { setSocioSel(null); setBusqueda('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+          {/* Tipo de asistente */}
+          <div className="form-group full">
+            <label>Asistente</label>
+            <div style={{display:'flex',gap:8,marginBottom:8}}>
+              {['socio','externo'].map(t => (
+                <button key={t} type="button" onClick={()=>{setTipoAsistente(t);setSocioSel(null);setBusqueda('');setNombreExterno('')}}
+                  style={{flex:1,padding:'7px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:600,
+                    border:`1.5px solid ${tipoAsistente===t?'#1a5e3a':'#e2e8f0'}`,
+                    background:tipoAsistente===t?'#f0fdf4':'#f8fafc',
+                    color:tipoAsistente===t?'#1a5e3a':'#64748b'}}>
+                  {t==='socio'?'Socio del club':'Persona externa'}
+                </button>
+              ))}
+            </div>
+            {/* Buscar socio */}
+            {tipoAsistente==='socio' && (
+              <div style={{position:'relative'}}>
+                {socioSel ? (
+                  <div style={{display:'flex',alignItems:'center',gap:8,background:'#f0fdf4',border:'1.5px solid #1a5e3a',borderRadius:8,padding:'8px 12px'}}>
+                    <span style={{flex:1,fontWeight:600}}>{socioSel.nombre_comp}</span>
+                    <button onClick={()=>{setSocioSel(null);setBusqueda('')}} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>
+                      <i className="ti ti-x"></i>
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Buscar socio por nombre o ID..."/>
+                    {resultados.length > 0 && (
+                      <div style={{position:'absolute',top:'100%',left:0,right:0,background:'#fff',border:'0.5px solid #e2e8f0',borderRadius:8,zIndex:10,boxShadow:'0 4px 12px rgba(0,0,0,.1)',maxHeight:200,overflowY:'auto'}}>
+                        {resultados.map(p => (
+                          <div key={p.id_caif} onClick={()=>{setSocioSel(p);setBusqueda('');setResultados([])}}
+                            style={{padding:'8px 12px',cursor:'pointer',borderBottom:'0.5px solid #f1f5f9'}} className="hoverable">
+                            <div style={{fontWeight:500}}>{p.nombre_comp}</div>
+                            <div style={{fontSize:11,color:'#64748b'}}>ID {p.id_caif} · {p.atleta}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            {/* Nombre externo */}
+            {tipoAsistente==='externo' && (
+              <input value={nombreExterno} onChange={e=>setNombreExterno(e.target.value)}
+                placeholder="Nombre completo del asistente..."/>
+            )}
+          </div>
+
+          {/* Pagador (opcional si es distinto al asistente) */}
+          <div className="form-group full" style={{position:'relative'}}>
+            <label>Pagador <span style={{fontSize:11,color:'#94a3b8',fontWeight:400}}>(opcional, si es distinto al asistente)</span></label>
+            {pagadorSel ? (
+              <div style={{display:'flex',alignItems:'center',gap:8,background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:8,padding:'8px 12px'}}>
+                <span style={{flex:1,fontWeight:600,color:'#1d4ed8'}}>{pagadorSel.nombre_comp}</span>
+                <button onClick={()=>{setPagadorSel(null);setBusquedaPagador('')}} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>
                   <i className="ti ti-x"></i>
                 </button>
               </div>
             ) : (
               <>
-                <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre o ID del socio..." />
-                {resultados.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,.1)', maxHeight: 220, overflowY: 'auto' }}>
-                    {resultados.map(p => (
-                      <div key={p.id_caif} onClick={() => { setSocioSel(p); setBusqueda(''); setResultados([]) }}
-                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid #f1f5f9' }}
-                        className="hoverable">
-                        <div style={{ fontWeight: 500 }}>{nombreMostrar(p)}</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>ID {p.id_caif} · {p.atleta}</div>
+                <input value={busquedaPagador} onChange={e=>setBusquedaPagador(e.target.value)}
+                  placeholder="Buscar quien paga (ej: Sandra)..."/>
+                {resultadosPagador.length > 0 && (
+                  <div style={{position:'absolute',top:'100%',left:0,right:0,background:'#fff',border:'0.5px solid #e2e8f0',borderRadius:8,zIndex:10,boxShadow:'0 4px 12px rgba(0,0,0,.1)',maxHeight:180,overflowY:'auto'}}>
+                    {resultadosPagador.map(p => (
+                      <div key={p.id_caif} onClick={()=>{setPagadorSel(p);setBusquedaPagador('');setResultadosPagador([])}}
+                        style={{padding:'8px 12px',cursor:'pointer',borderBottom:'0.5px solid #f1f5f9'}} className="hoverable">
+                        <div style={{fontWeight:500}}>{p.nombre_comp}</div>
                       </div>
                     ))}
                   </div>
@@ -221,21 +302,19 @@ export default function ActividadDetalle({ actividad, onVolver }) {
               </>
             )}
           </div>
-          <div className="form-group">
-            <label>N referencia (N rifa) *</label>
-            <input value={formInsc.num_referencia} onChange={e => setFormInsc(f => ({ ...f, num_referencia: e.target.value }))}
-              placeholder="Ej: 001  o  16, 51, 52 para varias" />
-            <span style={{fontSize:11,color:'#64748b',marginTop:3,display:'block'}}>
-              Para varias rifas separa con coma: <strong>16, 51, 52</strong>
-            </span>
-          </div>
+
           <div className="form-group">
             <label>Monto ($) *</label>
-            <input type="number" value={formInsc.monto} onChange={e => setFormInsc(f => ({ ...f, monto: e.target.value }))} placeholder="0" />
+            <input type="number" value={formInsc.monto} onChange={e=>setFormInsc(f=>({...f,monto:e.target.value}))} placeholder="0"/>
+          </div>
+          <div className="form-group">
+            <label>N referencia <span style={{fontSize:11,color:'#94a3b8'}}>(opcional)</span></label>
+            <input value={formInsc.num_referencia} onChange={e=>setFormInsc(f=>({...f,num_referencia:e.target.value}))}
+              placeholder="Ej: 001 o varios: 16, 51, 52"/>
           </div>
           <div className="form-group full">
             <label>Observaciones</label>
-            <input value={formInsc.obs} onChange={e => setFormInsc(f => ({ ...f, obs: e.target.value }))} placeholder="Opcional" />
+            <input value={formInsc.obs} onChange={e=>setFormInsc(f=>({...f,obs:e.target.value}))} placeholder="Opcional"/>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
@@ -268,7 +347,10 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                   <tr key={insc.id_inscripcion}>
                     {/* Celda principal: nombre + numero + fecha + obs */}
                     <td>
-                      <div style={{fontWeight:600,fontSize:13}}>{nombreSocio(insc.id_socio)}</div>
+                      <div style={{fontWeight:600,fontSize:13}}>{nombreAsistente(insc)}
+                          {nombrePagador(insc) && nombrePagador(insc) !== nombreAsistente(insc) && (
+                            <div style={{fontSize:10,color:'#64748b'}}>Pagado por: {nombrePagador(insc)}</div>
+                          )}</div>
                       <div style={{display:'flex',gap:6,alignItems:'center',marginTop:3,flexWrap:'wrap'}}>
                         {editandoRef === insc.id_inscripcion ? (
                           <div style={{display:'flex',gap:4,alignItems:'center'}}>
