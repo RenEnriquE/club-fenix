@@ -28,6 +28,16 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Modal editar asistentes
+  const [modalEditAsist, setModalEditAsist] = useState(null) // insc
+  const [asistEditando, setAsistEditando] = useState([]) // copia editable
+  const [busquedaEditAsist, setBusquedaEditAsist] = useState('')
+  const [resultadosEditAsist, setResultadosEditAsist] = useState([])
+  const [tipoEditAsist, setTipoEditAsist] = useState('socio')
+  const [nombreExternoEdit, setNombreExternoEdit] = useState('')
+  const [tipoExternoEdit, setTipoExternoEdit] = useState('adulto')
+  const [savingEditAsist, setSavingEditAsist] = useState(false)
+
   // Modal pago
   const [modalPago, setModalPago] = useState(null)
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0])
@@ -69,6 +79,13 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     const q = busquedaPagador.toLowerCase()
     setResultadosPagador(personas.filter(p => (p.nombre_comp||'').toLowerCase().includes(q) || String(p.id_caif).includes(q)).slice(0, 6))
   }, [busquedaPagador, personas])
+
+  // Buscar asistente para edicion
+  useEffect(() => {
+    if (busquedaEditAsist.length < 2) { setResultadosEditAsist([]); return }
+    const q = busquedaEditAsist.toLowerCase()
+    setResultadosEditAsist(personas.filter(p => (p.nombre_comp||'').toLowerCase().includes(q) || String(p.id_caif).includes(q)).slice(0, 6))
+  }, [busquedaEditAsist, personas])
 
   // Buscar asistente socio
   useEffect(() => {
@@ -168,6 +185,60 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     await supabase.from('actividad_asistentes').delete().eq('id_inscripcion', insc.id_inscripcion)
     await supabase.from('actividad_inscripciones').delete().eq('id_inscripcion', insc.id_inscripcion)
     cargar()
+  }
+
+  function abrirEditAsist(insc) {
+    const actuales = asistentesDeInsc(insc.id_inscripcion).map(a => ({
+      id: a.id, // id real en BD (para saber si es existente)
+      tipo: a.id_socio ? 'socio' : 'externo',
+      socio: a.id_socio ? personas.find(p => p.id_caif === a.id_socio) : null,
+      nombre: a.id_socio ? (personas.find(p => p.id_caif === a.id_socio)?.nombre_comp || '') : a.nombre_asistente,
+      tipoPersona: a.tipo || 'adulto',
+      id_temp: a.id
+    }))
+    setAsistEditando(actuales)
+    setModalEditAsist(insc)
+  }
+
+  function quitarAsistEdit(id_temp) {
+    setAsistEditando(prev => prev.filter(a => a.id_temp !== id_temp))
+  }
+
+  function agregarSocioEdit(p) {
+    const tipoP = p.atleta && p.atleta.includes('Ni') ? 'nino' : 'adulto'
+    setAsistEditando(prev => [...prev, { tipo: 'socio', socio: p, nombre: p.nombre_comp, tipoPersona: tipoP, id_temp: 'new-'+Date.now() }])
+    setBusquedaEditAsist(''); setResultadosEditAsist([])
+  }
+
+  function agregarExternoEdit() {
+    if (!nombreExternoEdit.trim()) return
+    setAsistEditando(prev => [...prev, { tipo: 'externo', nombre: nombreExternoEdit.trim(), tipoPersona: tipoExternoEdit, id_temp: 'new-'+Date.now() }])
+    setNombreExternoEdit('')
+  }
+
+  async function guardarEditAsist() {
+    if (asistEditando.length === 0) { mostrarAlert('error', 'Debe haber al menos un asistente.'); return }
+    setSavingEditAsist(true)
+    try {
+      // Eliminar todos los asistentes actuales de esta inscripcion y volver a crear
+      await supabase.from('actividad_asistentes').delete().eq('id_inscripcion', modalEditAsist.id_inscripcion)
+      const nuevos = asistEditando.map(a => ({
+        id_inscripcion: modalEditAsist.id_inscripcion,
+        id_socio: a.tipo === 'socio' ? a.socio.id_caif : null,
+        nombre_asistente: a.tipo === 'externo' ? a.nombre : null,
+        tipo: a.tipoPersona || 'adulto'
+      }))
+      await supabase.from('actividad_asistentes').insert(nuevos)
+      // Actualizar monto si corresponde al monto_default
+      if (actividad.monto_default) {
+        const nuevoMonto = asistEditando.length * actividad.monto_default
+        await supabase.from('actividad_inscripciones').update({ monto: nuevoMonto }).eq('id_inscripcion', modalEditAsist.id_inscripcion)
+      }
+      setModalEditAsist(null)
+      mostrarAlert('success', 'Asistentes actualizados.')
+      cargar()
+    } catch(e) { mostrarAlert('error', 'Error: '+e.message) }
+    finally { setSavingEditAsist(false) }
   }
 
   async function guardarRef(id_inscripcion) {
@@ -452,7 +523,11 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                         )}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+<div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                          <button className="btn sm" onClick={() => abrirEditAsist(insc)}
+                            title="Editar asistentes" style={{ padding: '5px 8px', color: '#7c3aed', borderColor: '#ddd6fe', background: '#faf5ff' }}>
+                            <i className="ti ti-users"></i>
+                          </button>
                           {!insc.pagado && (
                             <button className="btn sm primary" onClick={() => { setModalPago(insc); setFechaPago(new Date().toISOString().split('T')[0]) }}
                               title="Registrar pago" style={{ padding: '5px 8px' }}>
@@ -480,6 +555,92 @@ export default function ActividadDetalle({ actividad, onVolver }) {
           </div>
         )}
       </div>
+
+      {/* Modal editar asistentes */}
+      {modalEditAsist && (
+        <div className="modal-bg open" onClick={e => e.target === e.currentTarget && setModalEditAsist(null)}>
+          <div className="modal" style={{ width: 'min(520px,95vw)' }}>
+            <div className="modal-header">
+              <h2><i className="ti ti-users" style={{marginRight:8,color:'#7c3aed'}}></i>Editar asistentes</h2>
+              <button className="modal-close" onClick={() => setModalEditAsist(null)}>&times;</button>
+            </div>
+            <div style={{ background: '#f8fafc', border: '0.5px solid #e2e8f0', borderRadius: 8, padding: '10px 14px', marginBottom: 14 }}>
+              <div style={{ fontWeight: 600 }}>{nombrePagador(modalEditAsist)}</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>Pagador</div>
+            </div>
+
+            {/* Lista actual */}
+            {asistEditando.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {asistEditando.map(a => (
+                  <div key={a.id_temp} style={{ display: 'flex', alignItems: 'center', gap: 6, background: a.tipo === 'socio' ? '#f0fdf4' : '#eff6ff', border: `0.5px solid ${a.tipo === 'socio' ? '#a7f3d0' : '#bfdbfe'}`, borderRadius: 6, padding: '4px 10px', fontSize: 12 }}>
+                    <i className={`ti ${a.tipo === 'socio' ? 'ti-user' : 'ti-user-question'}`} style={{ fontSize: 11, color: a.tipo === 'socio' ? '#16a34a' : '#1d4ed8' }}></i>
+                    <span style={{ fontWeight: 500 }}>{a.nombre}</span>
+                    <span style={{ fontSize: 9, color: '#94a3b8' }}>({a.tipoPersona === 'nino' ? 'N' : 'A'})</span>
+                    <button onClick={() => quitarAsistEdit(a.id_temp)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 0 }}>
+                      <i className="ti ti-x" style={{ fontSize: 11 }}></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Agregar nuevo asistente */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              {['socio', 'externo'].map(t => (
+                <button key={t} type="button" onClick={() => { setTipoEditAsist(t); setBusquedaEditAsist(''); setNombreExternoEdit('') }}
+                  style={{ padding: '5px 12px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, border: `1.5px solid ${tipoEditAsist === t ? '#1a5e3a' : '#e2e8f0'}`, background: tipoEditAsist === t ? '#f0fdf4' : '#f8fafc', color: tipoEditAsist === t ? '#1a5e3a' : '#64748b' }}>
+                  {t === 'socio' ? 'Socio' : 'Externo'}
+                </button>
+              ))}
+            </div>
+
+            {tipoEditAsist === 'socio' && (
+              <div style={{ position: 'relative', marginBottom: 12 }}>
+                <input value={busquedaEditAsist} onChange={e => setBusquedaEditAsist(e.target.value)} placeholder="Buscar socio..." />
+                {resultadosEditAsist.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,.1)', maxHeight: 180, overflowY: 'auto' }}>
+                    {resultadosEditAsist.map(p => (
+                      <div key={p.id_caif} onClick={() => agregarSocioEdit(p)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid #f1f5f9' }} className="hoverable">
+                        <div style={{ fontWeight: 500 }}>{p.nombre_comp}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {tipoEditAsist === 'externo' && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <select value={tipoExternoEdit} onChange={e => setTipoExternoEdit(e.target.value)} style={{ width: 100 }}>
+                  <option value="adulto">Adulto</option>
+                  <option value="nino">Nino</option>
+                </select>
+                <input value={nombreExternoEdit} onChange={e => setNombreExternoEdit(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && agregarExternoEdit()}
+                  placeholder="Nombre del asistente..." style={{ flex: 1 }} />
+                <button className="btn" onClick={agregarExternoEdit} disabled={!nombreExternoEdit.trim()}>
+                  <i className="ti ti-plus"></i>
+                </button>
+              </div>
+            )}
+
+            {actividad.monto_default && (
+              <div style={{ background: '#f0fdf4', border: '0.5px solid #a7f3d0', borderRadius: 8, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ color: '#64748b' }}>Nuevo monto ({asistEditando.length} x {formatMoney(actividad.monto_default)})</span>
+                <span style={{ fontWeight: 700, color: '#16a34a' }}>{formatMoney(asistEditando.length * actividad.monto_default)}</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={() => setModalEditAsist(null)}>Cancelar</button>
+              <button className="btn primary" onClick={guardarEditAsist} disabled={savingEditAsist || asistEditando.length === 0}>
+                {savingEditAsist ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>Guardando...</> : <><i className="ti ti-check"></i>Guardar cambios</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal pago */}
       {modalPago && (
