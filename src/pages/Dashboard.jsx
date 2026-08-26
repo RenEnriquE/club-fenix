@@ -37,6 +37,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
   const [pagos, setPagos] = useState(cached?.pagos || [])
   const [actDashboard, setActDashboard] = useState([])
   const [inscDashboard, setInscDashboard] = useState([])
+  const [asisDashboard, setAsisDashboard] = useState([])
   const [saldoMovimientos, setSaldoMovimientos] = useState(null)
   const [actSelDash, setActSelDash] = useState(null)
   const [loading, setLoading] = useState(!cached)
@@ -53,13 +54,15 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         supabase.from('pagos').select('monto').gte('fecha_pago', `${anio}-01-01`).lte('fecha_pago', `${anio}-12-31`),
         supabase.from('actividades').select('*').eq('mostrar_dashboard', true).eq('tipo_cobro', 'unico'),
         supabase.from('actividad_inscripciones').select('*'),
+        supabase.from('actividad_asistentes').select('*'),
         supabase.from('movimientos').select('tipo,monto,fecha').gte('fecha', `${anio}-01-01`).lte('fecha', `${anio}-12-31`)
-    ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resMov]) => {
+    ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resAsisDash, resMov]) => {
       const p = resP.data || []
       const pg = resPg.data || []
       setPersonas(p); setPagos(pg)
       setActDashboard(resActDash?.data || [])
       setInscDashboard(resInscDash?.data || [])
+      setAsisDashboard(resAsisDash?.data || [])
       // Calcular saldo = ingresos manuales + pagos con fecha_pago en el año - egresos
       const movs = resMov?.data || []
       const ingMovs = movs.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
@@ -189,6 +192,10 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
             const pendientes = insc.filter(i => !i.pagado)
             const recaudado = pagaron.reduce((a,i) => a+i.monto, 0)
             const porCobrar = pendientes.reduce((a,i) => a+i.monto, 0)
+            const idsInsc = insc.map(i => i.id_inscripcion)
+            const asistInsc = asisDashboard.filter(a => idsInsc.includes(a.id_inscripcion))
+            const nAdultos = asistInsc.filter(a => (a.tipo||'adulto') === 'adulto').length
+            const nNinos = asistInsc.filter(a => a.tipo === 'nino').length
             return (
               <div key={act.id_actividad} className="card"
                 style={{cursor:'pointer',border:'1.5px solid #bfdbfe',background:'#eff6ff'}}
@@ -200,19 +207,20 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   </div>
                   <i className="ti ti-chevron-right" style={{color:'#93c5fd',fontSize:16}}></i>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:8}}>
                   {[
-                    {label:'Asignadas',val:insc.length,color:'#1d4ed8'},
-                    {label:'Pagaron',val:pagaron.length,color:'#16a34a'},
+                    {label:'Asistentes',val:asistInsc.length,color:'#7c3aed'},
+                    {label:'Adultos',val:nAdultos,color:'#0369a1'},
+                    {label:'Ninos',val:nNinos,color:'#c026d3'},
                     {label:'Pendientes',val:pendientes.length,color:'#dc2626'},
                   ].map((k,i) => (
                     <div key={i} style={{textAlign:'center'}}>
-                      <div style={{fontSize:20,fontWeight:700,color:k.color}}>{k.val}</div>
-                      <div style={{fontSize:10,color:'#64748b'}}>{k.label}</div>
+                      <div style={{fontSize:18,fontWeight:700,color:k.color}}>{k.val}</div>
+                      <div style={{fontSize:9,color:'#64748b'}}>{k.label}</div>
                     </div>
                   ))}
                 </div>
-                <div style={{display:'flex',justifyContent:'space-between',marginTop:10,paddingTop:8,borderTop:'0.5px solid #bfdbfe',fontSize:12}}>
+                <div style={{display:'flex',justifyContent:'space-between',marginTop:8,paddingTop:8,borderTop:'0.5px solid #bfdbfe',fontSize:12}}>
                   <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(recaudado)} recaudado</span>
                   <span style={{color:'#d97706',fontWeight:600}}>{formatMoney(porCobrar)} pendiente</span>
                 </div>

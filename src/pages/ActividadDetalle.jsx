@@ -20,6 +20,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const [resultadosAsistente, setResultadosAsistente] = useState([])
   const [nombreExterno, setNombreExterno] = useState('')
   const [tipoAsistente, setTipoAsistente] = useState('socio')
+  const [tipoExterno, setTipoExterno] = useState('adulto')
 
   // Form pago
   const [monto, setMonto] = useState(actividad.monto_default ? String(actividad.monto_default) : '')
@@ -89,7 +90,8 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   }
 
   function agregarSocioAsistente(p) {
-    setListaAsistentes(prev => [...prev, { tipo: 'socio', socio: p, nombre: p.nombre_comp, id_temp: Date.now() }])
+    const tipoP = p.atleta && p.atleta.includes('Ni') ? 'nino' : 'adulto'
+    setListaAsistentes(prev => [...prev, { tipo: 'socio', socio: p, nombre: p.nombre_comp, tipoPersona: tipoP, id_temp: Date.now() }])
     setBusquedaAsistente(''); setResultadosAsistente([])
   }
 
@@ -123,7 +125,8 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       const asistentesData = listaAsistentes.map(a => ({
         id_inscripcion: inscData.id_inscripcion,
         id_socio: a.tipo === 'socio' ? a.socio.id_caif : null,
-        nombre_asistente: a.tipo === 'externo' ? a.nombre : null
+        nombre_asistente: a.tipo === 'externo' ? a.nombre : null,
+        tipo: a.tipoPersona || 'adulto'
       }))
       await supabase.from('actividad_asistentes').insert(asistentesData)
 
@@ -186,6 +189,15 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     return p ? p.nombre_comp : `ID ${insc.id_socio}`
   }
 
+  function tipoDeAsistente(a) {
+    if (a.tipo) return a.tipo
+    if (a.id_socio) {
+      const p = personas.find(p => p.id_caif === a.id_socio)
+      return p?.atleta && p.atleta.includes('Ni') ? 'nino' : 'adulto'
+    }
+    return 'adulto'
+  }
+
   function asistentesDeInsc(id_inscripcion) {
     return asistentes.filter(a => a.id_inscripcion === id_inscripcion)
   }
@@ -200,6 +212,8 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const montoPagado = inscripciones.filter(i => i.pagado).reduce((a, i) => a + i.monto, 0)
   const montoPendiente = inscripciones.filter(i => !i.pagado).reduce((a, i) => a + i.monto, 0)
   const totalAsistentes = inscripciones.reduce((a, i) => a + asistentesDeInsc(i.id_inscripcion).length, 0)
+  const totalAdultos = asistentes.filter(a => tipoDeAsistente(a) === 'adulto').length
+  const totalNinos = asistentes.filter(a => tipoDeAsistente(a) === 'nino').length
 
   return (
     <div className="content">
@@ -220,6 +234,8 @@ export default function ActividadDetalle({ actividad, onVolver }) {
         {[
           { label: 'Pagadores', val: inscripciones.length, color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
           { label: 'Asistentes', val: totalAsistentes, color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe' },
+          { label: 'Adultos', val: totalAdultos, color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
+          { label: 'Ninos', val: totalNinos, color: '#c026d3', bg: '#fdf4ff', border: '#f5d0fe' },
           { label: 'Pagaron', val: totalPagados, color: '#16a34a', bg: '#f0fdf4', border: '#a7f3d0' },
           { label: 'Pendientes', val: totalPendientes, color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
           { label: 'Recaudado', val: formatMoney(montoPagado), color: '#16a34a', bg: '#f0fdf4', border: '#a7f3d0' },
@@ -275,6 +291,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                 <div key={a.id_temp} style={{ display: 'flex', alignItems: 'center', gap: 6, background: a.tipo === 'socio' ? '#f0fdf4' : '#eff6ff', border: `0.5px solid ${a.tipo === 'socio' ? '#a7f3d0' : '#bfdbfe'}`, borderRadius: 6, padding: '4px 10px', fontSize: 12 }}>
                   <i className={`ti ${a.tipo === 'socio' ? 'ti-user' : 'ti-user-question'}`} style={{ fontSize: 11, color: a.tipo === 'socio' ? '#16a34a' : '#1d4ed8' }}></i>
                   <span style={{ fontWeight: 500 }}>{a.nombre}</span>
+                  <span style={{fontSize:9,color:'#94a3b8'}}>({a.tipoPersona==='nino'?'N':'A'})</span>
                   <button onClick={() => quitarAsistente(a.id_temp)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 0, lineHeight: 1 }}>
                     <i className="ti ti-x" style={{ fontSize: 11 }}></i>
                   </button>
@@ -311,10 +328,14 @@ export default function ActividadDetalle({ actividad, onVolver }) {
 
           {tipoAsistente === 'externo' && (
             <div style={{ display: 'flex', gap: 8 }}>
+              <select value={tipoExterno} onChange={e => setTipoExterno(e.target.value)} style={{width:100}}>
+                <option value="adulto">Adulto</option>
+                <option value="nino">Nino</option>
+              </select>
               <input value={nombreExterno} onChange={e => setNombreExterno(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && nombreExterno.trim() && (setListaAsistentes(prev => [...prev, { tipo: 'externo', nombre: nombreExterno.trim(), id_temp: Date.now() }]), setNombreExterno(''))}
+                onKeyDown={e => e.key === 'Enter' && nombreExterno.trim() && (setListaAsistentes(prev => [...prev, { tipo: 'externo', nombre: nombreExterno.trim(), tipoPersona: tipoExterno, id_temp: Date.now() }]), setNombreExterno(''))}
                 placeholder="Nombre del asistente externo..." style={{ flex: 1 }} />
-              <button className="btn" onClick={() => { if (nombreExterno.trim()) { setListaAsistentes(prev => [...prev, { tipo: 'externo', nombre: nombreExterno.trim(), id_temp: Date.now() }]); setNombreExterno('') } }}
+              <button className="btn" onClick={() => { if (nombreExterno.trim()) { setListaAsistentes(prev => [...prev, { tipo: 'externo', nombre: nombreExterno.trim(), tipoPersona: tipoExterno, id_temp: Date.now() }]); setNombreExterno('') } }}
                 disabled={!nombreExterno.trim()}>
                 <i className="ti ti-plus"></i>Agregar
               </button>
