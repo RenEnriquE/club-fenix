@@ -498,7 +498,7 @@ export default function Egresos({ isAdmin = true }) {
                 <div className="card">
                   <div className="card-title"><i className="ti ti-calendar-stats"></i>Por mes</div>
                   <div style={{ overflowX: 'auto' }}>
-                    <table className="tbl" style={{minWidth:420}}>e="tbl">
+                    <table className="tbl" style={{minWidth:420}}>
                       <thead>
                         <tr>
                           <th style={{minWidth:110}}>Mes</th>

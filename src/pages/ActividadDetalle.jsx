@@ -60,6 +60,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const [editandoFecha, setEditandoFecha] = useState(null)
   const [fechaTemp, setFechaTemp] = useState('')
   const [savingFecha, setSavingFecha] = useState(false)
+  const [busquedaLista, setBusquedaLista] = useState('')
 
   useEffect(() => { cargar() }, [])
 
@@ -314,6 +315,12 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     setEditandoFecha(null); setSavingFecha(false); cargar()
   }
 
+  function textoBusquedaInsc(insc) {
+    const asistInsc = asistentesDeInsc(insc.id_inscripcion)
+    const nombresAsist = asistInsc.map(a => a.id_socio ? (personas.find(p => p.id_caif === a.id_socio)?.nombre_comp || '') : (a.nombre_asistente || '')).join(' ')
+    return (nombrePagador(insc) + ' ' + nombresAsist + ' ' + (insc.num_referencia || '')).toLowerCase()
+  }
+
   function nombrePagador(insc) {
     const p = personas.find(p => p.id_caif === insc.id_socio)
     return p ? p.nombre_comp : `ID ${insc.id_socio}`
@@ -379,7 +386,6 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       </div>
 
       {esGrupal ? (
-      {/* Formulario registro */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title"><i className="ti ti-user-plus"></i>Registrar pago</div>
 
@@ -561,12 +567,31 @@ export default function ActividadDetalle({ actividad, onVolver }) {
 
       {/* Lista */}
       <div className="card">
-        <div className="card-title"><i className="ti ti-list"></i>Listado de registros</div>
-        {loading ? (
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:12}}>
+          <div className="card-title" style={{marginBottom:0}}><i className="ti ti-list"></i>Listado de registros</div>
+          {inscripciones.length > 0 && (
+            <div style={{position:'relative',minWidth:220}}>
+              <input value={busquedaLista} onChange={e=>setBusquedaLista(e.target.value)}
+                placeholder="Buscar por nombre o N referencia..."
+                style={{width:'100%',padding:'6px 10px 6px 30px'}}/>
+              <i className="ti ti-search" style={{position:'absolute',left:9,top:'50%',transform:'translateY(-50%)',color:'#94a3b8',fontSize:14}}></i>
+            </div>
+          )}
+        </div>
+        {(() => {
+          const q = busquedaLista.trim().toLowerCase()
+          const listaFiltrada = q
+            ? inscripciones.filter(insc => textoBusquedaInsc(insc).includes(q))
+            : inscripciones
+          return loading ? (
           <div className="loading-center"><div className="spinner"></div></div>
         ) : inscripciones.length === 0 ? (
           <div className="empty"><i className="ti ti-ticket-off"></i>Sin registros aun</div>
+        ) : listaFiltrada.length === 0 ? (
+          <div className="empty"><i className="ti ti-search-off"></i>Sin resultados para "{busquedaLista}"</div>
         ) : (
+          <>
+          {q && <div style={{fontSize:11,color:'#64748b',marginBottom:8}}>{listaFiltrada.length} resultado{listaFiltrada.length!==1?'s':''}</div>}
           <div style={{ overflowX: 'auto' }}>
             <table className="tbl" style={{ fontSize: 12, minWidth: 500 }}>
               <thead>
@@ -579,12 +604,12 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                 </tr>
               </thead>
               <tbody>
-                {inscripciones.map(insc => {
+                {listaFiltrada.map(insc => {
                   const asistInsc = asistentesDeInsc(insc.id_inscripcion)
                   return (
                     <tr key={insc.id_inscripcion}>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{nombrePagador(insc)}</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "#1e293b" }}>{nombrePagador(insc)}</div>
                         {asistInsc.length > 0 && (
                           <div style={{ marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                             {asistInsc.map((a, i) => {
@@ -667,7 +692,9 @@ export default function ActividadDetalle({ actividad, onVolver }) {
               </tbody>
             </table>
           </div>
-        )}
+          </>
+        )
+        })()}
       </div>
 
       {/* Modal editar asistentes */}
