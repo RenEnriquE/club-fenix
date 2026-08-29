@@ -115,8 +115,9 @@ export default function Egresos({ isAdmin = true }) {
 
   // Calculos resumen
   const totalActUnicas = pagosActUnicas.reduce((a, p) => a + (p.monto || 0), 0)
-  const totalIngresos = movimientos.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0) + totalCuotas + totalTorneos + totalActUnicas + saldoAnterior
-  const totalEgresos = movimientos.filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0)
+  const idsCierre = movCierre.map(m => m.id_movimiento)
+  const totalIngresos = movimientos.filter(m => m.tipo === 'ingreso' && !idsCierre.includes(m.id_movimiento)).reduce((a, m) => a + m.monto, 0) + totalCuotas + totalTorneos + totalActUnicas + saldoAnterior
+  const totalEgresos = movimientos.filter(m => m.tipo === 'egreso' && !idsCierre.includes(m.id_movimiento)).reduce((a, m) => a + m.monto, 0)
   const saldo = totalIngresos - totalEgresos
 
   // Agrupar por categoria para resumen
@@ -124,7 +125,7 @@ export default function Egresos({ isAdmin = true }) {
   const catTorneosId = categorias.find(c => c.nombre.toLowerCase().includes('orneo'))?.id_categoria
 
   const porCategoria = categorias.map(cat => {
-    const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria && !(cat.id_categoria === catTorneosId && m.tipo === 'egreso' && totalTorneos > 0))
+    const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria && !(cat.id_categoria === catTorneosId && m.tipo === 'egreso' && totalTorneos > 0) && !idsCierre.includes(m.id_movimiento))
     const ing = movsCat.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0)
     const egr = movsCat.filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0)
     return { ...cat, ingresos: ing, egresos: egr, saldo: ing - egr, movs: movsCat.length }
@@ -342,8 +343,6 @@ export default function Egresos({ isAdmin = true }) {
                       })()}
                       {/* Cierre Contable */}
                       {saldoAnterior !== 0 && (() => {
-                        const ingC = movCierre.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
-                        const egrC = movCierre.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
                         const expandidaC = catExpandida === 'cierre-contable'
                         return (
                           <>
@@ -354,8 +353,8 @@ export default function Egresos({ isAdmin = true }) {
                                 <i className="ti ti-history" style={{marginRight:6,fontSize:12}}></i>
                                 Cierre Contable
                               </td>
-                              <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{ingC>0?formatMoney(ingC):'-'}</td>
-                              <td style={{textAlign:'right',color:'#dc2626',fontWeight:600}}>{egrC>0?formatMoney(egrC):'-'}</td>
+                              <td style={{textAlign:'right',color:saldoAnterior>=0?'#16a34a':'#94a3b8',fontWeight:600}}>{saldoAnterior>=0?formatMoney(saldoAnterior):'-'}</td>
+                              <td style={{textAlign:'right',color:'#94a3b8'}}>-</td>
                               <td style={{textAlign:'right',fontWeight:700,color:saldoAnterior>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoAnterior)}</td>
                               <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{movCierre.length}</td>
                             </tr>
@@ -393,7 +392,7 @@ export default function Egresos({ isAdmin = true }) {
                       })}
                       {porCategoria.map(cat => {
                         const expandida = catExpandida === cat.id_categoria
-                        const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria && !(cat.id_categoria === catTorneosId && m.tipo === 'egreso' && totalTorneos > 0))
+                        const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria && !(cat.id_categoria === catTorneosId && m.tipo === 'egreso' && totalTorneos > 0) && !idsCierre.includes(m.id_movimiento))
                         return (
                           <>
                             <tr key={cat.id_categoria}
