@@ -29,7 +29,8 @@ export default function Egresos({ isAdmin = true }) {
   const [catExpandida, setCatExpandida] = useState(null)
   const [cuotas, setCuotas] = useState([])
   const [torneos, setTorneos] = useState([])
-  const [pagosActUnicas, setPagosActUnicas] = useState([]) // pagos de actividades unicas (no cuotas, no torneos)
+  const [pagosActUnicas, setPagosActUnicas] = useState([])
+  const [saldoAnterior, setSaldoAnterior] = useState(0) // pagos de actividades unicas (no cuotas, no torneos)
   const [actividadesUnicas, setActividadesUnicas] = useState([]) // actividades tipo 'unico' que no son torneos
 
   useEffect(() => { cargarCategorias() }, [])
@@ -71,6 +72,17 @@ export default function Egresos({ isAdmin = true }) {
       .gte('fecha_pago', fechaDesde).lte('fecha_pago', fechaHasta)
     if (idsUnicas.length > 0) qau = qau.in('id_actividad', idsUnicas)
     else qau = qau.eq('id_actividad', -1) // no traer nada si no hay actividades
+    // Calcular saldo anterior: todo lo anterior al 1 de enero del anio seleccionado
+    const fechaCorte = `${anio}-01-01`
+    const [{ data: movAnt }, { data: pagAnt }] = await Promise.all([
+      supabase.from('movimientos').select('tipo,monto').lt('fecha', fechaCorte),
+      supabase.from('pagos').select('monto').lt('fecha_pago', fechaCorte).not('fecha_pago', 'is', null)
+    ])
+    const ingAnt = (movAnt||[]).filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
+    const egrAnt = (movAnt||[]).filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
+    const pagosAnt = (pagAnt||[]).reduce((a,p)=>a+p.monto,0)
+    setSaldoAnterior(ingAnt + pagosAnt - egrAnt)
+
     const [{ data }, { data: dataCuotas }, { data: dataTorneos }, { data: dataPageActU }] = await Promise.all([q, qc, qt, qau])
     setMovimientos(data || [])
     setCuotas(dataCuotas || [])
@@ -239,13 +251,30 @@ export default function Egresos({ isAdmin = true }) {
 
       {alert && <div className={`alert ${alert.type}`} style={{ marginBottom: 12 }}>{alert.msg}</div>}
 
+      {/* Saldo anterior */}
+      {!loading && saldoAnterior !== 0 && (
+        <div style={{
+          background: '#fffbeb', border: '0.5px solid #fde68a', borderRadius: 10,
+          padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        }}>
+          <span style={{ fontSize: 13, color: '#92400e', fontWeight: 600 }}>
+            <i className="ti ti-history" style={{ marginRight: 6 }}></i>
+            Saldo anterior al 01-01-{anio}
+          </span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: saldoAnterior >= 0 ? '#1a5e3a' : '#dc2626' }}>
+            {formatMoney(saldoAnterior)}
+          </span>
+        </div>
+      )}
+
       {/* KPIs */}
       {!loading && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginBottom: 16 }}>
           {[
             { label: 'Total ingresos', val: formatMoney(totalIngresos), color: '#16a34a', bg: '#f0fdf4', border: '#a7f3d0' },
             { label: 'Total egresos', val: formatMoney(totalEgresos), color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
-            { label: 'Saldo', val: formatMoney(saldo), color: saldo >= 0 ? '#1d4ed8' : '#dc2626', bg: saldo >= 0 ? '#eff6ff' : '#fef2f2', border: saldo >= 0 ? '#bfdbfe' : '#fecaca' },
+            { label: 'Saldo del periodo', val: formatMoney(saldo), color: saldo >= 0 ? '#1d4ed8' : '#dc2626', bg: saldo >= 0 ? '#eff6ff' : '#fef2f2', border: saldo >= 0 ? '#bfdbfe' : '#fecaca' },
+            { label: 'Saldo total', val: formatMoney(saldo + saldoAnterior), color: '#1a5e3a', bg: '#f0fdf4', border: '#a7f3d0' },
             { label: 'Movimientos', val: movimientos.length + cuotas.length + torneos.length, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
           ].map((k, i) => (
             <div key={i} style={{ background: k.bg, border: `0.5px solid ${k.border}`, borderRadius: 10, padding: '10px 14px' }}>
