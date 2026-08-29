@@ -296,21 +296,21 @@ export default function Egresos({ isAdmin = true }) {
               <div className="card">
                 <div className="card-title"><i className="ti ti-layout-list"></i>Por categoria</div>
                 <div style={{ overflowX: 'auto' }}>
-                  <table className="tbl" style={{minWidth:480}}>
+                  <table className="tbl" style={{minWidth:0, tableLayout:"auto", width:"100%"}}>
                     <thead>
                       <tr>
-                        <th style={{minWidth:140}}>Categoria</th>
-                        <th style={{ width: 95, textAlign: 'right' }}>Ingresos</th>
-                        <th style={{ width: 95, textAlign: 'right' }}>Egresos</th>
-                        <th style={{ width: 95, textAlign: 'right' }}>Saldo</th>
-                        <th style={{ width: 45, textAlign: 'center' }}>Movs</th>
+                        <th style={{width:'auto'}}>Categoria</th>
+                        <th style={{ width: 70, textAlign: 'right', fontSize: 10 }}>Ing.</th>
+                        <th style={{ width: 70, textAlign: 'right', fontSize: 10 }}>Egr.</th>
+                        <th style={{ width: 70, textAlign: 'right', fontSize: 10 }}>Saldo</th>
+                        <th style={{ width: 30, textAlign: 'center', fontSize: 10 }}>N</th>
                       </tr>
                     </thead>
                     <tbody>
                       {/* Cuotas adultos */}
                       {totalCuotasAdultos > 0 && (
                         <tr style={{background:'#f0fdf4'}}>
-                          <td style={{fontWeight:500,color:'#1a5e3a'}}>
+                          <td style={{fontWeight:500,color:'#1a5e3a',whiteSpace:'normal',wordBreak:'break-word'}}>
                             <i className="ti ti-users" style={{marginRight:6,fontSize:12}}></i>
                             Ingresos Cuotas Socios Adultos
                           </td>
@@ -323,7 +323,7 @@ export default function Egresos({ isAdmin = true }) {
                       {/* Cuotas ninos */}
                       {totalCuotasNinos > 0 && (
                         <tr style={{background:'#f0fdf4'}}>
-                          <td style={{fontWeight:500,color:'#1a5e3a'}}>
+                          <td style={{fontWeight:500,color:'#1a5e3a',whiteSpace:'normal',wordBreak:'break-word'}}>
                             <i className="ti ti-users" style={{marginRight:6,fontSize:12}}></i>
                             Ingresos Cuotas Socios Ninos
                           </td>
@@ -344,7 +344,7 @@ export default function Egresos({ isAdmin = true }) {
                         if (totalTorneos === 0 && egresosTorneos === 0) return null
                         return (
                           <tr style={{background:'#fff7ed'}}>
-                            <td style={{fontWeight:500,color:'#c2410c'}}>
+                            <td style={{fontWeight:500,color:'#c2410c',whiteSpace:'normal',wordBreak:'break-word'}}>
                               <i className="ti ti-trophy" style={{marginRight:6,fontSize:12}}></i>
                               Torneos
                             </td>
@@ -362,7 +362,7 @@ export default function Egresos({ isAdmin = true }) {
                           <>
                             <tr onClick={() => setCatExpandida(expandidaC ? null : 'cierre-contable')}
                               style={{background:'#fffbeb',cursor:'pointer'}}>
-                              <td style={{fontWeight:500,color:'#92400e'}}>
+                              <td style={{fontWeight:500,color:'#92400e',whiteSpace:'normal',wordBreak:'break-word'}}>
                                 <i className={`ti ti-chevron-${expandidaC?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>
                                 <i className="ti ti-history" style={{marginRight:6,fontSize:12}}></i>
                                 Cierre Contable
@@ -390,21 +390,46 @@ export default function Egresos({ isAdmin = true }) {
                       {actividadesUnicas.map(act => {
                         const pagosAct = pagosActUnicas.filter(p => p.id_actividad === act.id_actividad)
                         const totalAct = pagosAct.reduce((a, p) => a + (p.monto || 0), 0)
-                        if (totalAct === 0) return null
+                        // Buscar categoria de movimientos con el mismo nombre para combinar egresos
+                        const catCoincide = categorias.find(c => c.nombre.trim().toLowerCase() === act.nombre.trim().toLowerCase())
+                        const movsCatAct = catCoincide
+                          ? movimientos.filter(m => m.id_categoria === catCoincide.id_categoria && !idsCierre.includes(m.id_movimiento))
+                          : []
+                        const egresosAct = movsCatAct.filter(m => m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
+                        const ingresosManualesAct = movsCatAct.filter(m => m.tipo === 'ingreso').reduce((a,m) => a+m.monto, 0)
+                        const totalIngAct = totalAct + ingresosManualesAct
+                        if (totalIngAct === 0 && egresosAct === 0) return null
+                        const saldoAct = totalIngAct - egresosAct
+                        const expandidaAct = catExpandida === `act-${act.id_actividad}`
                         return (
-                          <tr key={`act-${act.id_actividad}`} style={{background:'#faf5ff'}}>
-                            <td style={{fontWeight:500,color:'#7c3aed'}}>
-                              <i className="ti ti-ticket" style={{marginRight:6,fontSize:12}}></i>
-                              {act.nombre}
-                            </td>
-                            <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{formatMoney(totalAct)}</td>
-                            <td style={{textAlign:'right',color:'#94a3b8'}}>-</td>
-                            <td style={{textAlign:'right',fontWeight:600,color:'#1d4ed8'}}>{formatMoney(totalAct)}</td>
-                            <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{pagosAct.length}</td>
-                          </tr>
+                          <>
+                            <tr key={`act-${act.id_actividad}`} style={{background:'#faf5ff',cursor: movsCatAct.length>0 ? 'pointer' : 'default'}}
+                              onClick={() => movsCatAct.length>0 && setCatExpandida(expandidaAct ? null : `act-${act.id_actividad}`)}>
+                              <td style={{fontWeight:500,color:'#7c3aed',whiteSpace:'normal',wordBreak:'break-word'}}>
+                                {movsCatAct.length>0 && <i className={`ti ti-chevron-${expandidaAct?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>}
+                                <i className="ti ti-ticket" style={{marginRight:6,fontSize:12}}></i>
+                                {act.nombre}
+                              </td>
+                              <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{totalIngAct>0?formatMoney(totalIngAct):'-'}</td>
+                              <td style={{textAlign:'right',color:'#dc2626',fontWeight:600}}>{egresosAct>0?formatMoney(egresosAct):'-'}</td>
+                              <td style={{textAlign:'right',fontWeight:600,color:saldoAct>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoAct)}</td>
+                              <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{pagosAct.length + movsCatAct.length}</td>
+                            </tr>
+                            {expandidaAct && movsCatAct.map(m => (
+                              <tr key={m.id_movimiento} style={{background:'#faf5ff99'}}>
+                                <td style={{paddingLeft:28,color:'var(--text-2)',fontSize:12,whiteSpace:'normal',wordBreak:'break-word'}}>
+                                  <span style={{color:'#94a3b8',marginRight:6}}>{m.fecha}</span>{m.item}
+                                </td>
+                                <td style={{textAlign:'right',color:'#16a34a',fontSize:12}}>{m.tipo==='ingreso'?formatMoney(m.monto):'-'}</td>
+                                <td style={{textAlign:'right',color:'#dc2626',fontSize:12}}>{m.tipo==='egreso'?formatMoney(m.monto):'-'}</td>
+                                <td style={{textAlign:'right',fontSize:11,color:'#94a3b8'}}>{m.obs||'-'}</td>
+                                <td></td>
+                              </tr>
+                            ))}
+                          </>
                         )
                       })}
-                      {porCategoria.map(cat => {
+                      {porCategoria.filter(cat => !actividadesUnicas.some(act => act.nombre.trim().toLowerCase() === cat.nombre.trim().toLowerCase())).map(cat => {
                         const expandida = catExpandida === cat.id_categoria
                         const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria && !(cat.id_categoria === catTorneosId && m.tipo === 'egreso' && totalTorneos > 0) && !idsCierre.includes(m.id_movimiento))
                         return (
@@ -413,7 +438,7 @@ export default function Egresos({ isAdmin = true }) {
                               onClick={() => setCatExpandida(expandida ? null : cat.id_categoria)}
                               style={{cursor:'pointer'}}
                               className="hoverable">
-                              <td style={{ fontWeight: 500 }}>
+                              <td style={{ fontWeight: 500, whiteSpace:'normal', wordBreak:'break-word' }}>
                                 <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>
                                 {cat.nombre}
                               </td>
@@ -458,7 +483,7 @@ export default function Egresos({ isAdmin = true }) {
                           <>
                             <tr onClick={() => setCatExpandida(expandida ? null : 'sin-cat')}
                               style={{cursor:'pointer',background:'#fffbeb'}}>
-                              <td style={{fontWeight:500,color:'#92400e'}}>
+                              <td style={{fontWeight:500,color:'#92400e',whiteSpace:'normal',wordBreak:'break-word'}}>
                                 <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>
                                 Sin categoria
                               </td>
@@ -511,7 +536,7 @@ export default function Egresos({ isAdmin = true }) {
                       <tbody>
                         {porMesConAcumulado.map(m => (
                           <tr key={m.mes} style={{ cursor: 'pointer' }} onClick={() => setMes(m.mes)}>
-                            <td style={{ fontWeight: 500 }}>{m.nombre} {anio}</td>
+                            <td style={{ fontWeight: 500, whiteSpace:'normal', wordBreak:'break-word' }}>{m.nombre} {anio}</td>
                             <td style={{ textAlign: 'right', color: m.ingresos > 0 ? '#16a34a' : '#94a3b8' }}>
                               {m.ingresos > 0 ? formatMoney(m.ingresos) : '-'}
                             </td>
@@ -653,7 +678,7 @@ export default function Egresos({ isAdmin = true }) {
                             {m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
                           </span>
                         </td>
-                        <td style={{ fontWeight: 500 }}>{m.item}</td>
+                        <td style={{ fontWeight: 500, whiteSpace:'normal', wordBreak:'break-word' }}>{m.item}</td>
                         <td style={{ color: 'var(--text-3)' }}>{m.categoria}</td>
                         <td style={{ textAlign: 'right', fontWeight: 600, color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>
                           {m.tipo === 'ingreso' ? '+' : '-'}{formatMoney(m.monto)}
@@ -716,7 +741,7 @@ export default function Egresos({ isAdmin = true }) {
                 {categorias.map(cat => (
                   <tr key={cat.id_categoria}>
                     <td style={{ textAlign:'center', color:'#94a3b8', fontSize:12, fontWeight:600 }}>{cat.orden ?? 99}</td>
-                    <td style={{ fontWeight: 500 }}>{cat.nombre}</td>
+                    <td style={{ fontWeight: 500, whiteSpace:'normal', wordBreak:'break-word' }}>{cat.nombre}</td>
                     <td>
                       <span style={{
                         fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600,
