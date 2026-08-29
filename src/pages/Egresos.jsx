@@ -132,10 +132,12 @@ export default function Egresos({ isAdmin = true }) {
   }).filter(c => c.movs > 0)
 
   // Agrupar por mes para vista mensual (movimientos + cuotas + torneos por fecha_pago)
+  const idsCierreArr = movCierre.map(m => m.id_movimiento)
   const porMes = MESES_ES.map((nombre, i) => {
     const mesNum = i + 1
-    // Movimientos manuales filtrados por mes de fecha
+    // Movimientos manuales filtrados por mes de fecha (excluyendo cierre contable)
     const movsMes = movimientos.filter(m => {
+      if (idsCierreArr.includes(m.id_movimiento)) return false
       const fp = m.fecha ? new Date(m.fecha + 'T12:00:00-04:00') : null
       return fp ? fp.getMonth() + 1 === mesNum : m.mes === mesNum
     })
@@ -153,9 +155,21 @@ export default function Egresos({ isAdmin = true }) {
       return fp ? fp.getMonth() + 1 === mesNum : p.mes === mesNum
     })
     const ingTorneos = torneosMes.reduce((a, p) => a + (p.monto || 0), 0)
-    const ing = ingMov + ingCuotas + ingTorneos
-    const egr = egrMov
-    const total = movsMes.length + cuotasMes.length + torneosMes.length
+    // Actividades unicas (rifa, fonda, etc) por mes de fecha_pago
+    const actUnicasMes = pagosActUnicas.filter(p => {
+      const fp = p.fecha_pago ? new Date(p.fecha_pago + 'T12:00:00-04:00') : null
+      return fp ? fp.getMonth() + 1 === mesNum : p.mes === mesNum
+    })
+    const ingActUnicas = actUnicasMes.reduce((a, p) => a + (p.monto || 0), 0)
+    // Cierre contable solo en el mes de su fecha real
+    const cierreMes = movCierre.filter(m => {
+      const fp = m.fecha ? new Date(m.fecha + 'T12:00:00-04:00') : null
+      return fp && fp.getMonth() + 1 === mesNum
+    })
+    const saldoCierreMes = cierreMes.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0) - cierreMes.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
+    const ing = ingMov + ingCuotas + ingTorneos + ingActUnicas + (saldoCierreMes > 0 ? saldoCierreMes : 0)
+    const egr = egrMov + (saldoCierreMes < 0 ? -saldoCierreMes : 0)
+    const total = movsMes.length + cuotasMes.length + torneosMes.length + actUnicasMes.length + cierreMes.length
     return { mes: mesNum, nombre, ingresos: ing, egresos: egr, saldo: ing - egr, movs: total }
   }).filter(m => m.movs > 0)
 
