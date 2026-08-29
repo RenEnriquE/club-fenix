@@ -267,12 +267,7 @@ export default function Actividades() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th style={{ width: 50 }}>ID</th>
-                  <th>Nombre</th>
-                  <th style={{ width: 100 }}>Tipo cobro</th>
-                  <th style={{ width: 90 }}>Monto</th>
-                  <th style={{ width: 90 }}>Estado</th>
-                  <th style={{ width: 90 }}>Dashboard</th>
+                  <th style={{ minWidth: 180 }}>Nombre</th>
                   <th style={{ width: 100 }}></th>
                 </tr>
               </thead>
@@ -282,53 +277,53 @@ export default function Actividades() {
                   ...actividades.filter(a => a.id_actividad !== 0)
                 ].map(act => (
                   <tr key={act.id_actividad}>
-                    <td style={{ color: 'var(--text-3)', fontSize: 12 }}>{act.id_actividad}</td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: act.id_actividad === 0 ? 600 : 400 }}>{act.nombre}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                        <span style={{ fontWeight: 700, fontSize: 14 }}>{act.nombre}</span>
                         {act.id_actividad === 0 && (
                           <span style={{ fontSize: 10, background: '#e8f5ee', color: '#1a5e3a', padding: '2px 6px', borderRadius: 4, border: '0.5px solid #a7f3d0', fontWeight: 600 }}>DEFAULT</span>
                         )}
                       </div>
-                    </td>
-                    <td>
-                      <span style={{
-                        fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600,
-                        background: act.tipo_cobro === 'unico' ? '#eff6ff' : '#f0fdf4',
-                        color: act.tipo_cobro === 'unico' ? '#1d4ed8' : '#16a34a',
-                        border: `0.5px solid ${act.tipo_cobro === 'unico' ? '#bfdbfe' : '#a7f3d0'}`
-                      }}>
-                        {act.tipo_cobro === 'unico' ? 'Pago unico' : 'Mensual'}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                      {act.monto_default ? `$${Number(act.monto_default).toLocaleString('es-CL')}` : '-'}
-                    </td>
-                    <td>
-                      <button onClick={() => toggleActiva(act)} disabled={act.id_actividad === 0}
-                        style={{
-                          background: act.activa ? '#f0fdf4' : '#f8fafc',
-                          border: `0.5px solid ${act.activa ? '#a7f3d0' : '#e2e8f0'}`,
-                          borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600,
-                          color: act.activa ? '#16a34a' : '#94a3b8',
-                          cursor: act.id_actividad === 0 ? 'default' : 'pointer', fontFamily: 'inherit'
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-3)' }}>ID {act.id_actividad}</span>
+                        <span style={{
+                          fontSize: 10, padding: '2px 7px', borderRadius: 4, fontWeight: 600,
+                          background: act.tipo_cobro === 'unico' ? '#eff6ff' : '#f0fdf4',
+                          color: act.tipo_cobro === 'unico' ? '#1d4ed8' : '#16a34a',
+                          border: `0.5px solid ${act.tipo_cobro === 'unico' ? '#bfdbfe' : '#a7f3d0'}`
                         }}>
-                        {act.activa ? 'Activa' : 'Inactiva'}
-                      </button>
-                    </td>
-                    <td>
-                      {act.tipo_cobro === 'unico' ? (
-                        <button onClick={async()=>{await supabase.from('actividades').update({mostrar_dashboard:!act.mostrar_dashboard}).eq('id_actividad',act.id_actividad);cargar()}}
+                          {act.tipo_cobro === 'unico' ? 'Pago unico' : 'Mensual'}
+                        </span>
+                        {act.monto_default && (
+                          <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
+                            ${Number(act.monto_default).toLocaleString('es-CL')}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                        <button onClick={() => toggleActiva(act)} disabled={act.id_actividad === 0}
                           style={{
-                            background:act.mostrar_dashboard?'#eff6ff':'#f8fafc',
-                            border:`0.5px solid ${act.mostrar_dashboard?'#bfdbfe':'#e2e8f0'}`,
-                            borderRadius:6,padding:'3px 10px',fontSize:11,fontWeight:600,
-                            color:act.mostrar_dashboard?'#1d4ed8':'#94a3b8',
-                            cursor:'pointer',fontFamily:'inherit'
+                            background: act.activa ? '#f0fdf4' : '#f8fafc',
+                            border: `0.5px solid ${act.activa ? '#a7f3d0' : '#e2e8f0'}`,
+                            borderRadius: 6, padding: '2px 8px', fontSize: 10, fontWeight: 600,
+                            color: act.activa ? '#16a34a' : '#94a3b8',
+                            cursor: act.id_actividad === 0 ? 'default' : 'pointer', fontFamily: 'inherit'
                           }}>
-                          {act.mostrar_dashboard?'Visible':'Oculto'}
+                          {act.activa ? 'Activa' : 'Inactiva'}
                         </button>
-                      ) : <span style={{fontSize:11,color:'#cbd5e1'}}>-</span>}
+                        {act.tipo_cobro === 'unico' && (
+                          <button onClick={async()=>{await supabase.from('actividades').update({mostrar_dashboard:!act.mostrar_dashboard}).eq('id_actividad',act.id_actividad);cargar()}}
+                            style={{
+                              background:act.mostrar_dashboard?'#eff6ff':'#f8fafc',
+                              border:`0.5px solid ${act.mostrar_dashboard?'#bfdbfe':'#e2e8f0'}`,
+                              borderRadius:6,padding:'2px 8px',fontSize:10,fontWeight:600,
+                              color:act.mostrar_dashboard?'#1d4ed8':'#94a3b8',
+                              cursor:'pointer',fontFamily:'inherit'
+                            }}>
+                            {act.mostrar_dashboard?'Dashboard: Visible':'Dashboard: Oculto'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
