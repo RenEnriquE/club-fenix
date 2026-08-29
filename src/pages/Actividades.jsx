@@ -345,6 +345,7 @@ export default function Actividades() {
           </div>
         )}
       </div>
+      )}
 
       {/* Modal */}
       {modal && (
