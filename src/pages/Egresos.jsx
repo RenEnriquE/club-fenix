@@ -113,7 +113,7 @@ export default function Egresos({ isAdmin = true }) {
 
   // Calculos resumen
   const totalActUnicas = pagosActUnicas.reduce((a, p) => a + (p.monto || 0), 0)
-  const totalIngresos = movimientos.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0) + totalCuotas + totalTorneos + totalActUnicas
+  const totalIngresos = movimientos.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0) + totalCuotas + totalTorneos + totalActUnicas + saldoAnterior
   const totalEgresos = movimientos.filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0)
   const saldo = totalIngresos - totalEgresos
 
@@ -256,7 +256,7 @@ export default function Egresos({ isAdmin = true }) {
         }}>
           <span style={{ fontSize: 13, color: '#92400e', fontWeight: 600 }}>
             <i className="ti ti-history" style={{ marginRight: 6 }}></i>
-            Cierre contable (saldo anterior)
+            Cierre contable (incluido en ingresos)
           </span>
           <span style={{ fontSize: 16, fontWeight: 700, color: saldoAnterior >= 0 ? '#1a5e3a' : '#dc2626' }}>
             {formatMoney(saldoAnterior)}
@@ -270,8 +270,8 @@ export default function Egresos({ isAdmin = true }) {
           {[
             { label: 'Total ingresos', val: formatMoney(totalIngresos), color: '#16a34a', bg: '#f0fdf4', border: '#a7f3d0' },
             { label: 'Total egresos', val: formatMoney(totalEgresos), color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
-            { label: 'Saldo del periodo', val: formatMoney(saldo), color: saldo >= 0 ? '#1d4ed8' : '#dc2626', bg: saldo >= 0 ? '#eff6ff' : '#fef2f2', border: saldo >= 0 ? '#bfdbfe' : '#fecaca' },
-            { label: 'Saldo total', val: formatMoney(saldo + saldoAnterior), color: '#1a5e3a', bg: '#f0fdf4', border: '#a7f3d0' },
+            { label: 'Saldo', val: formatMoney(saldo), color: saldo >= 0 ? '#1d4ed8' : '#dc2626', bg: saldo >= 0 ? '#eff6ff' : '#fef2f2', border: saldo >= 0 ? '#bfdbfe' : '#fecaca' },
+
             { label: 'Movimientos', val: movimientos.length + cuotas.length + torneos.length, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
           ].map((k, i) => (
             <div key={i} style={{ background: k.bg, border: `0.5px solid ${k.border}`, borderRadius: 10, padding: '10px 14px' }}>
