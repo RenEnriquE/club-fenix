@@ -30,7 +30,8 @@ export default function Egresos({ isAdmin = true }) {
   const [cuotas, setCuotas] = useState([])
   const [torneos, setTorneos] = useState([])
   const [pagosActUnicas, setPagosActUnicas] = useState([])
-  const [saldoAnterior, setSaldoAnterior] = useState(0) // pagos de actividades unicas (no cuotas, no torneos)
+  const [saldoAnterior, setSaldoAnterior] = useState(0)
+  const [movCierre, setMovCierre] = useState([]) // pagos de actividades unicas (no cuotas, no torneos)
   const [actividadesUnicas, setActividadesUnicas] = useState([]) // actividades tipo 'unico' que no son torneos
 
   useEffect(() => { cargarCategorias() }, [])
@@ -74,11 +75,12 @@ export default function Egresos({ isAdmin = true }) {
     else qau = qau.eq('id_actividad', -1) // no traer nada si no hay actividades
     // Calcular saldo anterior: solo el resultado del cierre contable registrado
     const { data: cierreData } = await supabase.from('movimientos')
-      .select('tipo,monto')
+      .select('*')
       .ilike('item', '%cierre contable%')
     const ingCierre = (cierreData||[]).filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
     const egrCierre = (cierreData||[]).filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
     setSaldoAnterior(ingCierre - egrCierre)
+    setMovCierre(cierreData || [])
 
     const [{ data }, { data: dataCuotas }, { data: dataTorneos }, { data: dataPageActU }] = await Promise.all([q, qc, qt, qau])
     setMovimientos(data || [])
@@ -248,22 +250,6 @@ export default function Egresos({ isAdmin = true }) {
 
       {alert && <div className={`alert ${alert.type}`} style={{ marginBottom: 12 }}>{alert.msg}</div>}
 
-      {/* Saldo anterior */}
-      {!loading && saldoAnterior !== 0 && (
-        <div style={{
-          background: '#fffbeb', border: '0.5px solid #fde68a', borderRadius: 10,
-          padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-        }}>
-          <span style={{ fontSize: 13, color: '#92400e', fontWeight: 600 }}>
-            <i className="ti ti-history" style={{ marginRight: 6 }}></i>
-            Cierre contable (incluido en ingresos)
-          </span>
-          <span style={{ fontSize: 16, fontWeight: 700, color: saldoAnterior >= 0 ? '#1a5e3a' : '#dc2626' }}>
-            {formatMoney(saldoAnterior)}
-          </span>
-        </div>
-      )}
-
       {/* KPIs */}
       {!loading && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginBottom: 16 }}>
@@ -352,6 +338,39 @@ export default function Egresos({ isAdmin = true }) {
                             <td style={{textAlign:'right',fontWeight:700,color:saldoTorneos>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoTorneos)}</td>
                             <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{torneos.length}</td>
                           </tr>
+                        )
+                      })()}
+                      {/* Cierre Contable */}
+                      {saldoAnterior !== 0 && (() => {
+                        const ingC = movCierre.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
+                        const egrC = movCierre.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
+                        const expandidaC = catExpandida === 'cierre-contable'
+                        return (
+                          <>
+                            <tr onClick={() => setCatExpandida(expandidaC ? null : 'cierre-contable')}
+                              style={{background:'#fffbeb',cursor:'pointer'}}>
+                              <td style={{fontWeight:500,color:'#92400e'}}>
+                                <i className={`ti ti-chevron-${expandidaC?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>
+                                <i className="ti ti-history" style={{marginRight:6,fontSize:12}}></i>
+                                Cierre Contable
+                              </td>
+                              <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{ingC>0?formatMoney(ingC):'-'}</td>
+                              <td style={{textAlign:'right',color:'#dc2626',fontWeight:600}}>{egrC>0?formatMoney(egrC):'-'}</td>
+                              <td style={{textAlign:'right',fontWeight:700,color:saldoAnterior>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoAnterior)}</td>
+                              <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{movCierre.length}</td>
+                            </tr>
+                            {expandidaC && movCierre.map(m => (
+                              <tr key={m.id_movimiento} style={{background:'#fffbeb99'}}>
+                                <td style={{paddingLeft:28,color:'var(--text-2)',fontSize:12}}>
+                                  <span style={{color:'#94a3b8',marginRight:6}}>{m.fecha}</span>{m.item}
+                                </td>
+                                <td style={{textAlign:'right',color:'#16a34a',fontSize:12}}>{m.tipo==='ingreso'?formatMoney(m.monto):'-'}</td>
+                                <td style={{textAlign:'right',color:'#dc2626',fontSize:12}}>{m.tipo==='egreso'?formatMoney(m.monto):'-'}</td>
+                                <td style={{textAlign:'right',fontSize:11,color:'#94a3b8'}}>{m.obs||'-'}</td>
+                                <td></td>
+                              </tr>
+                            ))}
+                          </>
                         )
                       })()}
                       {/* Actividades unicas (rifa, etc) */}

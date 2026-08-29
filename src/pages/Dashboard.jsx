@@ -55,8 +55,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         supabase.from('actividades').select('*').eq('mostrar_dashboard', true).eq('tipo_cobro', 'unico'),
         supabase.from('actividad_inscripciones').select('*'),
         supabase.from('actividad_asistentes').select('*'),
-        supabase.from('movimientos').select('tipo,monto,fecha').gte('fecha', `${anio}-01-01`).lte('fecha', `${anio}-12-31`)
-    ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resAsisDash, resMov]) => {
+        supabase.from('movimientos').select('tipo,monto,fecha').gte('fecha', `${anio}-01-01`).lte('fecha', `${anio}-12-31`),
+        supabase.from('movimientos').select('tipo,monto').ilike('item', '%cierre contable%')
+    ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resAsisDash, resMov, resCierre]) => {
       const p = resP.data || []
       const pg = resPg.data || []
       setPersonas(p); setPagos(pg)
@@ -69,7 +70,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
       const egrMovs = movs.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
       // Pagos filtrados por fecha_pago real del año para el saldo
       const todosPagos = (resPgSaldo?.data||[]).reduce((a,p)=>a+p.monto,0)
-      setSaldoMovimientos(ingMovs + todosPagos - egrMovs)
+      const cierreData = resCierre?.data || []
+      const saldoCierre = cierreData.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0) - cierreData.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
+      setSaldoMovimientos(ingMovs + todosPagos - egrMovs + saldoCierre)
       // Solo guardar en cache si hay datos reales
       if (p.length > 0) saveCache({ personas: p, pagos: pg })
       setLoading(false); setRefreshing(false)
