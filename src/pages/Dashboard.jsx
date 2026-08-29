@@ -197,6 +197,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
             const porCobrar = pendientes.reduce((a,i) => a+i.monto, 0)
             const idsInsc = insc.map(i => i.id_inscripcion)
             const asistInsc = asisDashboard.filter(a => idsInsc.includes(a.id_inscripcion))
+            const esGrupalAct = act.permite_grupo === true
             const nAdultos = asistInsc.filter(a => (a.tipo||'adulto') === 'adulto').length
             const nNinos = asistInsc.filter(a => a.tipo === 'nino').length
             return (
@@ -211,12 +212,16 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   <i className="ti ti-chevron-right" style={{color:'#93c5fd',fontSize:16}}></i>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:8}}>
-                  {[
+                  {(esGrupalAct ? [
                     {label:'Asistentes',val:asistInsc.length,color:'#7c3aed'},
                     {label:'Adultos',val:nAdultos,color:'#0369a1'},
                     {label:'Ninos',val:nNinos,color:'#c026d3'},
                     {label:'Pendientes',val:pendientes.length,color:'#dc2626'},
-                  ].map((k,i) => (
+                  ] : [
+                    {label:'Asignadas',val:insc.length,color:'#1d4ed8'},
+                    {label:'Pagaron',val:pagaron.length,color:'#16a34a'},
+                    {label:'Pendientes',val:pendientes.length,color:'#dc2626'},
+                  ]).map((k,i) => (
                     <div key={i} style={{textAlign:'center'}}>
                       <div style={{fontSize:18,fontWeight:700,color:k.color}}>{k.val}</div>
                       <div style={{fontSize:9,color:'#64748b'}}>{k.label}</div>

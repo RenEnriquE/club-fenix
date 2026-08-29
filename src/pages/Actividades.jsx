@@ -12,6 +12,7 @@ export default function Actividades() {
   const [tipoCobro, setTipoCobro] = useState('mensual')
   const [montoDefault, setMontoDefault] = useState('')
   const [mostrarDashboard, setMostrarDashboard] = useState(false)
+  const [permiteGrupo, setPermiteGrupo] = useState(false)
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState(null)
   const [actividadSel, setActividadSel] = useState(null)
@@ -94,6 +95,7 @@ export default function Actividades() {
     setTipoCobro('mensual')
     setMontoDefault('')
     setMostrarDashboard(false)
+    setPermiteGrupo(false)
     setModal(true)
   }
 
@@ -104,6 +106,7 @@ export default function Actividades() {
     setTipoCobro(act.tipo_cobro || 'mensual')
     setMontoDefault(act.monto_default || '')
     setMostrarDashboard(act.mostrar_dashboard || false)
+    setPermiteGrupo(act.permite_grupo || false)
     setModal(true)
   }
 
@@ -125,7 +128,9 @@ export default function Actividades() {
         nombre: nombre.trim(),
         activa,
         tipo_cobro: tipoCobro,
-        monto_default: montoDefault ? Number(montoDefault) : null
+        monto_default: montoDefault ? Number(montoDefault) : null,
+        mostrar_dashboard: mostrarDashboard,
+        permite_grupo: permiteGrupo
       }
       if (editando) {
         const { error } = await supabase.from('actividades').update(payload).eq('id_actividad', editando.id_actividad)
@@ -402,6 +407,18 @@ export default function Actividades() {
                   </select>
                   <span style={{fontSize:11,color:'#64748b',marginTop:3,display:'block'}}>
                     Muestra resumen de pagos/pendientes en el dashboard principal
+                  </span>
+                </div>
+              )}
+              {tipoCobro === 'unico' && (
+                <div className="form-group">
+                  <label>Modo de inscripcion</label>
+                  <select value={permiteGrupo} onChange={e => setPermiteGrupo(e.target.value === 'true')}>
+                    <option value="false">Individual (1 socio activo por registro, ej: Rifa)</option>
+                    <option value="true">Grupal (un pagador cubre varios asistentes, ej: Fonda, paseo)</option>
+                  </select>
+                  <span style={{fontSize:11,color:'#64748b',marginTop:3,display:'block'}}>
+                    Individual: solo socios activos, un registro por socio. Grupal: un pagador puede cubrir a varios socios y/o externos.
                   </span>
                 </div>
               )}

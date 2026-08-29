@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { formatMoney } from '../lib/helpers'
 
 export default function ActividadDetalle({ actividad, onVolver }) {
+  const esGrupal = actividad.permite_grupo === true
   const [inscripciones, setInscripciones] = useState([])
   const [asistentes, setAsistentes] = useState([]) // todos los asistentes
   const [personas, setPersonas] = useState([])
@@ -27,6 +28,15 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const [numRef, setNumRef] = useState('')
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Modo simple (individual, ej: Rifa) - un socio activo por registro
+  const [busquedaSimple, setBusquedaSimple] = useState('')
+  const [resultadosSimple, setResultadosSimple] = useState([])
+  const [socioSimple, setSocioSimple] = useState(null)
+  const [numRefSimple, setNumRefSimple] = useState('')
+  const [montoSimple, setMontoSimple] = useState(actividad.monto_default ? String(actividad.monto_default) : '')
+  const [obsSimple, setObsSimple] = useState('')
+  const [savingSimple, setSavingSimple] = useState(false)
 
   // Modal editar asistentes
   const [modalEditAsist, setModalEditAsist] = useState(null) // insc
@@ -58,7 +68,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     const [{ data: insc }, { data: asis }, { data: pers }] = await Promise.all([
       supabase.from('actividad_inscripciones').select('*').eq('id_actividad', actividad.id_actividad).order('created_at'),
       supabase.from('actividad_asistentes').select('*'),
-      supabase.from('personas').select('id_caif,nombre_comp,atleta').order('nombre_comp')
+      supabase.from('personas').select('id_caif,nombre_comp,atleta,vigente').order('nombre_comp')
     ])
     // Ordenar por num_referencia
     const inscOrdenadas = (insc || []).sort((a, b) => {
@@ -72,6 +82,18 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     setPersonas(pers || [])
     setLoading(false)
   }
+
+  // Buscar socio para modo simple (solo activos, excluyendo ya inscritos)
+  useEffect(() => {
+    if (busquedaSimple.length < 2) { setResultadosSimple([]); return }
+    const q = busquedaSimple.toLowerCase()
+    const idsYaInscritos = inscripciones.map(i => i.id_socio)
+    setResultadosSimple(personas.filter(p =>
+      p.vigente === 1 &&
+      !idsYaInscritos.includes(p.id_caif) &&
+      ((p.nombre_comp||'').toLowerCase().includes(q) || String(p.id_caif).includes(q))
+    ).slice(0, 6))
+  }, [busquedaSimple, personas, inscripciones])
 
   // Buscar pagador
   useEffect(() => {
@@ -120,6 +142,43 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const cantAsistentes = listaAsistentes.length
   const montoDefault = actividad.monto_default || 0
   const montoTotal = cantAsistentes > 0 && montoDefault > 0 ? cantAsistentes * montoDefault : Number(monto) || 0
+
+  async function registrarSimple() {
+    if (!socioSimple) { mostrarAlert('error', 'Selecciona un socio activo.'); return }
+    if (!numRefSimple.trim()) { mostrarAlert('error', 'Ingresa el numero de referencia.'); return }
+    if (!montoSimple || Number(montoSimple) <= 0) { mostrarAlert('error', 'El monto debe ser mayor a 0.'); return }
+    // Validar que el socio no tenga ya una inscripcion en esta actividad
+    if (inscripciones.some(i => i.id_socio === socioSimple.id_caif)) {
+      mostrarAlert('error', `${socioSimple.nombre_comp} ya tiene una rifa asignada. Un socio solo puede tener una asignacion en esta actividad, pero puede tener varios numeros usando comas.`)
+      return
+    }
+    setSavingSimple(true)
+    try {
+      // Separar varios numeros si vienen con coma (mismo socio, varias rifas)
+      const numeros = numRefSimple.split(',').map(n => n.trim()).filter(Boolean)
+      // Como la regla es "una inscripcion por socio", si trae varios numeros los concatenamos en una sola inscripcion
+      const numRefFinal = numeros.join(', ')
+      const montoFinal = numeros.length > 1 && actividad.monto_default
+        ? numeros.length * actividad.monto_default
+        : Number(montoSimple)
+
+      await supabase.from('actividad_inscripciones').insert([{
+        id_actividad: actividad.id_actividad,
+        id_socio: socioSimple.id_caif,
+        id_socio_pagador: socioSimple.id_caif,
+        num_referencia: numRefFinal,
+        monto: montoFinal,
+        pagado: false,
+        obs: obsSimple || null
+      }])
+      setSocioSimple(null); setBusquedaSimple('')
+      setNumRefSimple(''); setObsSimple('')
+      setMontoSimple(actividad.monto_default ? String(actividad.monto_default) : '')
+      mostrarAlert('success', `${socioSimple.nombre_comp} asignado con numero(s) ${numRefFinal}.`)
+      cargar()
+    } catch(e) { mostrarAlert('error', 'Error: ' + e.message) }
+    finally { setSavingSimple(false) }
+  }
 
   async function registrar() {
     if (!pagadorSel) { mostrarAlert('error', 'Selecciona al pagador.'); return }
@@ -319,6 +378,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
         ))}
       </div>
 
+      {esGrupal ? (
       {/* Formulario registro */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title"><i className="ti ti-user-plus"></i>Registrar pago</div>
@@ -444,6 +504,60 @@ export default function ActividadDetalle({ actividad, onVolver }) {
           </button>
         </div>
       </div>
+      ) : (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-title"><i className="ti ti-ticket"></i>Asignar rifa a socio</div>
+          <div className="form-grid">
+            <div className="form-group full" style={{ position: 'relative' }}>
+              <label>Socio activo *</label>
+              {socioSimple ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f0fdf4', border: '1.5px solid #1a5e3a', borderRadius: 8, padding: '8px 12px' }}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{socioSimple.nombre_comp}</span>
+                  <button onClick={() => { setSocioSimple(null); setBusquedaSimple('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                    <i className="ti ti-x"></i>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input value={busquedaSimple} onChange={e => setBusquedaSimple(e.target.value)} placeholder="Buscar socio activo..." />
+                  {resultadosSimple.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,.1)', maxHeight: 200, overflowY: 'auto' }}>
+                      {resultadosSimple.map(p => (
+                        <div key={p.id_caif} onClick={() => { setSocioSimple(p); setBusquedaSimple(''); setResultadosSimple([]) }}
+                          style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid #f1f5f9' }} className="hoverable">
+                          <div style={{ fontWeight: 500 }}>{p.nombre_comp}</div>
+                          <div style={{ fontSize: 11, color: '#64748b' }}>{p.atleta}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="form-group">
+              <label>N referencia (rifa) *</label>
+              <input value={numRefSimple} onChange={e => setNumRefSimple(e.target.value)}
+                placeholder="Ej: 001 o 16, 51, 52 si tiene varias" />
+              <span style={{ fontSize: 11, color: '#64748b', marginTop: 3, display: 'block' }}>
+                Un socio puede tener varias rifas: separa los numeros con coma
+              </span>
+            </div>
+            <div className="form-group">
+              <label>Monto ($) *</label>
+              <input type="number" value={montoSimple} onChange={e => setMontoSimple(e.target.value)} placeholder="0" />
+            </div>
+            <div className="form-group full">
+              <label>Observaciones</label>
+              <input value={obsSimple} onChange={e => setObsSimple(e.target.value)} placeholder="Opcional" />
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+            <button className="btn primary" onClick={registrarSimple} disabled={savingSimple || !socioSimple}>
+              {savingSimple ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>Guardando...</> : <><i className="ti ti-check"></i>Asignar rifa</>}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Lista */}
       <div className="card">
