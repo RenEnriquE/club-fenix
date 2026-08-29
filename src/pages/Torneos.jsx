@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatMoney } from '../lib/helpers'
 
-const BANCOS = ['Banco Estado','Banco BCI / MACH','Banco Santander','Banco de Chile','Banco Itau','Banco BBVA','Banco Security','Banco Falabella','Banco Ripley','Coopeuch / Dale','Mercado Pago','TENPO','Otro']
 const TIPOS_CUENTA = ['Cuenta Corriente','Cuenta Vista','Cuenta RUT','Cuenta Ahorro']
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
@@ -46,6 +45,12 @@ function ListaTorneos({ torneos, loading, onSelect, onRefresh }) {
   const [form, setForm] = useState({ nombre:'', organizador:'', rut_organizador:'', banco:'', tipo_cuenta:'', num_cuenta:'', email_organizador:'', activo:true })
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState(null)
+  const [bancos, setBancos] = useState([])
+
+  useEffect(() => {
+    supabase.from('bancos').select('nombre').eq('activo', true).order('orden').order('nombre')
+      .then(({data}) => setBancos((data||[]).map(b=>b.nombre)))
+  }, [])
 
   function abrirNuevo() {
     setEditando(null)
@@ -135,7 +140,7 @@ function ListaTorneos({ torneos, loading, onSelect, onRefresh }) {
               <div className="form-group"><label>Banco</label>
                 <select value={form.banco} onChange={e=>setForm(f=>({...f,banco:e.target.value}))}>
                   <option value="">Seleccionar...</option>
-                  {BANCOS.map(b=><option key={b}>{b}</option>)}
+                  {bancos.map(b=><option key={b}>{b}</option>)}
                 </select>
               </div>
               <div className="form-group"><label>Tipo de cuenta</label>

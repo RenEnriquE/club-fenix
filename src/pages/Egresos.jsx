@@ -72,16 +72,13 @@ export default function Egresos({ isAdmin = true }) {
       .gte('fecha_pago', fechaDesde).lte('fecha_pago', fechaHasta)
     if (idsUnicas.length > 0) qau = qau.in('id_actividad', idsUnicas)
     else qau = qau.eq('id_actividad', -1) // no traer nada si no hay actividades
-    // Calcular saldo anterior: todo lo anterior al 1 de enero del anio seleccionado
-    const fechaCorte = `${anio}-01-01`
-    const [{ data: movAnt }, { data: pagAnt }] = await Promise.all([
-      supabase.from('movimientos').select('tipo,monto').lt('fecha', fechaCorte),
-      supabase.from('pagos').select('monto').lt('fecha_pago', fechaCorte).not('fecha_pago', 'is', null)
-    ])
-    const ingAnt = (movAnt||[]).filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
-    const egrAnt = (movAnt||[]).filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
-    const pagosAnt = (pagAnt||[]).reduce((a,p)=>a+p.monto,0)
-    setSaldoAnterior(ingAnt + pagosAnt - egrAnt)
+    // Calcular saldo anterior: solo el resultado del cierre contable registrado
+    const { data: cierreData } = await supabase.from('movimientos')
+      .select('tipo,monto')
+      .ilike('item', '%cierre contable%')
+    const ingCierre = (cierreData||[]).filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
+    const egrCierre = (cierreData||[]).filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0)
+    setSaldoAnterior(ingCierre - egrCierre)
 
     const [{ data }, { data: dataCuotas }, { data: dataTorneos }, { data: dataPageActU }] = await Promise.all([q, qc, qt, qau])
     setMovimientos(data || [])
@@ -259,7 +256,7 @@ export default function Egresos({ isAdmin = true }) {
         }}>
           <span style={{ fontSize: 13, color: '#92400e', fontWeight: 600 }}>
             <i className="ti ti-history" style={{ marginRight: 6 }}></i>
-            Saldo anterior al 01-01-{anio}
+            Cierre contable (saldo anterior)
           </span>
           <span style={{ fontSize: 16, fontWeight: 700, color: saldoAnterior >= 0 ? '#1a5e3a' : '#dc2626' }}>
             {formatMoney(saldoAnterior)}

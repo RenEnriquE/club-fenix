@@ -15,8 +15,70 @@ export default function Actividades() {
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState(null)
   const [actividadSel, setActividadSel] = useState(null)
+  const [vista, setVista] = useState('actividades') // 'actividades' | 'bancos'
+  const [bancos, setBancos] = useState([])
+  const [loadingBancos, setLoadingBancos] = useState(true)
+  const [modalBanco, setModalBanco] = useState(false)
+  const [editandoBanco, setEditandoBanco] = useState(null)
+  const [nombreBanco, setNombreBanco] = useState('')
+  const [activoBanco, setActivoBanco] = useState(true)
+  const [ordenBanco, setOrdenBanco] = useState(99)
+  const [savingBanco, setSavingBanco] = useState(false)
 
-  useEffect(() => { cargar() }, [])
+  useEffect(() => { cargar(); cargarBancos() }, [])
+
+  async function cargarBancos() {
+    setLoadingBancos(true)
+    const { data } = await supabase.from('bancos').select('*').order('orden').order('nombre')
+    setBancos(data || [])
+    setLoadingBancos(false)
+  }
+
+  function abrirNuevoBanco() {
+    setEditandoBanco(null)
+    setNombreBanco('')
+    setActivoBanco(true)
+    setOrdenBanco((bancos.reduce((m,b)=>Math.max(m,b.orden||0),0))+1)
+    setModalBanco(true)
+  }
+
+  function abrirEditarBanco(b) {
+    setEditandoBanco(b)
+    setNombreBanco(b.nombre)
+    setActivoBanco(b.activo)
+    setOrdenBanco(b.orden||99)
+    setModalBanco(true)
+  }
+
+  async function guardarBanco() {
+    if (!nombreBanco.trim()) { mostrarAlert('error', 'El nombre es obligatorio.'); return }
+    setSavingBanco(true)
+    try {
+      const payload = { nombre: nombreBanco.trim(), activo: activoBanco, orden: Number(ordenBanco) || 99 }
+      if (editandoBanco) {
+        await supabase.from('bancos').update(payload).eq('id_banco', editandoBanco.id_banco)
+        mostrarAlert('success', 'Banco actualizado.')
+      } else {
+        await supabase.from('bancos').insert([payload])
+        mostrarAlert('success', 'Banco creado.')
+      }
+      setModalBanco(false)
+      cargarBancos()
+    } catch(e) { mostrarAlert('error', 'Error: '+e.message) }
+    finally { setSavingBanco(false) }
+  }
+
+  async function toggleActivoBanco(b) {
+    await supabase.from('bancos').update({ activo: !b.activo }).eq('id_banco', b.id_banco)
+    cargarBancos()
+  }
+
+  async function eliminarBanco(b) {
+    if (!confirm(`Eliminar "${b.nombre}"?`)) return
+    await supabase.from('bancos').delete().eq('id_banco', b.id_banco)
+    mostrarAlert('success', 'Banco eliminado.')
+    cargarBancos()
+  }
 
   async function cargar() {
     setLoading(true)
@@ -111,6 +173,74 @@ export default function Actividades() {
 
   return (
     <div className="content">
+      {/* Tabs */}
+      <div style={{display:'flex',gap:8,marginBottom:16}}>
+        <button className={`btn ${vista==='actividades'?'primary':''}`} onClick={()=>setVista('actividades')}>
+          <i className="ti ti-category"></i>Actividades
+        </button>
+        <button className={`btn ${vista==='bancos'?'primary':''}`} onClick={()=>setVista('bancos')}>
+          <i className="ti ti-building-bank"></i>Bancos
+        </button>
+      </div>
+
+      {alert && <div className={`alert ${alert.type}`} style={{marginBottom:12}}>{alert.msg}</div>}
+
+      {vista === 'bancos' ? (
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div className="card-title" style={{ marginBottom: 0 }}>
+              <i className="ti ti-building-bank"></i>Bancos disponibles
+            </div>
+            <button className="btn primary" onClick={abrirNuevoBanco}>
+              <i className="ti ti-plus"></i>Nuevo banco
+            </button>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 16 }}>
+            Estos bancos aparecen en los selectores de metodo de pago al registrar torneos y otros movimientos.
+          </p>
+          {loadingBancos ? (
+            <div className="loading-center"><div className="spinner"></div></div>
+          ) : (
+            <div className="tbl-wrap">
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th style={{width:60}}>Orden</th>
+                    <th>Nombre</th>
+                    <th style={{width:90}}>Estado</th>
+                    <th style={{width:100}}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bancos.map(b => (
+                    <tr key={b.id_banco}>
+                      <td style={{color:'var(--text-3)',fontSize:12,textAlign:'center'}}>{b.orden}</td>
+                      <td style={{fontWeight:500}}>{b.nombre}</td>
+                      <td>
+                        <button onClick={()=>toggleActivoBanco(b)}
+                          style={{
+                            background: b.activo ? '#f0fdf4' : '#f8fafc',
+                            border: `0.5px solid ${b.activo ? '#a7f3d0' : '#e2e8f0'}`,
+                            borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600,
+                            color: b.activo ? '#16a34a' : '#94a3b8', cursor: 'pointer', fontFamily: 'inherit'
+                          }}>
+                          {b.activo ? 'Activo' : 'Inactivo'}
+                        </button>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn sm" onClick={() => abrirEditarBanco(b)}><i className="ti ti-pencil"></i></button>
+                          <button className="btn sm danger" onClick={() => eliminarBanco(b)}><i className="ti ti-trash"></i></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div className="card-title" style={{ marginBottom: 0 }}>
@@ -124,8 +254,6 @@ export default function Actividades() {
         <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 16 }}>
           Define los tipos de pago del club. Las actividades <strong>mensuales</strong> permiten registrar por mes (cuotas). Las actividades de <strong>pago unico</strong> permiten asignar numeros de referencia (rifa, evento, etc).
         </p>
-
-        {alert && <div className={`alert ${alert.type}`}>{alert.msg}</div>}
 
         {loading ? (
           <div className="loading-center"><div className="spinner"></div></div>
@@ -284,6 +412,43 @@ export default function Actividades() {
               <button className="btn" onClick={cerrar}>Cancelar</button>
               <button className="btn primary" onClick={guardar} disabled={saving}>
                 {saving ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>Guardando...</> : <><i className="ti ti-check"></i>{editando ? 'Guardar cambios' : 'Crear actividad'}</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal banco */}
+      {modalBanco && (
+        <div className="modal-bg open" onClick={e => e.target === e.currentTarget && setModalBanco(false)}>
+          <div className="modal">
+            <div className="modal-header">
+              <h2>{editandoBanco ? 'Editar banco' : 'Nuevo banco'}</h2>
+              <button className="modal-close" onClick={() => setModalBanco(false)}>&times;</button>
+            </div>
+            <div className="form-grid">
+              <div className="form-group full">
+                <label>Nombre del banco *</label>
+                <input value={nombreBanco} onChange={e => setNombreBanco(e.target.value)}
+                  placeholder="Ej: Banco Falabella" autoFocus
+                  onKeyDown={e => e.key === 'Enter' && guardarBanco()} />
+              </div>
+              <div className="form-group">
+                <label>Orden</label>
+                <input type="number" value={ordenBanco} onChange={e => setOrdenBanco(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Estado</label>
+                <select value={activoBanco} onChange={e => setActivoBanco(e.target.value === 'true')}>
+                  <option value="true">Activo</option>
+                  <option value="false">Inactivo</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={() => setModalBanco(false)}>Cancelar</button>
+              <button className="btn primary" onClick={guardarBanco} disabled={savingBanco}>
+                {savingBanco ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>Guardando...</> : <><i className="ti ti-check"></i>{editandoBanco ? 'Guardar cambios' : 'Crear banco'}</>}
               </button>
             </div>
           </div>
