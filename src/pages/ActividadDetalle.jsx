@@ -349,8 +349,10 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const montoPagado = inscripciones.filter(i => i.pagado).reduce((a, i) => a + i.monto, 0)
   const montoPendiente = inscripciones.filter(i => !i.pagado).reduce((a, i) => a + i.monto, 0)
   const totalAsistentes = inscripciones.reduce((a, i) => a + asistentesDeInsc(i.id_inscripcion).length, 0)
-  const totalAdultos = asistentes.filter(a => tipoDeAsistente(a) === 'adulto').length
-  const totalNinos = asistentes.filter(a => tipoDeAsistente(a) === 'nino').length
+  const idsInscActividad = inscripciones.map(i => i.id_inscripcion)
+  const asistentesActividad = asistentes.filter(a => idsInscActividad.includes(a.id_inscripcion))
+  const totalAdultos = asistentesActividad.filter(a => tipoDeAsistente(a) === 'adulto').length
+  const totalNinos = asistentesActividad.filter(a => tipoDeAsistente(a) === 'nino').length
 
   return (
     <div className="content">
