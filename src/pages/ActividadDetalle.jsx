@@ -11,9 +11,11 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const [alert, setAlert] = useState(null)
 
   // Form pagador
+  const [tipoPagador, setTipoPagador] = useState('socio') // 'socio' | 'externo'
   const [busquedaPagador, setBusquedaPagador] = useState('')
   const [resultadosPagador, setResultadosPagador] = useState([])
   const [pagadorSel, setPagadorSel] = useState(null)
+  const [nombrePagadorExterno, setNombrePagadorExterno] = useState('')
 
   // Lista de asistentes del pagador actual
   const [listaAsistentes, setListaAsistentes] = useState([]) // [{tipo:'socio'|'externo', socio, nombre, id_temp}]
@@ -182,16 +184,18 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   }
 
   async function registrar() {
-    if (!pagadorSel) { mostrarAlert('error', 'Selecciona al pagador.'); return }
+    if (tipoPagador === 'socio' && !pagadorSel) { mostrarAlert('error', 'Selecciona al pagador.'); return }
+    if (tipoPagador === 'externo' && !nombrePagadorExterno.trim()) { mostrarAlert('error', 'Ingresa el nombre del apoderado/pagador.'); return }
     if (listaAsistentes.length === 0) { mostrarAlert('error', 'Agrega al menos un asistente.'); return }
     if (montoTotal <= 0) { mostrarAlert('error', 'El monto debe ser mayor a 0.'); return }
     setSaving(true)
     try {
-      // Crear inscripción para el pagador
+      // Crear inscripción para el pagador (socio o externo)
       const { data: inscData } = await supabase.from('actividad_inscripciones').insert([{
         id_actividad: actividad.id_actividad,
-        id_socio: pagadorSel.id_caif,
-        id_socio_pagador: pagadorSel.id_caif,
+        id_socio: tipoPagador === 'socio' ? pagadorSel.id_caif : null,
+        id_socio_pagador: tipoPagador === 'socio' ? pagadorSel.id_caif : null,
+        nombre_pagador_externo: tipoPagador === 'externo' ? nombrePagadorExterno.trim() : null,
         num_referencia: numRef || null,
         monto: montoTotal,
         pagado: false,
@@ -208,9 +212,11 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       await supabase.from('actividad_asistentes').insert(asistentesData)
 
       // Reset
+      const nombrePagadorMsg = tipoPagador === 'socio' ? pagadorSel.nombre_comp : nombrePagadorExterno
       setPagadorSel(null); setBusquedaPagador(''); setListaAsistentes([])
+      setNombrePagadorExterno(''); setTipoPagador('socio')
       setNumRef(''); setObs(''); setMonto(actividad.monto_default ? String(actividad.monto_default) : '')
-      mostrarAlert('success', `Registrado: ${pagadorSel.nombre_comp} - ${listaAsistentes.length} asistente${listaAsistentes.length!==1?'s':''} - ${formatMoney(montoTotal)}`)
+      mostrarAlert('success', `Registrado: ${nombrePagadorMsg} - ${listaAsistentes.length} asistente${listaAsistentes.length!==1?'s':''} - ${formatMoney(montoTotal)}`)
       cargar()
     } catch(e) { mostrarAlert('error', 'Error: ' + e.message) }
     finally { setSaving(false) }
@@ -322,6 +328,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   }
 
   function nombrePagador(insc) {
+    if (insc.nombre_pagador_externo) return insc.nombre_pagador_externo
     const p = personas.find(p => p.id_caif === insc.id_socio)
     return p ? p.nombre_comp : `ID ${insc.id_socio}`
   }
@@ -394,28 +401,44 @@ export default function ActividadDetalle({ actividad, onVolver }) {
         {/* 1. Pagador */}
         <div className="form-group" style={{ position: 'relative', marginBottom: 12 }}>
           <label style={{ fontWeight: 700 }}>1. Quien paga *</label>
-          {pagadorSel ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#eff6ff', border: '1.5px solid #1a5e3a', borderRadius: 8, padding: '8px 12px' }}>
-              <span style={{ flex: 1, fontWeight: 600 }}>{pagadorSel.nombre_comp}</span>
-              <button onClick={() => { setPagadorSel(null); setBusquedaPagador('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
-                <i className="ti ti-x"></i>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            {['socio', 'externo'].map(t => (
+              <button key={t} type="button" onClick={() => { setTipoPagador(t); setPagadorSel(null); setBusquedaPagador(''); setNombrePagadorExterno('') }}
+                style={{ flex: 1, padding: '6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                  border: `1.5px solid ${tipoPagador === t ? '#1a5e3a' : '#e2e8f0'}`,
+                  background: tipoPagador === t ? '#f0fdf4' : '#f8fafc',
+                  color: tipoPagador === t ? '#1a5e3a' : '#64748b' }}>
+                {t === 'socio' ? 'Socio del club' : 'Apoderado / Externo'}
               </button>
-            </div>
+            ))}
+          </div>
+          {tipoPagador === 'socio' ? (
+            pagadorSel ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#eff6ff', border: '1.5px solid #1a5e3a', borderRadius: 8, padding: '8px 12px' }}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{pagadorSel.nombre_comp}</span>
+                <button onClick={() => { setPagadorSel(null); setBusquedaPagador('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                  <i className="ti ti-x"></i>
+                </button>
+              </div>
+            ) : (
+              <>
+                <input value={busquedaPagador} onChange={e => setBusquedaPagador(e.target.value)} placeholder="Buscar socio pagador..." />
+                {resultadosPagador.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,.1)', maxHeight: 200, overflowY: 'auto' }}>
+                    {resultadosPagador.map(p => (
+                      <div key={p.id_caif} onClick={() => { setPagadorSel(p); setBusquedaPagador(''); setResultadosPagador([]) }}
+                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid #f1f5f9' }} className="hoverable">
+                        <div style={{ fontWeight: 500 }}>{p.nombre_comp}</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>{p.atleta}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )
           ) : (
-            <>
-              <input value={busquedaPagador} onChange={e => setBusquedaPagador(e.target.value)} placeholder="Buscar socio pagador..." />
-              {resultadosPagador.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,.1)', maxHeight: 200, overflowY: 'auto' }}>
-                  {resultadosPagador.map(p => (
-                    <div key={p.id_caif} onClick={() => { setPagadorSel(p); setBusquedaPagador(''); setResultadosPagador([]) }}
-                      style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid #f1f5f9' }} className="hoverable">
-                      <div style={{ fontWeight: 500 }}>{p.nombre_comp}</div>
-                      <div style={{ fontSize: 11, color: '#64748b' }}>{p.atleta}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+            <input value={nombrePagadorExterno} onChange={e => setNombrePagadorExterno(e.target.value)}
+              placeholder="Nombre del apoderado o persona que paga..." />
           )}
         </div>
 
@@ -507,7 +530,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-          <button className="btn primary" onClick={registrar} disabled={saving || !pagadorSel || listaAsistentes.length === 0}>
+          <button className="btn primary" onClick={registrar} disabled={saving || (tipoPagador === 'socio' ? !pagadorSel : !nombrePagadorExterno.trim()) || listaAsistentes.length === 0}>
             {saving ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>Guardando...</> : <><i className="ti ti-check"></i>Registrar {listaAsistentes.length > 0 ? `(${listaAsistentes.length} asistente${listaAsistentes.length !== 1 ? 's' : ''} - ${formatMoney(montoTotal)})` : ''}</>}
           </button>
         </div>
