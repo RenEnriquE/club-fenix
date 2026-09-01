@@ -16,6 +16,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const [resultadosPagador, setResultadosPagador] = useState([])
   const [pagadorSel, setPagadorSel] = useState(null)
   const [nombrePagadorExterno, setNombrePagadorExterno] = useState('')
+  const [sugerenciasApoderado, setSugerenciasApoderado] = useState([])
 
   // Lista de asistentes del pagador actual
   const [listaAsistentes, setListaAsistentes] = useState([]) // [{tipo:'socio'|'externo', socio, nombre, id_temp}]
@@ -71,7 +72,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     const [{ data: insc }, { data: asis }, { data: pers }] = await Promise.all([
       supabase.from('actividad_inscripciones').select('*').eq('id_actividad', actividad.id_actividad).order('created_at'),
       supabase.from('actividad_asistentes').select('*'),
-      supabase.from('personas').select('id_caif,nombre_comp,atleta,vigente').order('nombre_comp')
+      supabase.from('personas').select('id_caif,nombre_comp,atleta,vigente,apoderado').order('nombre_comp')
     ])
     // Ordenar por num_referencia
     const inscOrdenadas = (insc || []).sort((a, b) => {
@@ -97,6 +98,19 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       ((p.nombre_comp||'').toLowerCase().includes(q) || String(p.id_caif).includes(q))
     ).slice(0, 6))
   }, [busquedaSimple, personas, inscripciones])
+
+  // Buscar apoderados registrados (nombres unicos de socios activos)
+  useEffect(() => {
+    if (nombrePagadorExterno.length < 2) { setSugerenciasApoderado([]); return }
+    const q = nombrePagadorExterno.toLowerCase()
+    const nombresUnicos = new Set()
+    personas.forEach(p => {
+      if (p.vigente === 1 && p.apoderado && p.apoderado.toLowerCase().includes(q)) {
+        nombresUnicos.add(p.apoderado)
+      }
+    })
+    setSugerenciasApoderado(Array.from(nombresUnicos).slice(0, 6))
+  }, [nombrePagadorExterno, personas])
 
   // Buscar pagador
   useEffect(() => {
@@ -437,8 +451,20 @@ export default function ActividadDetalle({ actividad, onVolver }) {
               </>
             )
           ) : (
-            <input value={nombrePagadorExterno} onChange={e => setNombrePagadorExterno(e.target.value)}
-              placeholder="Nombre del apoderado o persona que paga..." />
+            <div style={{ position: 'relative' }}>
+              <input value={nombrePagadorExterno} onChange={e => setNombrePagadorExterno(e.target.value)}
+                placeholder="Nombre del apoderado o persona que paga..." />
+              {sugerenciasApoderado.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,.1)', maxHeight: 180, overflowY: 'auto' }}>
+                  {sugerenciasApoderado.map((nombre, i) => (
+                    <div key={i} onClick={() => { setNombrePagadorExterno(nombre); setSugerenciasApoderado([]) }}
+                      style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid #f1f5f9', fontSize: 13 }} className="hoverable">
+                      <i className="ti ti-user-check" style={{ marginRight: 6, fontSize: 12, color: '#16a34a' }}></i>{nombre}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
