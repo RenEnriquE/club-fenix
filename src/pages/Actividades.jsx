@@ -268,7 +268,7 @@ export default function Actividades() {
               <thead>
                 <tr>
                   <th style={{ minWidth: 180 }}>Nombre</th>
-                  <th style={{ width: 100 }}></th>
+                  <th style={{ width: 130 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -326,16 +326,16 @@ export default function Actividades() {
                       </div>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {act.tipo_cobro === 'unico' && (
                           <button className="btn sm" onClick={() => setActividadSel(act)}
-                            style={{ color: '#1d4ed8', borderColor: '#bfdbfe', background: '#eff6ff' }}
+                            style={{ color: '#1d4ed8', borderColor: '#bfdbfe', background: '#eff6ff', padding: '5px 7px' }}
                             title="Gestionar inscripciones">
                             <i className="ti ti-users"></i>
                           </button>
                         )}
-                        <button className="btn sm" onClick={() => abrirEditar(act)} disabled={act.id_actividad === 0}><i className="ti ti-pencil"></i></button>
-                        <button className="btn sm danger" onClick={() => eliminar(act)} disabled={act.id_actividad === 0}><i className="ti ti-trash"></i></button>
+                        <button className="btn sm" style={{ padding: '5px 7px' }} onClick={() => abrirEditar(act)} disabled={act.id_actividad === 0}><i className="ti ti-pencil"></i></button>
+                        <button className="btn sm danger" style={{ padding: '5px 7px' }} onClick={() => eliminar(act)} disabled={act.id_actividad === 0}><i className="ti ti-trash"></i></button>
                       </div>
                     </td>
                   </tr>
