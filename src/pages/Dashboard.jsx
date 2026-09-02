@@ -393,7 +393,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                 {MESES_ES[mesActual-1]} &middot; {anio}
               </div>
             </div>
-            <div style={{display:'flex',flexDirection:'column',gap:4,maxHeight:300,overflowY:'auto'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
               {cumpleaneros.map(s => {
                 const esNino = s.atleta && s.atleta.includes('Ni')
                 return (
