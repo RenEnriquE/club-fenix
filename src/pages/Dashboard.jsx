@@ -49,7 +49,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
     if (!cached) setLoading(true)
     else setRefreshing(true)
     Promise.all([
-      supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero,f_ini_vig,f_reingreso').eq('vigente', 1),
+      supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero,f_ini_vig,f_reingreso,apodo,nombre,apellido,ap_mat').eq('vigente', 1),
       supabase.from('pagos').select('id_socio,mes,monto,anio,id_actividad,fecha_pago').eq('anio', anio),
         supabase.from('pagos').select('monto').gte('fecha_pago', `${anio}-01-01`).lte('fecha_pago', `${anio}-12-31`),
         supabase.from('actividades').select('*').eq('mostrar_dashboard', true).eq('tipo_cobro', 'unico'),
@@ -158,6 +158,18 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
     {label:'Hombres', val:hombres, pct:pct(hombres,personas.length), color:'#0369a1', bg:'#f0f9ff', icon:'hombre', sub:'del total'},
     {label:'Master +40 anos', val:masters, pct:pct(masters,adultos), color:'#b45309', bg:'#fffbeb', icon:'master', sub:'de adultos'},
   ]
+
+  function nombreCorto(s) {
+    const nombre = s.nombre || (s.nombre_comp || '').split(' ')[0]
+    const apellido = s.apellido || ''
+    const apMat = s.ap_mat || ''
+    const apodo = (s.apodo || '').trim()
+    let base = nombre && apellido ? `${nombre} ${apellido}${apMat ? ' ' + apMat.charAt(0) + '.' : ''}` : (s.nombre_comp || '')
+    if (apodo && apodo.toLowerCase() !== nombre.toLowerCase()) {
+      base = `${apodo} - ${base}`
+    }
+    return base
+  }
 
   return (
     <div className="content">
@@ -375,24 +387,33 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
             <div style={{position:'absolute',bottom:8,left:16,fontSize:30,opacity:.06,userSelect:'none'}}>&#127880;</div>
             <div style={{textAlign:'center',marginBottom:12}}>
               <div style={{fontSize:11,letterSpacing:2,color:'#92400e',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>
-                &#127881; Cumpleanos Socios CAIF &#127881;
+                &#127881; Cumplea&ntilde;os Socios CAIF &#127881;
               </div>
               <div style={{fontSize:16,fontWeight:700,color:'#1a5e3a'}}>
                 {MESES_ES[mesActual-1]} &middot; {anio}
               </div>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:4,maxHeight:300,overflowY:'auto'}}>
-              {cumpleaneros.map(s => (
-                <div key={s.id_caif} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 10px',borderRadius:7,background:'rgba(255,255,255,.75)',borderLeft:`3px solid ${s.atleta==='Atleta Nino'?'#a78bfa':'#6ee7b7'}`,fontSize:13}}>
-                  <span style={{fontWeight:500,color:'#1e293b'}}>{s.nombre_comp}</span>
-                  <span style={{color:'#64748b',fontSize:12,fontWeight:500,whiteSpace:'nowrap',marginLeft:8}}>
-                    {s.diaSemana} {String(s.dia).padStart(2,'0')}/{String(mesActual).padStart(2,'0')}
-                  </span>
-                </div>
-              ))}
+              {cumpleaneros.map(s => {
+                const esNino = s.atleta && s.atleta.includes('Ni')
+                return (
+                  <div key={s.id_caif} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 10px',borderRadius:7,background:'rgba(255,255,255,.75)',borderLeft:`3px solid ${esNino?'#a78bfa':'#6ee7b7'}`,fontSize:13}}>
+                    <span style={{display:'flex',alignItems:'center',gap:6}}>
+                      <span style={{
+                        fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,
+                        background:esNino?'#f5d0fe':'#bbf7d0',color:esNino?'#a21caf':'#15803d'
+                      }}>{esNino?'N':'A'}</span>
+                      <span style={{fontWeight:500,color:'#1e293b'}}>{nombreCorto(s)}</span>
+                    </span>
+                    <span style={{color:'#64748b',fontSize:12,fontWeight:500,whiteSpace:'nowrap',marginLeft:8}}>
+                      {s.diaSemana} {String(s.dia).padStart(2,'0')}/{String(mesActual).padStart(2,'0')}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
             <div style={{textAlign:'center',marginTop:10,fontSize:11,color:'#94a3b8'}}>
-              {cumpleaneros.length} cumpleanos este mes
+              {cumpleaneros.length} cumplea&ntilde;os este mes
             </div>
           </div>
         ) : (
