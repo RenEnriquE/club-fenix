@@ -272,7 +272,11 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         const insc = inscDashboard.filter(i => i.id_actividad === actSelDash.id_actividad)
         const pagaron = insc.filter(i => i.pagado).sort((a,b) => a.num_referencia?.localeCompare(b.num_referencia))
         const pendientes = insc.filter(i => !i.pagado).sort((a,b) => a.num_referencia?.localeCompare(b.num_referencia))
-        const getNombre = id => { const p = personas.find(p=>p.id_caif===id); return p?p.nombre_comp:`ID ${id}` }
+        const getNombre = insc => {
+          if (insc.nombre_pagador_externo) return insc.nombre_pagador_externo
+          const p = personas.find(p=>p.id_caif===insc.id_socio)
+          return p ? p.nombre_comp : (insc.id_socio ? `ID ${insc.id_socio}` : 'Sin nombre')
+        }
         return (
           <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setActSelDash(null)}>
             <div className="modal" style={{width:'min(720px,95vw)',maxHeight:'90vh',overflowY:'auto'}}>
@@ -301,7 +305,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                     <tbody>
                       {pendientes.map(i=>(
                         <tr key={i.id_inscripcion}>
-                          <td>{getNombre(i.id_socio)}</td>
+                          <td>{getNombre(i)}</td>
                           <td style={{fontWeight:700,color:'#dc2626',fontFamily:'monospace'}}>{i.num_referencia}</td>
                           <td style={{textAlign:'right',color:'#d97706',fontWeight:600}}>{formatMoney(i.monto)}</td>
                         </tr>
@@ -320,7 +324,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                     <tbody>
                       {pagaron.map(i=>(
                         <tr key={i.id_inscripcion}>
-                          <td>{getNombre(i.id_socio)}</td>
+                          <td>{getNombre(i)}</td>
                           <td style={{fontWeight:700,color:'#16a34a',fontFamily:'monospace'}}>{i.num_referencia}</td>
                           <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{formatMoney(i.monto)}</td>
                           <td style={{color:'var(--text-3)',fontSize:11}}>{i.fecha_pago||'-'}</td>
