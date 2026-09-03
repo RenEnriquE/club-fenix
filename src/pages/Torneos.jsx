@@ -592,7 +592,11 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
   const montoAdicionalTotal = inscripciones.reduce((a,i) => a + (i.monto_adicional || 0), 0)
   const montoRecaudado = totalPagados * edicionLocal.valor_atleta + montoAdicionalTotal
   const montoPendiente = totalPendientes * edicionLocal.valor_atleta
-  const montoOrganizador = edicionLocal.valor_organizador || 0
+  // Si ya se pago, valor_organizador es el monto TOTAL confirmado.
+  // Si no se ha pagado, valor_organizador es el valor POR ATLETA, y el total esperado se calcula por inscritos.
+  const montoOrganizador = edicionLocal.pagado_organizador
+    ? (edicionLocal.valor_organizador || 0)
+    : (edicionLocal.valor_organizador || 0) * totalInscritos
   const saldoNeto = montoRecaudado - montoOrganizador
 
   return (
@@ -633,9 +637,11 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
           <div>
             <div className="card-title" style={{marginBottom:4}}><i className="ti ti-building"></i>Pago al organizador</div>
             <div style={{fontSize:12,color:'var(--text-3)'}}>
-              {montoOrganizador > 0
-                ? <>Monto registrado: <strong style={{color:'#dc2626'}}>{formatMoney(montoOrganizador)}</strong></>
-                : 'Sin monto registrado aun'}
+              {edicionLocal.pagado_organizador
+                ? <>Monto pagado: <strong style={{color:'#dc2626'}}>{formatMoney(montoOrganizador)}</strong></>
+                : (edicionLocal.valor_organizador
+                    ? <>Total a pagar: <strong style={{color:'#dc2626'}}>{formatMoney(montoOrganizador)}</strong> ({formatMoney(edicionLocal.valor_organizador)} x {totalInscritos} atletas)</>
+                    : 'Sin valor organizador definido')}
             </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -648,7 +654,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
             ) : (
               <button className="btn primary" style={{background:'#dc2626',borderColor:'#dc2626'}}
                 onClick={()=>{
-                  setValorOrgEdit(edicionLocal.valor_organizador||0)
+                  setValorOrgEdit(montoOrganizador)
                   setObsPagoOrg(`Pago organizador torneo ${torneo.nombre} - ${inscripciones.length} atletas`)
                   setModalPagoOrg(true)
                 }}>
