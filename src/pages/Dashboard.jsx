@@ -277,6 +277,12 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
           const p = personas.find(p=>p.id_caif===insc.id_socio)
           return p ? p.nombre_comp : (insc.id_socio ? `ID ${insc.id_socio}` : 'Sin nombre')
         }
+        const getCobertura = insc => {
+          const asist = asisDashboard.filter(a => a.id_inscripcion === insc.id_inscripcion)
+          const adultos = asist.filter(a => (a.tipo||'adulto') === 'adulto').length
+          const ninos = asist.filter(a => a.tipo === 'nino').length
+          return { adultos, ninos, total: asist.length }
+        }
         return (
           <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setActSelDash(null)}>
             <div className="modal" style={{width:'min(720px,95vw)',maxHeight:'90vh',overflowY:'auto'}}>
@@ -301,15 +307,20 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   <div style={{fontSize:12,fontWeight:700,color:'#dc2626',textTransform:'uppercase',marginBottom:8}}>Pendientes de pago</div>
                   <div style={{overflowX:'auto'}}>
                   <table className="tbl" style={{fontSize:12,minWidth:340}}>
-                    <thead><tr><th style={{minWidth:200}}>Socio</th><th style={{width:70}}>N ref</th><th style={{width:90,textAlign:'right'}}>Monto</th></tr></thead>
+                    <thead><tr><th style={{minWidth:180}}>Socio</th><th style={{width:80}}>Cubre</th><th style={{width:70}}>N ref</th><th style={{width:90,textAlign:'right'}}>Monto</th></tr></thead>
                     <tbody>
-                      {pendientes.map(i=>(
+                      {pendientes.map(i=>{
+                        const cob = getCobertura(i)
+                        return (
                         <tr key={i.id_inscripcion}>
                           <td>{getNombre(i)}</td>
+                          <td style={{fontSize:11,color:'#64748b'}}>
+                            {cob.total>0 ? <>{cob.adultos>0 && `${cob.adultos}A`}{cob.adultos>0&&cob.ninos>0&&' '}{cob.ninos>0 && `${cob.ninos}N`}</> : '-'}
+                          </td>
                           <td style={{fontWeight:700,color:'#dc2626',fontFamily:'monospace'}}>{i.num_referencia}</td>
                           <td style={{textAlign:'right',color:'#d97706',fontWeight:600}}>{formatMoney(i.monto)}</td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                   </div>
@@ -320,16 +331,21 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   <div style={{fontSize:12,fontWeight:700,color:'#16a34a',textTransform:'uppercase',marginBottom:8}}>Ya pagaron</div>
                   <div style={{overflowX:'auto'}}>
                   <table className="tbl" style={{fontSize:12,minWidth:380}}>
-                    <thead><tr><th style={{minWidth:200}}>Socio</th><th style={{width:70}}>N ref</th><th style={{width:90,textAlign:'right'}}>Monto</th><th style={{width:90}}>Fecha</th></tr></thead>
+                    <thead><tr><th style={{minWidth:180}}>Socio</th><th style={{width:80}}>Cubre</th><th style={{width:70}}>N ref</th><th style={{width:90,textAlign:'right'}}>Monto</th><th style={{width:90}}>Fecha</th></tr></thead>
                     <tbody>
-                      {pagaron.map(i=>(
+                      {pagaron.map(i=>{
+                        const cob = getCobertura(i)
+                        return (
                         <tr key={i.id_inscripcion}>
                           <td>{getNombre(i)}</td>
+                          <td style={{fontSize:11,color:'#64748b'}}>
+                            {cob.total>0 ? <>{cob.adultos>0 && `${cob.adultos}A`}{cob.adultos>0&&cob.ninos>0&&' '}{cob.ninos>0 && `${cob.ninos}N`}</> : '-'}
+                          </td>
                           <td style={{fontWeight:700,color:'#16a34a',fontFamily:'monospace'}}>{i.num_referencia}</td>
                           <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{formatMoney(i.monto)}</td>
                           <td style={{color:'var(--text-3)',fontSize:11}}>{i.fecha_pago||'-'}</td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                   </div>
