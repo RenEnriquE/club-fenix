@@ -38,6 +38,8 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
   const [actDashboard, setActDashboard] = useState([])
   const [inscDashboard, setInscDashboard] = useState([])
   const [asisDashboard, setAsisDashboard] = useState([])
+  const [movimientosDash, setMovimientosDash] = useState([])
+  const [categoriasDash, setCategoriasDash] = useState([])
   const [saldoMovimientos, setSaldoMovimientos] = useState(null)
   const [actSelDash, setActSelDash] = useState(null)
   const [loading, setLoading] = useState(!cached)
@@ -55,15 +57,18 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         supabase.from('actividades').select('*').eq('mostrar_dashboard', true).eq('tipo_cobro', 'unico'),
         supabase.from('actividad_inscripciones').select('*'),
         supabase.from('actividad_asistentes').select('*'),
-        supabase.from('movimientos').select('tipo,monto,fecha').gte('fecha', `${anio}-01-01`).lte('fecha', `${anio}-12-31`),
-        supabase.from('movimientos').select('tipo,monto').ilike('item', '%cierre contable%')
-    ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resAsisDash, resMov, resCierre]) => {
+        supabase.from('movimientos').select('tipo,monto,fecha,id_categoria').gte('fecha', `${anio}-01-01`).lte('fecha', `${anio}-12-31`),
+        supabase.from('movimientos').select('tipo,monto').ilike('item', '%cierre contable%'),
+        supabase.from('categorias_movimiento').select('id_categoria,nombre')
+    ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resAsisDash, resMov, resCierre, resCategorias]) => {
       const p = resP.data || []
       const pg = resPg.data || []
       setPersonas(p); setPagos(pg)
       setActDashboard(resActDash?.data || [])
       setInscDashboard(resInscDash?.data || [])
       setAsisDashboard(resAsisDash?.data || [])
+      setMovimientosDash(resMov?.data || [])
+      setCategoriasDash(resCategorias?.data || [])
       // Calcular saldo = ingresos manuales + pagos con fecha_pago en el año - egresos
       const movs = resMov?.data || []
       const ingMovs = movs.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
@@ -212,6 +217,12 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
             const esGrupalAct = act.permite_grupo === true
             const nAdultos = asistInsc.filter(a => (a.tipo||'adulto') === 'adulto').length
             const nNinos = asistInsc.filter(a => a.tipo === 'nino').length
+            // Gastos de la actividad: categoria de movimientos con el mismo nombre
+            const catCoincide = categoriasDash.find(c => c.nombre.trim().toLowerCase() === act.nombre.trim().toLowerCase())
+            const gastosAct = catCoincide
+              ? movimientosDash.filter(m => m.id_categoria === catCoincide.id_categoria && m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
+              : 0
+            const saldoNetoAct = recaudado - gastosAct
             return (
               <div key={act.id_actividad} className="card"
                 style={{cursor:'pointer',border:'1.5px solid #bfdbfe',background:'#eff6ff'}}
@@ -244,6 +255,12 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(recaudado)} recaudado</span>
                   <span style={{color:'#d97706',fontWeight:600}}>{formatMoney(porCobrar)} pendiente</span>
                 </div>
+                {gastosAct > 0 && (
+                  <div style={{display:'flex',justifyContent:'space-between',marginTop:6,paddingTop:6,borderTop:'0.5px dashed #bfdbfe',fontSize:12}}>
+                    <span style={{color:'#dc2626',fontWeight:600}}>{formatMoney(gastosAct)} gastado</span>
+                    <span style={{color:saldoNetoAct>=0?'#1d4ed8':'#dc2626',fontWeight:700}}>{formatMoney(saldoNetoAct)} neto</span>
+                  </div>
+                )}
               </div>
             )
           })}
