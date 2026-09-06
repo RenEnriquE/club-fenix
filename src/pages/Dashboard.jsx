@@ -40,6 +40,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
   const [asisDashboard, setAsisDashboard] = useState([])
   const [movimientosDash, setMovimientosDash] = useState([])
   const [categoriasDash, setCategoriasDash] = useState([])
+  const [todasPersonas, setTodasPersonas] = useState([])
   const [saldoMovimientos, setSaldoMovimientos] = useState(null)
   const [actSelDash, setActSelDash] = useState(null)
   const [loading, setLoading] = useState(!cached)
@@ -59,8 +60,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         supabase.from('actividad_asistentes').select('*'),
         supabase.from('movimientos').select('tipo,monto,fecha,id_categoria').gte('fecha', `${anio}-01-01`).lte('fecha', `${anio}-12-31`),
         supabase.from('movimientos').select('tipo,monto').ilike('item', '%cierre contable%'),
-        supabase.from('categorias_movimiento').select('id_categoria,nombre')
-    ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resAsisDash, resMov, resCierre, resCategorias]) => {
+        supabase.from('categorias_movimiento').select('id_categoria,nombre'),
+        supabase.from('personas').select('id_caif,nombre_comp')
+    ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resAsisDash, resMov, resCierre, resCategorias, resTodasPersonas]) => {
       const p = resP.data || []
       const pg = resPg.data || []
       setPersonas(p); setPagos(pg)
@@ -69,6 +71,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
       setAsisDashboard(resAsisDash?.data || [])
       setMovimientosDash(resMov?.data || [])
       setCategoriasDash(resCategorias?.data || [])
+      setTodasPersonas(resTodasPersonas?.data || [])
       // Calcular saldo = ingresos manuales + pagos con fecha_pago en el año - egresos
       const movs = resMov?.data || []
       const ingMovs = movs.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0)
@@ -274,7 +277,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         const pendientes = insc.filter(i => !i.pagado).sort((a,b) => a.num_referencia?.localeCompare(b.num_referencia))
         const getNombre = insc => {
           if (insc.nombre_pagador_externo) return insc.nombre_pagador_externo
-          const p = personas.find(p=>p.id_caif===insc.id_socio)
+          const p = personas.find(p=>p.id_caif===insc.id_socio) || todasPersonas.find(p=>p.id_caif===insc.id_socio)
           return p ? p.nombre_comp : (insc.id_socio ? `ID ${insc.id_socio}` : 'Sin nombre')
         }
         const getCobertura = insc => {
