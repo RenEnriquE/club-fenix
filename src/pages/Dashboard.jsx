@@ -308,50 +308,46 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               </div>
               {pendientes.length > 0 && (
                 <div style={{marginBottom:16}}>
-                  <div style={{fontSize:12,fontWeight:700,color:'#dc2626',textTransform:'uppercase',marginBottom:8}}>Pendientes de pago</div>
-                  <div style={{overflowX:'auto'}}>
-                  <table className="tbl" style={{fontSize:12,minWidth:340}}>
-                    <thead><tr><th style={{minWidth:tieneReferencias?180:220}}>Socio</th><th style={{width:80}}>Cubre</th>{tieneReferencias && <th style={{width:70}}>N ref</th>}<th style={{width:90,textAlign:'right'}}>Monto</th></tr></thead>
-                    <tbody>
-                      {pendientes.map(i=>{
-                        const cob = getCobertura(i)
-                        return (
-                        <tr key={i.id_inscripcion}>
-                          <td style={{fontWeight:500}}>{getNombre(i)}</td>
-                          <td style={{fontSize:11,color:'#64748b'}}>
-                            {cob.total>0 ? <>{cob.adultos>0 && `${cob.adultos}A`}{cob.adultos>0&&cob.ninos>0&&' '}{cob.ninos>0 && `${cob.ninos}N`}</> : '-'}
-                          </td>
-                          {tieneReferencias && <td style={{fontWeight:700,color:'#dc2626',fontFamily:'monospace'}}>{i.num_referencia}</td>}
-                          <td style={{textAlign:'right',color:'#d97706',fontWeight:600}}>{formatMoney(i.monto)}</td>
-                        </tr>
-                      )})}
-                    </tbody>
-                  </table>
+                  <div style={{fontSize:12,fontWeight:700,color:'#dc2626',textTransform:'uppercase',marginBottom:8}}>Pendientes de pago ({pendientes.length})</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {pendientes.map(i=>{
+                      const cob = getCobertura(i)
+                      return (
+                        <div key={i.id_inscripcion} style={{background:'#fef2f2',border:'0.5px solid #fecaca',borderRadius:8,padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,flexWrap:'wrap'}}>
+                          <div style={{minWidth:0,flex:'1 1 180px'}}>
+                            <div style={{fontWeight:600,fontSize:13,color:'#1e293b',wordBreak:'break-word'}}>{getNombre(i)}</div>
+                            <div style={{fontSize:11,color:'#64748b',marginTop:2,display:'flex',gap:6,flexWrap:'wrap'}}>
+                              {cob.total>0 && <span>{cob.adultos>0 && `${cob.adultos} adulto${cob.adultos!==1?'s':''}`}{cob.adultos>0&&cob.ninos>0&&', '}{cob.ninos>0 && `${cob.ninos} nino${cob.ninos!==1?'s':''}`}</span>}
+                              {i.num_referencia && <span style={{fontFamily:'monospace',fontWeight:600,color:'#dc2626'}}>#{i.num_referencia}</span>}
+                            </div>
+                          </div>
+                          <div style={{fontWeight:700,color:'#d97706',fontSize:14,whiteSpace:'nowrap'}}>{formatMoney(i.monto)}</div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
               {pagaron.length > 0 && (
                 <div>
-                  <div style={{fontSize:12,fontWeight:700,color:'#16a34a',textTransform:'uppercase',marginBottom:8}}>Ya pagaron</div>
-                  <div style={{overflowX:'auto'}}>
-                  <table className="tbl" style={{fontSize:12,minWidth:380}}>
-                    <thead><tr><th style={{minWidth:tieneReferencias?150:200}}>Socio</th><th style={{width:70}}>Cubre</th>{tieneReferencias && <th style={{width:60}}>N ref</th>}<th style={{width:80,textAlign:'right'}}>Monto</th><th style={{width:85}}>Fecha</th></tr></thead>
-                    <tbody>
-                      {pagaron.map(i=>{
-                        const cob = getCobertura(i)
-                        return (
-                        <tr key={i.id_inscripcion}>
-                          <td style={{fontWeight:500}}>{getNombre(i)}</td>
-                          <td style={{fontSize:11,color:'#64748b'}}>
-                            {cob.total>0 ? <>{cob.adultos>0 && `${cob.adultos}A`}{cob.adultos>0&&cob.ninos>0&&' '}{cob.ninos>0 && `${cob.ninos}N`}</> : '-'}
-                          </td>
-                          {tieneReferencias && <td style={{fontWeight:700,color:'#16a34a',fontFamily:'monospace'}}>{i.num_referencia}</td>}
-                          <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{formatMoney(i.monto)}</td>
-                          <td style={{color:'var(--text-3)',fontSize:11}}>{i.fecha_pago||'-'}</td>
-                        </tr>
-                      )})}
-                    </tbody>
-                  </table>
+                  <div style={{fontSize:12,fontWeight:700,color:'#16a34a',textTransform:'uppercase',marginBottom:8}}>Ya pagaron ({pagaron.length})</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {pagaron.map(i=>{
+                      const cob = getCobertura(i)
+                      return (
+                        <div key={i.id_inscripcion} style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,flexWrap:'wrap'}}>
+                          <div style={{minWidth:0,flex:'1 1 180px'}}>
+                            <div style={{fontWeight:600,fontSize:13,color:'#1e293b',wordBreak:'break-word'}}>{getNombre(i)}</div>
+                            <div style={{fontSize:11,color:'#64748b',marginTop:2,display:'flex',gap:6,flexWrap:'wrap'}}>
+                              {cob.total>0 && <span>{cob.adultos>0 && `${cob.adultos} adulto${cob.adultos!==1?'s':''}`}{cob.adultos>0&&cob.ninos>0&&', '}{cob.ninos>0 && `${cob.ninos} nino${cob.ninos!==1?'s':''}`}</span>}
+                              {i.num_referencia && <span style={{fontFamily:'monospace',fontWeight:600,color:'#16a34a'}}>#{i.num_referencia}</span>}
+                              {i.fecha_pago && <span>{i.fecha_pago}</span>}
+                            </div>
+                          </div>
+                          <div style={{fontWeight:700,color:'#16a34a',fontSize:14,whiteSpace:'nowrap'}}>{formatMoney(i.monto)}</div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
