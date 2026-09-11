@@ -296,32 +296,36 @@ export default function Egresos({ isAdmin = true }) {
               <div className="card">
                 <div className="card-title"><i className="ti ti-layout-list"></i>Por categoria</div>
                 <div>
+                <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)', gap:8, padding:'0 12px 6px', fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase' }}>
+                  <div></div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, textAlign:'right' }}>
+                    <span>Ingresos</span><span>Egresos</span><span>Saldo</span>
+                  </div>
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {/* Cuotas adultos */}
                   {totalCuotasAdultos > 0 && (
-                    <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 12px'}}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
-                        <div style={{fontWeight:600,color:'#1a5e3a',display:'flex',alignItems:'center',gap:6}}>
-                          <i className="ti ti-users" style={{fontSize:14}}></i>Ingresos Cuotas Socios Adultos
-                        </div>
-                        <div style={{display:'flex',gap:12,alignItems:'center',fontSize:13}}>
-                          <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(totalCuotasAdultos)}</span>
-                          <span style={{color:'#94a3b8',fontSize:11}}>{cuotasAdultos.length} mov.</span>
-                        </div>
+                    <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 12px',display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)',gap:8,alignItems:'center'}}>
+                      <div style={{fontWeight:600,color:'#1a5e3a',display:'flex',alignItems:'center',gap:6,minWidth:0,wordBreak:'break-word'}}>
+                        <i className="ti ti-users" style={{fontSize:14,flexShrink:0}}></i>Ingresos Cuotas Socios Adultos
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,textAlign:'right',fontSize:12}}>
+                        <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(totalCuotasAdultos)}</span>
+                        <span style={{color:'#94a3b8'}}>-</span>
+                        <span style={{color:'#1d4ed8',fontWeight:700}}>{formatMoney(totalCuotasAdultos)}</span>
                       </div>
                     </div>
                   )}
                   {/* Cuotas ninos */}
                   {totalCuotasNinos > 0 && (
-                    <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 12px'}}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
-                        <div style={{fontWeight:600,color:'#1a5e3a',display:'flex',alignItems:'center',gap:6}}>
-                          <i className="ti ti-users" style={{fontSize:14}}></i>Ingresos Cuotas Socios Ninos
-                        </div>
-                        <div style={{display:'flex',gap:12,alignItems:'center',fontSize:13}}>
-                          <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(totalCuotasNinos)}</span>
-                          <span style={{color:'#94a3b8',fontSize:11}}>{cuotasNinos.length} mov.</span>
-                        </div>
+                    <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 12px',display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)',gap:8,alignItems:'center'}}>
+                      <div style={{fontWeight:600,color:'#1a5e3a',display:'flex',alignItems:'center',gap:6,minWidth:0,wordBreak:'break-word'}}>
+                        <i className="ti ti-users" style={{fontSize:14,flexShrink:0}}></i>Ingresos Cuotas Socios Ninos
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,textAlign:'right',fontSize:12}}>
+                        <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(totalCuotasNinos)}</span>
+                        <span style={{color:'#94a3b8'}}>-</span>
+                        <span style={{color:'#1d4ed8',fontWeight:700}}>{formatMoney(totalCuotasNinos)}</span>
                       </div>
                     </div>
                   )}
@@ -334,16 +338,14 @@ export default function Egresos({ isAdmin = true }) {
                     const saldoTorneos = totalTorneos - egresosTorneos
                     if (totalTorneos === 0 && egresosTorneos === 0) return null
                     return (
-                      <div style={{background:'#fff7ed',border:'0.5px solid #fed7aa',borderRadius:8,padding:'10px 12px'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
-                          <div style={{fontWeight:600,color:'#c2410c',display:'flex',alignItems:'center',gap:6}}>
-                            <i className="ti ti-trophy" style={{fontSize:14}}></i>Torneos
-                          </div>
-                          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12,flexWrap:'wrap'}}>
-                            {totalTorneos>0 && <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(totalTorneos)}</span>}
-                            {egresosTorneos>0 && <span style={{color:'#dc2626',fontWeight:600}}>-{formatMoney(egresosTorneos)}</span>}
-                            <span style={{fontWeight:700,color:saldoTorneos>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoTorneos)}</span>
-                          </div>
+                      <div style={{background:'#fff7ed',border:'0.5px solid #fed7aa',borderRadius:8,padding:'10px 12px',display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)',gap:8,alignItems:'center'}}>
+                        <div style={{fontWeight:600,color:'#c2410c',display:'flex',alignItems:'center',gap:6,minWidth:0,wordBreak:'break-word'}}>
+                          <i className="ti ti-trophy" style={{fontSize:14,flexShrink:0}}></i>Torneos
+                        </div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,textAlign:'right',fontSize:12}}>
+                          <span style={{color:totalTorneos>0?'#16a34a':'#94a3b8',fontWeight:600}}>{totalTorneos>0?formatMoney(totalTorneos):'-'}</span>
+                          <span style={{color:egresosTorneos>0?'#dc2626':'#94a3b8',fontWeight:600}}>{egresosTorneos>0?formatMoney(egresosTorneos):'-'}</span>
+                          <span style={{fontWeight:700,color:saldoTorneos>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoTorneos)}</span>
                         </div>
                       </div>
                     )
@@ -354,13 +356,14 @@ export default function Egresos({ isAdmin = true }) {
                     return (
                       <div style={{background:'#fffbeb',border:'0.5px solid #fde68a',borderRadius:8,overflow:'hidden'}}>
                         <div onClick={() => setCatExpandida(expandidaC ? null : 'cierre-contable')}
-                          style={{cursor:'pointer',padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
-                          <div style={{fontWeight:600,color:'#92400e',display:'flex',alignItems:'center',gap:6}}>
-                            <i className={`ti ti-chevron-${expandidaC?'down':'right'}`} style={{fontSize:12,color:'#94a3b8'}}></i>
-                            <i className="ti ti-history" style={{fontSize:14}}></i>Cierre Contable
+                          style={{cursor:'pointer',padding:'10px 12px',display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)',gap:8,alignItems:'center'}}>
+                          <div style={{fontWeight:600,color:'#92400e',display:'flex',alignItems:'center',gap:6,minWidth:0,wordBreak:'break-word'}}>
+                            <i className={`ti ti-chevron-${expandidaC?'down':'right'}`} style={{fontSize:12,color:'#94a3b8',flexShrink:0}}></i>
+                            <i className="ti ti-history" style={{fontSize:14,flexShrink:0}}></i>Cierre Contable
                           </div>
-                          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12}}>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,textAlign:'right',fontSize:12}}>
                             <span style={{color:saldoAnterior>=0?'#16a34a':'#94a3b8',fontWeight:600}}>{saldoAnterior>=0?formatMoney(saldoAnterior):'-'}</span>
+                            <span style={{color:'#94a3b8'}}>-</span>
                             <span style={{fontWeight:700,color:saldoAnterior>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoAnterior)}</span>
                           </div>
                         </div>
@@ -400,14 +403,14 @@ export default function Egresos({ isAdmin = true }) {
                     return (
                       <div key={`act-${act.id_actividad}`} style={{background:'#faf5ff',border:'0.5px solid #e9d5ff',borderRadius:8,overflow:'hidden'}}>
                         <div onClick={() => movsCatAct.length>0 && setCatExpandida(expandidaAct ? null : `act-${act.id_actividad}`)}
-                          style={{cursor: movsCatAct.length>0 ? 'pointer' : 'default',padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
-                          <div style={{fontWeight:600,color:'#7c3aed',display:'flex',alignItems:'center',gap:6,wordBreak:'break-word'}}>
-                            {movsCatAct.length>0 && <i className={`ti ti-chevron-${expandidaAct?'down':'right'}`} style={{fontSize:12,color:'#94a3b8'}}></i>}
+                          style={{cursor: movsCatAct.length>0 ? 'pointer' : 'default',padding:'10px 12px',display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)',gap:8,alignItems:'center'}}>
+                          <div style={{fontWeight:600,color:'#7c3aed',display:'flex',alignItems:'center',gap:6,minWidth:0,wordBreak:'break-word'}}>
+                            {movsCatAct.length>0 && <i className={`ti ti-chevron-${expandidaAct?'down':'right'}`} style={{fontSize:12,color:'#94a3b8',flexShrink:0}}></i>}
                             <i className="ti ti-ticket" style={{fontSize:14,flexShrink:0}}></i>{act.nombre}
                           </div>
-                          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12,flexWrap:'wrap'}}>
-                            {totalIngAct>0 && <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(totalIngAct)}</span>}
-                            {egresosAct>0 && <span style={{color:'#dc2626',fontWeight:600}}>-{formatMoney(egresosAct)}</span>}
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,textAlign:'right',fontSize:12}}>
+                            <span style={{color:totalIngAct>0?'#16a34a':'#94a3b8',fontWeight:600}}>{totalIngAct>0?formatMoney(totalIngAct):'-'}</span>
+                            <span style={{color:egresosAct>0?'#dc2626':'#94a3b8',fontWeight:600}}>{egresosAct>0?formatMoney(egresosAct):'-'}</span>
                             <span style={{fontWeight:700,color:saldoAct>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoAct)}</span>
                           </div>
                         </div>
@@ -437,15 +440,15 @@ export default function Egresos({ isAdmin = true }) {
                     return (
                       <div key={cat.id_categoria} style={{background:'#fff',border:'0.5px solid #e2e8f0',borderRadius:8,overflow:'hidden'}}>
                         <div onClick={() => setCatExpandida(expandida ? null : cat.id_categoria)}
-                          style={{cursor:'pointer',padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}
+                          style={{cursor:'pointer',padding:'10px 12px',display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)',gap:8,alignItems:'center'}}
                           className="hoverable">
-                          <div style={{fontWeight:600,color:'#1e293b',display:'flex',alignItems:'center',gap:6,wordBreak:'break-word'}}>
-                            <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{fontSize:12,color:'#94a3b8'}}></i>
+                          <div style={{fontWeight:600,color:'#1e293b',display:'flex',alignItems:'center',gap:6,minWidth:0,wordBreak:'break-word'}}>
+                            <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{fontSize:12,color:'#94a3b8',flexShrink:0}}></i>
                             {cat.nombre}
                           </div>
-                          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12,flexWrap:'wrap'}}>
-                            {cat.ingresos>0 && <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(cat.ingresos)}</span>}
-                            {cat.egresos>0 && <span style={{color:'#dc2626',fontWeight:600}}>-{formatMoney(cat.egresos)}</span>}
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,textAlign:'right',fontSize:12}}>
+                            <span style={{color:cat.ingresos>0?'#16a34a':'#94a3b8',fontWeight:600}}>{cat.ingresos>0?formatMoney(cat.ingresos):'-'}</span>
+                            <span style={{color:cat.egresos>0?'#dc2626':'#94a3b8',fontWeight:600}}>{cat.egresos>0?formatMoney(cat.egresos):'-'}</span>
                             <span style={{fontWeight:700,color:cat.saldo>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(cat.saldo)}</span>
                           </div>
                         </div>
@@ -478,14 +481,14 @@ export default function Egresos({ isAdmin = true }) {
                     return (
                       <div style={{background:'#fffbeb',border:'0.5px solid #fde68a',borderRadius:8,overflow:'hidden'}}>
                         <div onClick={() => setCatExpandida(expandida ? null : 'sin-cat')}
-                          style={{cursor:'pointer',padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
-                          <div style={{fontWeight:600,color:'#92400e',display:'flex',alignItems:'center',gap:6}}>
-                            <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{fontSize:12,color:'#94a3b8'}}></i>
+                          style={{cursor:'pointer',padding:'10px 12px',display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)',gap:8,alignItems:'center'}}>
+                          <div style={{fontWeight:600,color:'#92400e',display:'flex',alignItems:'center',gap:6,minWidth:0,wordBreak:'break-word'}}>
+                            <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{fontSize:12,color:'#94a3b8',flexShrink:0}}></i>
                             Sin categoria
                           </div>
-                          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12,flexWrap:'wrap'}}>
-                            {ing>0 && <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(ing)}</span>}
-                            {egr>0 && <span style={{color:'#dc2626',fontWeight:600}}>-{formatMoney(egr)}</span>}
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,textAlign:'right',fontSize:12}}>
+                            <span style={{color:ing>0?'#16a34a':'#94a3b8',fontWeight:600}}>{ing>0?formatMoney(ing):'-'}</span>
+                            <span style={{color:egr>0?'#dc2626':'#94a3b8',fontWeight:600}}>{egr>0?formatMoney(egr):'-'}</span>
                             <span style={{fontWeight:700,color:(ing-egr)>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(ing-egr)}</span>
                           </div>
                         </div>
@@ -508,14 +511,12 @@ export default function Egresos({ isAdmin = true }) {
                     )
                   })()}
                   {/* TOTAL */}
-                  <div style={{background:'#f1f5f9',border:'1px solid #cbd5e1',borderRadius:8,padding:'12px'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
-                      <div style={{fontWeight:700,fontSize:14}}>TOTAL</div>
-                      <div style={{display:'flex',gap:12,alignItems:'center',fontSize:13}}>
-                        <span style={{color:'#16a34a',fontWeight:700}}>+{formatMoney(totalIngresos)}</span>
-                        <span style={{color:'#dc2626',fontWeight:700}}>-{formatMoney(totalEgresos)}</span>
-                        <span style={{fontWeight:700,color:saldo>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldo)}</span>
-                      </div>
+                  <div style={{background:'#f1f5f9',border:'1px solid #cbd5e1',borderRadius:8,padding:'12px',display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)',gap:8,alignItems:'center'}}>
+                    <div style={{fontWeight:700,fontSize:14}}>TOTAL</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,textAlign:'right',fontSize:13}}>
+                      <span style={{color:'#16a34a',fontWeight:700}}>{formatMoney(totalIngresos)}</span>
+                      <span style={{color:'#dc2626',fontWeight:700}}>{formatMoney(totalEgresos)}</span>
+                      <span style={{fontWeight:700,color:saldo>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldo)}</span>
                     </div>
                   </div>
                 </div>

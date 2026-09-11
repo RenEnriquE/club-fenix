@@ -48,6 +48,8 @@ export default function Comite({ isAdmin = false }) {
   const [hasta, setHasta] = useState(defaultHasta)
   const [filtroVigente, setFiltroVigente] = useState('1')
   const [filtroTipo, setFiltroTipo] = useState('')
+  const [vistaTabla, setVistaTabla] = useState('monto') // 'monto' | 'fecha'
+  const [busquedaSocio, setBusquedaSocio] = useState('')
   const [filtroActividades, setFiltroActividades] = useState(['0'])
   const filtroActividadesFinal = isAdmin ? filtroActividades : ['0']
   const [vistaActiva, setVistaActiva] = useState('cuotas') // 'cuotas' | 'actividades'
@@ -71,8 +73,8 @@ export default function Comite({ isAdmin = false }) {
     for (let a = anioDesdeReal; a <= anioHastaReal; a++) anios.push(a)
 
     Promise.all([
-      supabase.from('personas').select('id_caif,nombre_comp,nombre,apellido,ap_mat,rut,dv,atleta,vigente,fecha_nac').order('nombre_comp'),
-      supabase.from('pagos').select('id_socio,periodo,mes,anio,monto,id_actividad').in('anio', anios)
+      supabase.from('personas').select('id_caif,nombre_comp,nombre,apellido,ap_mat,rut,dv,atleta,vigente,fecha_nac,apoderado').order('nombre_comp'),
+      supabase.from('pagos').select('id_socio,periodo,mes,anio,monto,id_actividad,fecha_pago').in('anio', anios)
     ]).then(([resP, resPg]) => {
       setPersonas(resP.data || [])
       const all = resPg.data || []
@@ -91,7 +93,11 @@ export default function Comite({ isAdmin = false }) {
     const matchV = filtroVigente === '' || String(p.vigente) === filtroVigente
     const matchT = !filtroTipo || p.atleta === filtroTipo
     const noApoderado = p.atleta !== 'Apoderado'
-    return matchV && matchT && noApoderado
+    const q = busquedaSocio.trim().toLowerCase()
+    const matchBusqueda = !q ||
+      (p.nombre_comp||'').toLowerCase().includes(q) ||
+      (p.apoderado||'').toLowerCase().includes(q)
+    return matchV && matchT && noApoderado && matchBusqueda
   })
 
   // Pagos filtrados por actividad para vista cuotas (multiples)
@@ -278,6 +284,28 @@ export default function Comite({ isAdmin = false }) {
               <option value="Atleta Nino">Ninos</option>
               <option value="Apoderado">Solo apoderados</option>
             </select>
+          </div>
+          <div className="form-group" style={{minWidth:180}}>
+            <label>Buscar socio o apoderado</label>
+            <input value={busquedaSocio} onChange={e=>setBusquedaSocio(e.target.value)}
+              placeholder="Nombre..."
+              style={{padding:'7px 10px',border:'0.5px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff',width:'100%'}}/>
+          </div>
+          <div className="form-group" style={{minWidth:140}}>
+            <label>Mostrar</label>
+            <div style={{display:'flex',gap:4}}>
+              {[{k:'monto',l:'Monto'},{k:'fecha',l:'Fecha pago'}].map(op=>(
+                <button key={op.k} type="button" onClick={()=>setVistaTabla(op.k)}
+                  style={{
+                    flex:1,padding:'7px 8px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:600,
+                    border:`1.5px solid ${vistaTabla===op.k?'#1a5e3a':'#e2e8f0'}`,
+                    background:vistaTabla===op.k?'#f0fdf4':'#f8fafc',
+                    color:vistaTabla===op.k?'#1a5e3a':'#64748b'
+                  }}>
+                  {op.l}
+                </button>
+              ))}
+            </div>
           </div>
           {!loading && (
             <div style={{marginLeft:'auto',fontSize:12,color:'var(--text-3)',alignSelf:'center'}}>
@@ -468,9 +496,14 @@ export default function Comite({ isAdmin = false }) {
                               </td>
                               {columnas.map(col => {
                                 const pago = pagosSocio.find(pg => Number(pg.periodo) === col.periodo)
+                                const valorMostrar = pago
+                                  ? (vistaTabla === 'fecha'
+                                      ? (pago.fecha_pago ? pago.fecha_pago.split('-').reverse().slice(0,2).join('-') : 's/f')
+                                      : formatMoney(pago.monto))
+                                  : '-'
                                 return (
-                                  <td key={col.periodo} style={{textAlign:'right',color:pago?'#16a34a':'#e2e8f0',fontSize:11}}>
-                                    {pago ? formatMoney(pago.monto) : '-'}
+                                  <td key={col.periodo} style={{textAlign:'right',color:pago?'#16a34a':'#e2e8f0',fontSize:11,whiteSpace:'nowrap'}}>
+                                    {valorMostrar}
                                   </td>
                                 )
                               })}
