@@ -402,10 +402,10 @@ export default function Egresos({ isAdmin = true }) {
                     const movsOrdenados = movsCatAct.slice().sort((a,b) => new Date(b.fecha||0) - new Date(a.fecha||0))
                     return (
                       <div key={`act-${act.id_actividad}`} style={{background:'#faf5ff',border:'0.5px solid #e9d5ff',borderRadius:8,overflow:'hidden'}}>
-                        <div onClick={() => movsCatAct.length>0 && setCatExpandida(expandidaAct ? null : `act-${act.id_actividad}`)}
-                          style={{cursor: movsCatAct.length>0 ? 'pointer' : 'default',padding:'10px 12px',display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)',gap:8,alignItems:'center'}}>
+                        <div onClick={() => (movsCatAct.length>0 || totalAct>0) && setCatExpandida(expandidaAct ? null : `act-${act.id_actividad}`)}
+                          style={{cursor: (movsCatAct.length>0 || totalAct>0) ? 'pointer' : 'default',padding:'10px 12px',display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(180px,240px)',gap:8,alignItems:'center'}}>
                           <div style={{fontWeight:600,color:'#7c3aed',display:'flex',alignItems:'center',gap:6,minWidth:0,wordBreak:'break-word'}}>
-                            {movsCatAct.length>0 && <i className={`ti ti-chevron-${expandidaAct?'down':'right'}`} style={{fontSize:12,color:'#94a3b8',flexShrink:0}}></i>}
+                            {(movsCatAct.length>0 || totalAct>0) && <i className={`ti ti-chevron-${expandidaAct?'down':'right'}`} style={{fontSize:12,color:'#94a3b8',flexShrink:0}}></i>}
                             <i className="ti ti-ticket" style={{fontSize:14,flexShrink:0}}></i>{act.nombre}
                           </div>
                           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,textAlign:'right',fontSize:12}}>
@@ -416,6 +416,15 @@ export default function Egresos({ isAdmin = true }) {
                         </div>
                         {expandidaAct && (
                           <div style={{borderTop:'0.5px solid #e9d5ff'}}>
+                            {totalAct > 0 && (
+                              <div style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #f3e8ff',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12,background:'#faf5ff'}}>
+                                <div>
+                                  <div style={{color:'var(--text-2)',fontWeight:600}}>Aporte socios</div>
+                                  <div style={{color:'#94a3b8',fontSize:11}}>{pagosAct.length} pago{pagosAct.length!==1?'s':''} de inscripcion</div>
+                                </div>
+                                <span style={{fontWeight:600,color:'#16a34a'}}>+{formatMoney(totalAct)}</span>
+                              </div>
+                            )}
                             {movsOrdenados.map(m => (
                               <div key={m.id_movimiento} style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #f3e8ff',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12}}>
                                 <div>
