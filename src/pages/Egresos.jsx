@@ -295,226 +295,230 @@ export default function Egresos({ isAdmin = true }) {
               {/* Resumen por categoria */}
               <div className="card">
                 <div className="card-title"><i className="ti ti-layout-list"></i>Por categoria</div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="tbl" style={{minWidth:0, tableLayout:"auto", width:"100%"}}>
-                    <thead>
-                      <tr>
-                        <th style={{width:'auto'}}>Categoria</th>
-                        <th style={{ width: 70, textAlign: 'right', fontSize: 10 }}>Ing.</th>
-                        <th style={{ width: 70, textAlign: 'right', fontSize: 10 }}>Egr.</th>
-                        <th style={{ width: 70, textAlign: 'right', fontSize: 10 }}>Saldo</th>
-                        <th style={{ width: 30, textAlign: 'center', fontSize: 10 }}>N</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {/* Cuotas adultos */}
-                      {totalCuotasAdultos > 0 && (
-                        <tr style={{background:'#f0fdf4'}}>
-                          <td style={{fontWeight:500,color:'#1a5e3a',whiteSpace:'normal',wordBreak:'break-word'}}>
-                            <i className="ti ti-users" style={{marginRight:6,fontSize:12}}></i>
-                            Ingresos Cuotas Socios Adultos
-                          </td>
-                          <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{formatMoney(totalCuotasAdultos)}</td>
-                          <td style={{textAlign:'right',color:'#94a3b8'}}>-</td>
-                          <td style={{textAlign:'right',fontWeight:600,color:'#1d4ed8'}}>{formatMoney(totalCuotasAdultos)}</td>
-                          <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{cuotasAdultos.length}</td>
-                        </tr>
-                      )}
-                      {/* Cuotas ninos */}
-                      {totalCuotasNinos > 0 && (
-                        <tr style={{background:'#f0fdf4'}}>
-                          <td style={{fontWeight:500,color:'#1a5e3a',whiteSpace:'normal',wordBreak:'break-word'}}>
-                            <i className="ti ti-users" style={{marginRight:6,fontSize:12}}></i>
-                            Ingresos Cuotas Socios Ninos
-                          </td>
-                          <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{formatMoney(totalCuotasNinos)}</td>
-                          <td style={{textAlign:'right',color:'#94a3b8'}}>-</td>
-                          <td style={{textAlign:'right',fontWeight:600,color:'#1d4ed8'}}>{formatMoney(totalCuotasNinos)}</td>
-                          <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{cuotasNinos.length}</td>
-                        </tr>
-                      )}
-                      {/* Torneos - fila combinada ingresos atletas + egresos organizador */}
-                      {(() => {
-                        // Egresos de torneos desde movimientos (categoria Torneos = id 3)
-                        const catTorneos = categorias.find(c => c.nombre.toLowerCase().includes('orneo'))
-                        const egresosTorneos = catTorneos
-                          ? movimientos.filter(m => m.id_categoria === catTorneos.id_categoria && m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
-                          : 0
-                        const saldoTorneos = totalTorneos - egresosTorneos
-                        if (totalTorneos === 0 && egresosTorneos === 0) return null
-                        return (
-                          <tr style={{background:'#fff7ed'}}>
-                            <td style={{fontWeight:500,color:'#c2410c',whiteSpace:'normal',wordBreak:'break-word'}}>
-                              <i className="ti ti-trophy" style={{marginRight:6,fontSize:12}}></i>
-                              Torneos
-                            </td>
-                            <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{totalTorneos>0?formatMoney(totalTorneos):'-'}</td>
-                            <td style={{textAlign:'right',color:'#dc2626',fontWeight:600}}>{egresosTorneos>0?formatMoney(egresosTorneos):'-'}</td>
-                            <td style={{textAlign:'right',fontWeight:700,color:saldoTorneos>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoTorneos)}</td>
-                            <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{torneos.length}</td>
-                          </tr>
-                        )
-                      })()}
-                      {/* Cierre Contable */}
-                      {saldoAnterior !== 0 && (() => {
-                        const expandidaC = catExpandida === 'cierre-contable'
-                        return (
-                          <>
-                            <tr onClick={() => setCatExpandida(expandidaC ? null : 'cierre-contable')}
-                              style={{background:'#fffbeb',cursor:'pointer'}}>
-                              <td style={{fontWeight:500,color:'#92400e',whiteSpace:'normal',wordBreak:'break-word'}}>
-                                <i className={`ti ti-chevron-${expandidaC?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>
-                                <i className="ti ti-history" style={{marginRight:6,fontSize:12}}></i>
-                                Cierre Contable
-                              </td>
-                              <td style={{textAlign:'right',color:saldoAnterior>=0?'#16a34a':'#94a3b8',fontWeight:600}}>{saldoAnterior>=0?formatMoney(saldoAnterior):'-'}</td>
-                              <td style={{textAlign:'right',color:'#94a3b8'}}>-</td>
-                              <td style={{textAlign:'right',fontWeight:700,color:saldoAnterior>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoAnterior)}</td>
-                              <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{movCierre.length}</td>
-                            </tr>
-                            {expandidaC && movCierre.map(m => (
-                              <tr key={m.id_movimiento} style={{background:'#fffbeb99'}}>
-                                <td style={{paddingLeft:28,color:'var(--text-2)',fontSize:12}}>
-                                  <span style={{color:'#94a3b8',marginRight:6}}>{m.fecha}</span>{m.item}
-                                </td>
-                                <td style={{textAlign:'right',color:'#16a34a',fontSize:12}}>{m.tipo==='ingreso'?formatMoney(m.monto):'-'}</td>
-                                <td style={{textAlign:'right',color:'#dc2626',fontSize:12}}>{m.tipo==='egreso'?formatMoney(m.monto):'-'}</td>
-                                <td style={{textAlign:'right',fontSize:11,color:'#94a3b8'}}>{m.obs||'-'}</td>
-                                <td></td>
-                              </tr>
+                <div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {/* Cuotas adultos */}
+                  {totalCuotasAdultos > 0 && (
+                    <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 12px'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                        <div style={{fontWeight:600,color:'#1a5e3a',display:'flex',alignItems:'center',gap:6}}>
+                          <i className="ti ti-users" style={{fontSize:14}}></i>Ingresos Cuotas Socios Adultos
+                        </div>
+                        <div style={{display:'flex',gap:12,alignItems:'center',fontSize:13}}>
+                          <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(totalCuotasAdultos)}</span>
+                          <span style={{color:'#94a3b8',fontSize:11}}>{cuotasAdultos.length} mov.</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Cuotas ninos */}
+                  {totalCuotasNinos > 0 && (
+                    <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 12px'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                        <div style={{fontWeight:600,color:'#1a5e3a',display:'flex',alignItems:'center',gap:6}}>
+                          <i className="ti ti-users" style={{fontSize:14}}></i>Ingresos Cuotas Socios Ninos
+                        </div>
+                        <div style={{display:'flex',gap:12,alignItems:'center',fontSize:13}}>
+                          <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(totalCuotasNinos)}</span>
+                          <span style={{color:'#94a3b8',fontSize:11}}>{cuotasNinos.length} mov.</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Torneos - fila combinada ingresos atletas + egresos organizador */}
+                  {(() => {
+                    const catTorneos = categorias.find(c => c.nombre.toLowerCase().includes('orneo'))
+                    const egresosTorneos = catTorneos
+                      ? movimientos.filter(m => m.id_categoria === catTorneos.id_categoria && m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
+                      : 0
+                    const saldoTorneos = totalTorneos - egresosTorneos
+                    if (totalTorneos === 0 && egresosTorneos === 0) return null
+                    return (
+                      <div style={{background:'#fff7ed',border:'0.5px solid #fed7aa',borderRadius:8,padding:'10px 12px'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                          <div style={{fontWeight:600,color:'#c2410c',display:'flex',alignItems:'center',gap:6}}>
+                            <i className="ti ti-trophy" style={{fontSize:14}}></i>Torneos
+                          </div>
+                          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12,flexWrap:'wrap'}}>
+                            {totalTorneos>0 && <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(totalTorneos)}</span>}
+                            {egresosTorneos>0 && <span style={{color:'#dc2626',fontWeight:600}}>-{formatMoney(egresosTorneos)}</span>}
+                            <span style={{fontWeight:700,color:saldoTorneos>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoTorneos)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                  {/* Cierre Contable */}
+                  {saldoAnterior !== 0 && (() => {
+                    const expandidaC = catExpandida === 'cierre-contable'
+                    return (
+                      <div style={{background:'#fffbeb',border:'0.5px solid #fde68a',borderRadius:8,overflow:'hidden'}}>
+                        <div onClick={() => setCatExpandida(expandidaC ? null : 'cierre-contable')}
+                          style={{cursor:'pointer',padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                          <div style={{fontWeight:600,color:'#92400e',display:'flex',alignItems:'center',gap:6}}>
+                            <i className={`ti ti-chevron-${expandidaC?'down':'right'}`} style={{fontSize:12,color:'#94a3b8'}}></i>
+                            <i className="ti ti-history" style={{fontSize:14}}></i>Cierre Contable
+                          </div>
+                          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12}}>
+                            <span style={{color:saldoAnterior>=0?'#16a34a':'#94a3b8',fontWeight:600}}>{saldoAnterior>=0?formatMoney(saldoAnterior):'-'}</span>
+                            <span style={{fontWeight:700,color:saldoAnterior>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoAnterior)}</span>
+                          </div>
+                        </div>
+                        {expandidaC && (
+                          <div style={{borderTop:'0.5px solid #fde68a'}}>
+                            {movCierre.map(m => (
+                              <div key={m.id_movimiento} style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #fef3c7',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12}}>
+                                <div>
+                                  <div style={{color:'var(--text-2)'}}>{m.item}</div>
+                                  <div style={{color:'#94a3b8',fontSize:11}}>{m.fecha}</div>
+                                </div>
+                                <span style={{fontWeight:600,color:m.tipo==='ingreso'?'#16a34a':'#dc2626'}}>
+                                  {m.tipo==='ingreso'?'+':'-'}{formatMoney(m.monto)}
+                                </span>
+                              </div>
                             ))}
-                          </>
-                        )
-                      })()}
-                      {/* Actividades unicas (rifa, etc) */}
-                      {actividadesUnicas.map(act => {
-                        const pagosAct = pagosActUnicas.filter(p => p.id_actividad === act.id_actividad)
-                        const totalAct = pagosAct.reduce((a, p) => a + (p.monto || 0), 0)
-                        // Buscar categoria de movimientos con el mismo nombre para combinar egresos
-                        const catCoincide = categorias.find(c => c.nombre.trim().toLowerCase() === act.nombre.trim().toLowerCase())
-                        const movsCatAct = catCoincide
-                          ? movimientos.filter(m => m.id_categoria === catCoincide.id_categoria && !idsCierre.includes(m.id_movimiento))
-                          : []
-                        const egresosAct = movsCatAct.filter(m => m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
-                        const ingresosManualesAct = movsCatAct.filter(m => m.tipo === 'ingreso').reduce((a,m) => a+m.monto, 0)
-                        const totalIngAct = totalAct + ingresosManualesAct
-                        if (totalIngAct === 0 && egresosAct === 0) return null
-                        const saldoAct = totalIngAct - egresosAct
-                        const expandidaAct = catExpandida === `act-${act.id_actividad}`
-                        return (
-                          <>
-                            <tr key={`act-${act.id_actividad}`} style={{background:'#faf5ff',cursor: movsCatAct.length>0 ? 'pointer' : 'default'}}
-                              onClick={() => movsCatAct.length>0 && setCatExpandida(expandidaAct ? null : `act-${act.id_actividad}`)}>
-                              <td style={{fontWeight:500,color:'#7c3aed',whiteSpace:'normal',wordBreak:'break-word'}}>
-                                {movsCatAct.length>0 && <i className={`ti ti-chevron-${expandidaAct?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>}
-                                <i className="ti ti-ticket" style={{marginRight:6,fontSize:12}}></i>
-                                {act.nombre}
-                              </td>
-                              <td style={{textAlign:'right',color:'#16a34a',fontWeight:600}}>{totalIngAct>0?formatMoney(totalIngAct):'-'}</td>
-                              <td style={{textAlign:'right',color:'#dc2626',fontWeight:600}}>{egresosAct>0?formatMoney(egresosAct):'-'}</td>
-                              <td style={{textAlign:'right',fontWeight:600,color:saldoAct>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoAct)}</td>
-                              <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{pagosAct.length + movsCatAct.length}</td>
-                            </tr>
-                            {expandidaAct && movsCatAct.map(m => (
-                              <tr key={m.id_movimiento} style={{background:'#faf5ff99'}}>
-                                <td style={{paddingLeft:28,color:'var(--text-2)',fontSize:12,whiteSpace:'normal',wordBreak:'break-word'}}>
-                                  <span style={{color:'#94a3b8',marginRight:6}}>{m.fecha}</span>{m.item}
-                                </td>
-                                <td style={{textAlign:'right',color:'#16a34a',fontSize:12}}>{m.tipo==='ingreso'?formatMoney(m.monto):'-'}</td>
-                                <td style={{textAlign:'right',color:'#dc2626',fontSize:12}}>{m.tipo==='egreso'?formatMoney(m.monto):'-'}</td>
-                                <td style={{textAlign:'right',fontSize:11,color:'#94a3b8'}}>{m.obs||'-'}</td>
-                                <td></td>
-                              </tr>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                  {/* Actividades unicas (rifa, etc) */}
+                  {actividadesUnicas.map(act => {
+                    const pagosAct = pagosActUnicas.filter(p => p.id_actividad === act.id_actividad)
+                    const catCoincide = categorias.find(c => c.nombre.trim().toLowerCase() === act.nombre.trim().toLowerCase())
+                    const movsCatAct = catCoincide
+                      ? movimientos.filter(m => m.id_categoria === catCoincide.id_categoria && !idsCierre.includes(m.id_movimiento))
+                      : []
+                    const totalAct = pagosAct.reduce((a, p) => a + (p.monto || 0), 0)
+                    const egresosAct = movsCatAct.filter(m => m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
+                    const ingresosManualesAct = movsCatAct.filter(m => m.tipo === 'ingreso').reduce((a,m) => a+m.monto, 0)
+                    const totalIngAct = totalAct + ingresosManualesAct
+                    if (totalIngAct === 0 && egresosAct === 0) return null
+                    const saldoAct = totalIngAct - egresosAct
+                    const expandidaAct = catExpandida === `act-${act.id_actividad}`
+                    const movsOrdenados = movsCatAct.slice().sort((a,b) => new Date(b.fecha||0) - new Date(a.fecha||0))
+                    return (
+                      <div key={`act-${act.id_actividad}`} style={{background:'#faf5ff',border:'0.5px solid #e9d5ff',borderRadius:8,overflow:'hidden'}}>
+                        <div onClick={() => movsCatAct.length>0 && setCatExpandida(expandidaAct ? null : `act-${act.id_actividad}`)}
+                          style={{cursor: movsCatAct.length>0 ? 'pointer' : 'default',padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                          <div style={{fontWeight:600,color:'#7c3aed',display:'flex',alignItems:'center',gap:6,wordBreak:'break-word'}}>
+                            {movsCatAct.length>0 && <i className={`ti ti-chevron-${expandidaAct?'down':'right'}`} style={{fontSize:12,color:'#94a3b8'}}></i>}
+                            <i className="ti ti-ticket" style={{fontSize:14,flexShrink:0}}></i>{act.nombre}
+                          </div>
+                          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12,flexWrap:'wrap'}}>
+                            {totalIngAct>0 && <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(totalIngAct)}</span>}
+                            {egresosAct>0 && <span style={{color:'#dc2626',fontWeight:600}}>-{formatMoney(egresosAct)}</span>}
+                            <span style={{fontWeight:700,color:saldoAct>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldoAct)}</span>
+                          </div>
+                        </div>
+                        {expandidaAct && (
+                          <div style={{borderTop:'0.5px solid #e9d5ff'}}>
+                            {movsOrdenados.map(m => (
+                              <div key={m.id_movimiento} style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #f3e8ff',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12}}>
+                                <div>
+                                  <div style={{color:'var(--text-2)'}}>{m.item}</div>
+                                  <div style={{color:'#94a3b8',fontSize:11}}>{m.fecha}{m.obs ? ` \u00b7 ${m.obs}` : ''}</div>
+                                </div>
+                                <span style={{fontWeight:600,color:m.tipo==='ingreso'?'#16a34a':'#dc2626'}}>
+                                  {m.tipo==='ingreso'?'+':'-'}{formatMoney(m.monto)}
+                                </span>
+                              </div>
                             ))}
-                          </>
-                        )
-                      })}
-                      {porCategoria.filter(cat => !actividadesUnicas.some(act => act.nombre.trim().toLowerCase() === cat.nombre.trim().toLowerCase())).map(cat => {
-                        const expandida = catExpandida === cat.id_categoria
-                        const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria && !(cat.id_categoria === catTorneosId && m.tipo === 'egreso' && totalTorneos > 0) && !idsCierre.includes(m.id_movimiento))
-                        return (
-                          <>
-                            <tr key={cat.id_categoria}
-                              onClick={() => setCatExpandida(expandida ? null : cat.id_categoria)}
-                              style={{cursor:'pointer'}}
-                              className="hoverable">
-                              <td style={{ fontWeight: 500, whiteSpace:'normal', wordBreak:'break-word' }}>
-                                <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>
-                                {cat.nombre}
-                              </td>
-                              <td style={{ textAlign: 'right', color: cat.ingresos > 0 ? '#16a34a' : '#94a3b8' }}>
-                                {cat.ingresos > 0 ? formatMoney(cat.ingresos) : '-'}
-                              </td>
-                              <td style={{ textAlign: 'right', color: cat.egresos > 0 ? '#dc2626' : '#94a3b8' }}>
-                                {cat.egresos > 0 ? formatMoney(cat.egresos) : '-'}
-                              </td>
-                              <td style={{ textAlign: 'right', fontWeight: 600, color: cat.saldo >= 0 ? '#1d4ed8' : '#dc2626' }}>
-                                {formatMoney(cat.saldo)}
-                              </td>
-                              <td style={{ textAlign: 'center', color: '#64748b', fontSize: 12 }}>{cat.movs}</td>
-                            </tr>
-                            {expandida && movsCat.slice().sort((a,b) => new Date(b.fecha||0) - new Date(a.fecha||0)).map(m => (
-                              <tr key={m.id_movimiento} style={{background:'#f8fafc'}}>
-                                <td style={{paddingLeft:28,color:'var(--text-2)',fontSize:12}}>
-                                  <span style={{color:'#94a3b8',marginRight:6}}>{m.fecha}</span>
-                                  {m.item}
-                                </td>
-                                <td style={{textAlign:'right',color:'#16a34a',fontSize:12}}>
-                                  {m.tipo==='ingreso'?formatMoney(m.monto):'-'}
-                                </td>
-                                <td style={{textAlign:'right',color:'#dc2626',fontSize:12}}>
-                                  {m.tipo==='egreso'?formatMoney(m.monto):'-'}
-                                </td>
-                                <td style={{textAlign:'right',fontSize:11,color:'#94a3b8'}}>{m.obs||'-'}</td>
-                                <td></td>
-                              </tr>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {/* Categorias normales */}
+                  {porCategoria.filter(cat => !actividadesUnicas.some(act => act.nombre.trim().toLowerCase() === cat.nombre.trim().toLowerCase())).map(cat => {
+                    const expandida = catExpandida === cat.id_categoria
+                    const movsCat = movimientos.filter(m => m.id_categoria === cat.id_categoria && !(cat.id_categoria === catTorneosId && m.tipo === 'egreso' && totalTorneos > 0) && !idsCierre.includes(m.id_movimiento))
+                    const movsOrdenados = movsCat.slice().sort((a,b) => new Date(b.fecha||0) - new Date(a.fecha||0))
+                    return (
+                      <div key={cat.id_categoria} style={{background:'#fff',border:'0.5px solid #e2e8f0',borderRadius:8,overflow:'hidden'}}>
+                        <div onClick={() => setCatExpandida(expandida ? null : cat.id_categoria)}
+                          style={{cursor:'pointer',padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}
+                          className="hoverable">
+                          <div style={{fontWeight:600,color:'#1e293b',display:'flex',alignItems:'center',gap:6,wordBreak:'break-word'}}>
+                            <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{fontSize:12,color:'#94a3b8'}}></i>
+                            {cat.nombre}
+                          </div>
+                          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12,flexWrap:'wrap'}}>
+                            {cat.ingresos>0 && <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(cat.ingresos)}</span>}
+                            {cat.egresos>0 && <span style={{color:'#dc2626',fontWeight:600}}>-{formatMoney(cat.egresos)}</span>}
+                            <span style={{fontWeight:700,color:cat.saldo>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(cat.saldo)}</span>
+                          </div>
+                        </div>
+                        {expandida && (
+                          <div style={{borderTop:'0.5px solid #e2e8f0'}}>
+                            {movsOrdenados.map(m => (
+                              <div key={m.id_movimiento} style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #f1f5f9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12,background:'#f8fafc'}}>
+                                <div>
+                                  <div style={{color:'var(--text-2)'}}>{m.item}</div>
+                                  <div style={{color:'#94a3b8',fontSize:11}}>{m.fecha}{m.obs ? ` \u00b7 ${m.obs}` : ''}</div>
+                                </div>
+                                <span style={{fontWeight:600,color:m.tipo==='ingreso'?'#16a34a':'#dc2626'}}>
+                                  {m.tipo==='ingreso'?'+':'-'}{formatMoney(m.monto)}
+                                </span>
+                              </div>
                             ))}
-                          </>
-                        )
-                      })}
-                      {/* Sin categoria */}
-                      {(() => {
-                        const sinCat = movimientos.filter(m => !m.id_categoria)
-                        const ing = sinCat.filter(m => m.tipo === 'ingreso').reduce((a,m) => a+m.monto, 0)
-                        const egr = sinCat.filter(m => m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
-                        if (sinCat.length === 0) return null
-                        const expandida = catExpandida === 'sin-cat'
-                        return (
-                          <>
-                            <tr onClick={() => setCatExpandida(expandida ? null : 'sin-cat')}
-                              style={{cursor:'pointer',background:'#fffbeb'}}>
-                              <td style={{fontWeight:500,color:'#92400e',whiteSpace:'normal',wordBreak:'break-word'}}>
-                                <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{marginRight:6,fontSize:11,color:'#94a3b8'}}></i>
-                                Sin categoria
-                              </td>
-                              <td style={{textAlign:'right',color:ing>0?'#16a34a':'#94a3b8'}}>{ing>0?formatMoney(ing):'-'}</td>
-                              <td style={{textAlign:'right',color:egr>0?'#dc2626':'#94a3b8'}}>{egr>0?formatMoney(egr):'-'}</td>
-                              <td style={{textAlign:'right',fontWeight:600,color:(ing-egr)>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(ing-egr)}</td>
-                              <td style={{textAlign:'center',color:'#64748b',fontSize:12}}>{sinCat.length}</td>
-                            </tr>
-                            {expandida && sinCat.slice().sort((a,b) => new Date(b.fecha||0)-new Date(a.fecha||0)).map(m => (
-                              <tr key={m.id_movimiento} style={{background:'#fffbeb99'}}>
-                                <td style={{paddingLeft:28,color:'var(--text-2)',fontSize:12}}>
-                                  <span style={{color:'#94a3b8',marginRight:6}}>{m.fecha}</span>{m.item}
-                                </td>
-                                <td style={{textAlign:'right',color:'#16a34a',fontSize:12}}>{m.tipo==='ingreso'?formatMoney(m.monto):'-'}</td>
-                                <td style={{textAlign:'right',color:'#dc2626',fontSize:12}}>{m.tipo==='egreso'?formatMoney(m.monto):'-'}</td>
-                                <td style={{textAlign:'right',fontSize:11,color:'#94a3b8'}}>{m.obs||'-'}</td>
-                                <td></td>
-                              </tr>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {/* Sin categoria */}
+                  {(() => {
+                    const sinCat = movimientos.filter(m => !m.id_categoria)
+                    const ing = sinCat.filter(m => m.tipo === 'ingreso').reduce((a,m) => a+m.monto, 0)
+                    const egr = sinCat.filter(m => m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
+                    if (sinCat.length === 0) return null
+                    const expandida = catExpandida === 'sin-cat'
+                    const sinCatOrdenado = sinCat.slice().sort((a,b) => new Date(b.fecha||0)-new Date(a.fecha||0))
+                    return (
+                      <div style={{background:'#fffbeb',border:'0.5px solid #fde68a',borderRadius:8,overflow:'hidden'}}>
+                        <div onClick={() => setCatExpandida(expandida ? null : 'sin-cat')}
+                          style={{cursor:'pointer',padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                          <div style={{fontWeight:600,color:'#92400e',display:'flex',alignItems:'center',gap:6}}>
+                            <i className={`ti ti-chevron-${expandida?'down':'right'}`} style={{fontSize:12,color:'#94a3b8'}}></i>
+                            Sin categoria
+                          </div>
+                          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12,flexWrap:'wrap'}}>
+                            {ing>0 && <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(ing)}</span>}
+                            {egr>0 && <span style={{color:'#dc2626',fontWeight:600}}>-{formatMoney(egr)}</span>}
+                            <span style={{fontWeight:700,color:(ing-egr)>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(ing-egr)}</span>
+                          </div>
+                        </div>
+                        {expandida && (
+                          <div style={{borderTop:'0.5px solid #fde68a'}}>
+                            {sinCatOrdenado.map(m => (
+                              <div key={m.id_movimiento} style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #fef3c7',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12}}>
+                                <div>
+                                  <div style={{color:'var(--text-2)'}}>{m.item}</div>
+                                  <div style={{color:'#94a3b8',fontSize:11}}>{m.fecha}{m.obs ? ` \u00b7 ${m.obs}` : ''}</div>
+                                </div>
+                                <span style={{fontWeight:600,color:m.tipo==='ingreso'?'#16a34a':'#dc2626'}}>
+                                  {m.tipo==='ingreso'?'+':'-'}{formatMoney(m.monto)}
+                                </span>
+                              </div>
                             ))}
-                          </>
-                        )
-                      })()}
-                      <tr style={{ background: '#f8fafc', fontWeight: 700, fontSize: 13 }}>
-                        <td>TOTAL</td>
-                        <td style={{ textAlign: 'right', color: '#16a34a' }}>{formatMoney(totalIngresos)}</td>
-                        <td style={{ textAlign: 'right', color: '#dc2626' }}>{formatMoney(totalEgresos)}</td>
-                        <td style={{ textAlign: 'right', color: saldo >= 0 ? '#1d4ed8' : '#dc2626' }}>{formatMoney(saldo)}</td>
-                        <td style={{ textAlign: 'center', color: '#64748b' }}>{movimientos.length + cuotas.length + torneos.length}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                  {/* TOTAL */}
+                  <div style={{background:'#f1f5f9',border:'1px solid #cbd5e1',borderRadius:8,padding:'12px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                      <div style={{fontWeight:700,fontSize:14}}>TOTAL</div>
+                      <div style={{display:'flex',gap:12,alignItems:'center',fontSize:13}}>
+                        <span style={{color:'#16a34a',fontWeight:700}}>+{formatMoney(totalIngresos)}</span>
+                        <span style={{color:'#dc2626',fontWeight:700}}>-{formatMoney(totalEgresos)}</span>
+                        <span style={{fontWeight:700,color:saldo>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(saldo)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 </div>
               </div>
 
@@ -727,43 +731,40 @@ export default function Egresos({ isAdmin = true }) {
             </button>
           </div>
           <div className="tbl-wrap">
-            <table className="tbl">
+            <table className="tbl" style={{tableLayout:'auto'}}>
               <thead>
                 <tr>
-                  <th style={{ width: 60, textAlign:'center' }}>Orden</th>
-                  <th>Nombre</th>
-                  <th style={{ width: 90 }}>Tipo</th>
-                  <th style={{ width: 90 }}>Estado</th>
-                  <th style={{ width: 110 }}></th>
+                  <th style={{width:'auto'}}>Categoria</th>
+                  <th style={{ width: 90 }}></th>
                 </tr>
               </thead>
               <tbody>
                 {categorias.map(cat => (
                   <tr key={cat.id_categoria}>
-                    <td style={{ textAlign:'center', color:'#94a3b8', fontSize:12, fontWeight:600 }}>{cat.orden ?? 99}</td>
-                    <td style={{ fontWeight: 500, whiteSpace:'normal', wordBreak:'break-word' }}>{cat.nombre}</td>
                     <td>
-                      <span style={{
-                        fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600,
-                        background: cat.tipo === 'ingreso' ? '#f0fdf4' : cat.tipo === 'egreso' ? '#fef2f2' : '#eff6ff',
-                        color: cat.tipo === 'ingreso' ? '#16a34a' : cat.tipo === 'egreso' ? '#dc2626' : '#1d4ed8',
-                        border: `0.5px solid ${cat.tipo === 'ingreso' ? '#a7f3d0' : cat.tipo === 'egreso' ? '#fecaca' : '#bfdbfe'}`
-                      }}>
-                        {cat.tipo === 'ingreso' ? 'Ingreso' : cat.tipo === 'egreso' ? 'Egreso' : 'Ambos'}
-                      </span>
+                      <div style={{ fontWeight: 600, fontSize:14, wordBreak:'break-word' }}>{cat.nombre}</div>
+                      <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginTop:4 }}>
+                        <span style={{fontSize:10,color:'#94a3b8'}}>Orden {cat.orden ?? 99}</span>
+                        <span style={{
+                          fontSize: 10, padding: '1px 7px', borderRadius: 4, fontWeight: 600,
+                          background: cat.tipo === 'ingreso' ? '#f0fdf4' : cat.tipo === 'egreso' ? '#fef2f2' : '#eff6ff',
+                          color: cat.tipo === 'ingreso' ? '#16a34a' : cat.tipo === 'egreso' ? '#dc2626' : '#1d4ed8',
+                          border: `0.5px solid ${cat.tipo === 'ingreso' ? '#a7f3d0' : cat.tipo === 'egreso' ? '#fecaca' : '#bfdbfe'}`
+                        }}>
+                          {cat.tipo === 'ingreso' ? 'Ingreso' : cat.tipo === 'egreso' ? 'Egreso' : 'Ambos'}
+                        </span>
+                        <button onClick={() => toggleActivaCat(cat)} style={{
+                          background: cat.activa ? '#f0fdf4' : '#f8fafc',
+                          border: `0.5px solid ${cat.activa ? '#a7f3d0' : '#e2e8f0'}`,
+                          borderRadius: 6, padding: '1px 8px', fontSize: 10, fontWeight: 600,
+                          color: cat.activa ? '#16a34a' : '#94a3b8', cursor: 'pointer', fontFamily: 'inherit'
+                        }}>
+                          {cat.activa ? 'Activa' : 'Inactiva'}
+                        </button>
+                      </div>
                     </td>
                     <td>
-                      <button onClick={() => toggleActivaCat(cat)} style={{
-                        background: cat.activa ? '#f0fdf4' : '#f8fafc',
-                        border: `0.5px solid ${cat.activa ? '#a7f3d0' : '#e2e8f0'}`,
-                        borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600,
-                        color: cat.activa ? '#16a34a' : '#94a3b8', cursor: 'pointer', fontFamily: 'inherit'
-                      }}>
-                        {cat.activa ? 'Activa' : 'Inactiva'}
-                      </button>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent:'flex-end' }}>
                         <button className="btn sm" onClick={() => abrirEditarCat(cat)}><i className="ti ti-pencil"></i></button>
                         <button className="btn sm danger" onClick={() => eliminarCat(cat)}><i className="ti ti-trash"></i></button>
                       </div>
