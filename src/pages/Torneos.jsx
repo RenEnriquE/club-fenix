@@ -675,18 +675,11 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
         {loading ? <div className="loading-center"><div className="spinner"></div></div> :
          inscripciones.length === 0 ? <div className="empty"><i className="ti ti-users-off"></i>Sin atletas inscritos</div> : (
           <div style={{overflowX:'auto'}}>
-            <table className="tbl" style={{fontSize:12}}>
+            <table className="tbl" style={{fontSize:12,tableLayout:'auto'}}>
               <thead>
                 <tr>
-                  <th style={{minWidth:160}}>Atleta</th>
-                  <th style={{width:70}}>Tipo</th>
-                  <th style={{width:80}}>Vigente</th>
-                  <th style={{width:90}}>Cuotas</th>
-                  <th style={{width:80}}>Pago</th>
-                  <th style={{width:100}}>Fecha pago</th>
-                  <th style={{width:90}}>Adicional</th>
-                  <th>Observaciones</th>
-                  <th style={{width:120}}></th>
+                  <th style={{width:'auto'}}>Atleta</th>
+                  <th style={{width:130}}></th>
                 </tr>
               </thead>
               <tbody>
@@ -696,68 +689,62 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                   const alDia = pendCuotas === 0
                   return (
                     <tr key={insc.id_inscripcion}>
-                      <td style={{fontWeight:500}}>{persona?.nombre_comp || `ID ${insc.id_socio}`}</td>
                       <td>
-                        <span className={`badge ${persona?.atleta==='Atleta Nino'?'nino':'adulto'}`} style={{fontSize:10}}>
-                          {persona?.atleta==='Atleta Nino'?'Nino':'Adulto'}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{fontSize:11,color:persona?.vigente?'#16a34a':'#dc2626',fontWeight:600}}>
-                          {persona?.vigente?'Si':'No'}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{fontSize:11,color:alDia?'#16a34a':'#dc2626',fontWeight:600}}>
-                          {alDia?'Al dia':`${pendCuotas} mes${pendCuotas!==1?'es':''}`}
-                        </span>
-                      </td>
-                      <td>
-                        {insc.pagado
-                          ? <span style={{fontSize:11,color:'#16a34a',fontWeight:700,background:'#f0fdf4',padding:'2px 8px',borderRadius:4,border:'0.5px solid #a7f3d0'}}>Pagado</span>
-                          : <span style={{fontSize:11,color:'#dc2626',fontWeight:600,background:'#fef2f2',padding:'2px 8px',borderRadius:4,border:'0.5px solid #fecaca'}}>Pendiente</span>
-                        }
-                      </td>
-                      <td style={{fontSize:11}}>
-                        {insc.pagado ? (
-                          editFechaPago === insc.id_inscripcion ? (
-                            <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                              <input type="date" value={fechaPagoTemp} onChange={e=>setFechaPagoTemp(e.target.value)}
-                                style={{padding:'3px 6px',border:'0.5px solid #e2e8f0',borderRadius:4,fontSize:11,fontFamily:'inherit',width:130}}/>
-                              <button className="btn sm primary" onClick={()=>guardarFechaPago(insc)} style={{padding:'3px 6px'}}><i className="ti ti-check"></i></button>
-                              <button className="btn sm" onClick={()=>setEditFechaPago(null)} style={{padding:'3px 6px'}}><i className="ti ti-x"></i></button>
+                        <div style={{fontWeight:600,fontSize:13,wordBreak:'break-word'}}>{persona?.nombre_comp || `ID ${insc.id_socio}`}</div>
+                        <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginTop:3}}>
+                          <span className={`badge ${persona?.atleta==='Atleta Nino'?'nino':'adulto'}`} style={{fontSize:9}}>
+                            {persona?.atleta==='Atleta Nino'?'Nino':'Adulto'}
+                          </span>
+                          <span style={{fontSize:10,color:persona?.vigente?'#16a34a':'#dc2626',fontWeight:600}}>
+                            {persona?.vigente?'Vigente':'No vigente'}
+                          </span>
+                          <span style={{fontSize:10,color:alDia?'#16a34a':'#dc2626',fontWeight:600}}>
+                            Cuotas: {alDia?'Al dia':`${pendCuotas} mes${pendCuotas!==1?'es':''}`}
+                          </span>
+                        </div>
+                        <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
+                          {insc.pagado
+                            ? <span style={{fontSize:10,color:'#16a34a',fontWeight:700,background:'#f0fdf4',padding:'2px 7px',borderRadius:4,border:'0.5px solid #a7f3d0'}}>Pagado</span>
+                            : <span style={{fontSize:10,color:'#dc2626',fontWeight:600,background:'#fef2f2',padding:'2px 7px',borderRadius:4,border:'0.5px solid #fecaca'}}>Pendiente</span>
+                          }
+                          {insc.pagado && (
+                            editFechaPago === insc.id_inscripcion ? (
+                              <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                                <input type="date" value={fechaPagoTemp} onChange={e=>setFechaPagoTemp(e.target.value)}
+                                  style={{padding:'3px 6px',border:'0.5px solid #e2e8f0',borderRadius:4,fontSize:11,fontFamily:'inherit',width:130}}/>
+                                <button className="btn sm primary" onClick={()=>guardarFechaPago(insc)} style={{padding:'3px 6px'}}><i className="ti ti-check"></i></button>
+                                <button className="btn sm" onClick={()=>setEditFechaPago(null)} style={{padding:'3px 6px'}}><i className="ti ti-x"></i></button>
+                              </div>
+                            ) : (
+                              <span onClick={()=>{setEditFechaPago(insc.id_inscripcion);setFechaPagoTemp('');}} style={{cursor:'pointer',color:'var(--text-3)',display:'flex',alignItems:'center',gap:4,fontSize:11}} title="Editar fecha">
+                                <FechaPago idPago={insc.id_pago} onLoad={f=>setFechaPagoTemp(prev=>editFechaPago===insc.id_inscripcion?f:prev)} />
+                                <i className="ti ti-pencil" style={{fontSize:10,opacity:0.5}}></i>
+                              </span>
+                            )
+                          )}
+                        </div>
+                        {insc.monto_adicional > 0 && (
+                          <div style={{marginTop:4,fontSize:11}}>
+                            <span style={{color:'#16a34a',fontWeight:600}}>Adicional: +{formatMoney(insc.monto_adicional)}</span>
+                            {insc.obs_adicional && <span style={{color:'var(--text-3)'}}> ({insc.obs_adicional})</span>}
+                          </div>
+                        )}
+                        <div style={{marginTop:4}}>
+                          {editObs === insc.id_inscripcion ? (
+                            <div style={{display:'flex',gap:4}}>
+                              <input value={obsTemp} onChange={e=>setObsTemp(e.target.value)} style={{padding:'3px 6px',border:'0.5px solid #e2e8f0',borderRadius:4,fontSize:11,width:150,fontFamily:'inherit'}}/>
+                              <button className="btn sm primary" onClick={()=>guardarObs(insc)} style={{padding:'3px 6px'}}><i className="ti ti-check"></i></button>
+                              <button className="btn sm" onClick={()=>setEditObs(null)} style={{padding:'3px 6px'}}><i className="ti ti-x"></i></button>
                             </div>
                           ) : (
-                            <span onClick={()=>{setEditFechaPago(insc.id_inscripcion);setFechaPagoTemp('');}} style={{cursor:'pointer',color:'var(--text-3)',display:'flex',alignItems:'center',gap:4}} title="Editar fecha">
-                              <FechaPago idPago={insc.id_pago} onLoad={f=>setFechaPagoTemp(prev=>editFechaPago===insc.id_inscripcion?f:prev)} />
-                              <i className="ti ti-pencil" style={{fontSize:10,opacity:0.5}}></i>
+                            <span onClick={()=>{setEditObs(insc.id_inscripcion);setObsTemp(insc.obs||'')}} style={{cursor:'pointer',color:insc.obs?'var(--text)':'var(--text-3)',fontSize:11}}>
+                              {insc.obs || <span style={{fontStyle:'italic'}}>agregar obs...</span>}
                             </span>
-                          )
-                        ) : '-'}
-                      </td>
-                      <td style={{fontSize:11}}>
-                        {insc.monto_adicional > 0 ? (
-                          <div>
-                            <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(insc.monto_adicional)}</span>
-                            {insc.obs_adicional && <div style={{color:'var(--text-3)',fontSize:10}}>{insc.obs_adicional}</div>}
-                          </div>
-                        ) : <span style={{color:'#94a3b8'}}>-</span>}
+                          )}
+                        </div>
                       </td>
                       <td>
-                        {editObs === insc.id_inscripcion ? (
-                          <div style={{display:'flex',gap:4}}>
-                            <input value={obsTemp} onChange={e=>setObsTemp(e.target.value)} style={{padding:'3px 6px',border:'0.5px solid #e2e8f0',borderRadius:4,fontSize:11,width:120,fontFamily:'inherit'}}/>
-                            <button className="btn sm primary" onClick={()=>guardarObs(insc)} style={{padding:'3px 6px'}}><i className="ti ti-check"></i></button>
-                            <button className="btn sm" onClick={()=>setEditObs(null)} style={{padding:'3px 6px'}}><i className="ti ti-x"></i></button>
-                          </div>
-                        ) : (
-                          <span onClick={()=>{setEditObs(insc.id_inscripcion);setObsTemp(insc.obs||'')}} style={{cursor:'pointer',color:insc.obs?'var(--text)':'var(--text-3)',fontSize:11}}>
-                            {insc.obs || <span style={{fontStyle:'italic'}}>agregar obs...</span>}
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <div style={{display:'flex',gap:4}}>
+                        <div style={{display:'flex',gap:4,flexWrap:'wrap',justifyContent:'flex-end'}}>
                           {!insc.pagado && (
                             <button className="btn sm primary" style={{fontSize:11,padding:'3px 8px'}} onClick={()=>setRegistrandoPago(insc)}>
                               <i className="ti ti-cash"></i>Pago
