@@ -43,6 +43,13 @@ export default function ActividadDetalle({ actividad, onVolver }) {
 
   // Modal editar asistentes
   const [modalEditAsist, setModalEditAsist] = useState(null) // insc
+  const [modalEditPagador, setModalEditPagador] = useState(null) // insc
+  const [tipoPagadorEdit, setTipoPagadorEdit] = useState('socio')
+  const [busquedaPagadorEdit, setBusquedaPagadorEdit] = useState('')
+  const [resultadosPagadorEdit, setResultadosPagadorEdit] = useState([])
+  const [pagadorSelEdit, setPagadorSelEdit] = useState(null)
+  const [nombrePagadorExternoEdit, setNombrePagadorExternoEdit] = useState('')
+  const [savingPagadorEdit, setSavingPagadorEdit] = useState(false)
   const [asistEditando, setAsistEditando] = useState([]) // copia editable
   const [busquedaEditAsist, setBusquedaEditAsist] = useState('')
   const [resultadosEditAsist, setResultadosEditAsist] = useState([])
@@ -98,6 +105,13 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       ((p.nombre_comp||'').toLowerCase().includes(q) || String(p.id_caif).includes(q))
     ).slice(0, 6))
   }, [busquedaSimple, personas, inscripciones])
+
+  // Buscar socio pagador para edicion
+  useEffect(() => {
+    if (busquedaPagadorEdit.length < 2) { setResultadosPagadorEdit([]); return }
+    const q = busquedaPagadorEdit.toLowerCase()
+    setResultadosPagadorEdit(personas.filter(p => (p.nombre_comp||'').toLowerCase().includes(q) || String(p.id_caif).includes(q)).slice(0, 6))
+  }, [busquedaPagadorEdit, personas])
 
   // Buscar apoderados registrados (nombres unicos de socios activos)
   useEffect(() => {
@@ -319,6 +333,38 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       cargar()
     } catch(e) { mostrarAlert('error', 'Error: '+e.message) }
     finally { setSavingEditAsist(false) }
+  }
+
+  function abrirEditPagador(insc) {
+    setModalEditPagador(insc)
+    if (insc.nombre_pagador_externo) {
+      setTipoPagadorEdit('externo')
+      setNombrePagadorExternoEdit(insc.nombre_pagador_externo)
+      setPagadorSelEdit(null)
+    } else {
+      setTipoPagadorEdit('socio')
+      const p = personas.find(p => p.id_caif === insc.id_socio)
+      setPagadorSelEdit(p || null)
+      setNombrePagadorExternoEdit('')
+    }
+    setBusquedaPagadorEdit('')
+  }
+
+  async function guardarPagadorEdit() {
+    if (tipoPagadorEdit === 'socio' && !pagadorSelEdit) { mostrarAlert('error', 'Selecciona un socio.'); return }
+    if (tipoPagadorEdit === 'externo' && !nombrePagadorExternoEdit.trim()) { mostrarAlert('error', 'Ingresa el nombre del pagador.'); return }
+    setSavingPagadorEdit(true)
+    try {
+      await supabase.from('actividad_inscripciones').update({
+        id_socio: tipoPagadorEdit === 'socio' ? pagadorSelEdit.id_caif : null,
+        id_socio_pagador: tipoPagadorEdit === 'socio' ? pagadorSelEdit.id_caif : null,
+        nombre_pagador_externo: tipoPagadorEdit === 'externo' ? nombrePagadorExternoEdit.trim() : null
+      }).eq('id_inscripcion', modalEditPagador.id_inscripcion)
+      setModalEditPagador(null)
+      mostrarAlert('success', 'Pagador actualizado.')
+      cargar()
+    } catch(e) { mostrarAlert('error', 'Error: ' + e.message) }
+    finally { setSavingPagadorEdit(false) }
   }
 
   async function guardarRef(id_inscripcion) {
@@ -700,20 +746,28 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                       </td>
                       <td style={{ fontSize: 11 }}>
                         {editandoFecha === insc.id_inscripcion ? (
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap:'wrap' }}>
                             <input type="date" value={fechaTemp} onChange={e => setFechaTemp(e.target.value)} autoFocus
-                              style={{ width: 110, padding: '2px 4px', border: '1.5px solid #1a5e3a', borderRadius: 6, fontSize: 10 }} />
-                            <button className="btn sm" onClick={() => guardarFechaPago(insc.id_inscripcion)} style={{ padding: '2px 4px', background: '#1a5e3a', color: '#fff', borderColor: '#1a5e3a' }}><i className="ti ti-check"></i></button>
-                            <button className="btn sm" onClick={() => setEditandoFecha(null)} style={{ padding: '2px 4px' }}><i className="ti ti-x"></i></button>
+                              style={{ width: 130, padding: '4px 6px', border: '1.5px solid #1a5e3a', borderRadius: 6, fontSize: 12 }} />
+                            <button type="button" className="btn sm" onClick={() => guardarFechaPago(insc.id_inscripcion)} disabled={savingFecha} style={{ padding: '4px 8px', background: '#1a5e3a', color: '#fff', borderColor: '#1a5e3a' }}>
+                              {savingFecha ? '...' : <i className="ti ti-check"></i>}
+                            </button>
+                            <button type="button" className="btn sm" onClick={() => setEditandoFecha(null)} style={{ padding: '4px 8px' }}><i className="ti ti-x"></i></button>
                           </div>
                         ) : (
-                          <span style={{ cursor: 'pointer', color: 'var(--text-3)' }} onClick={() => { setEditandoFecha(insc.id_inscripcion); setFechaTemp(insc.fecha_pago || '') }}>
-                            {insc.fecha_pago || '-'} <i className="ti ti-pencil" style={{ fontSize: 9 }}></i>
-                          </span>
+                          <button type="button"
+                            onClick={() => { setEditandoFecha(insc.id_inscripcion); setFechaTemp(insc.fecha_pago || '') }}
+                            style={{ cursor: 'pointer', color: 'var(--text-3)', background:'none', border:'none', fontFamily:'inherit', fontSize:11, padding:'6px 4px', display:'flex', alignItems:'center', gap:4 }}>
+                            {insc.fecha_pago || '-'} <i className="ti ti-pencil" style={{ fontSize: 10 }}></i>
+                          </button>
                         )}
                       </td>
                       <td>
-<div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+<div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          <button className="btn sm" onClick={() => abrirEditPagador(insc)}
+                            title="Editar pagador/titular" style={{ padding: '5px 8px', color: '#0369a1', borderColor: '#bae6fd', background: '#f0f9ff' }}>
+                            <i className="ti ti-user-edit"></i>
+                          </button>
                           <button className="btn sm" onClick={() => abrirEditAsist(insc)}
                             title="Editar asistentes" style={{ padding: '5px 8px', color: '#7c3aed', borderColor: '#ddd6fe', background: '#faf5ff' }}>
                             <i className="ti ti-users"></i>
@@ -725,7 +779,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                             </button>
                           )}
                           {insc.pagado && (
-                            <button className="btn sm" onClick={() => { setEditandoFecha(insc.id_inscripcion); setFechaTemp(insc.fecha_pago || '') }}
+                            <button type="button" className="btn sm" onClick={() => { setEditandoFecha(insc.id_inscripcion); setFechaTemp(insc.fecha_pago || '') }}
                               title="Editar fecha" style={{ padding: '5px 8px', color: '#16a34a', borderColor: '#a7f3d0', background: '#f0fdf4' }}>
                               <i className="ti ti-calendar-edit"></i>
                             </button>
@@ -747,6 +801,79 @@ export default function ActividadDetalle({ actividad, onVolver }) {
         )
         })()}
       </div>
+
+      {/* Modal editar pagador */}
+      {modalEditPagador && (
+        <div className="modal-bg open" onClick={e => e.target === e.currentTarget && setModalEditPagador(null)}>
+          <div className="modal" style={{ width: 'min(460px,95vw)' }}>
+            <div className="modal-header">
+              <h2><i className="ti ti-user-edit" style={{marginRight:8,color:'#0369a1'}}></i>Editar pagador</h2>
+              <button className="modal-close" onClick={() => setModalEditPagador(null)}>&times;</button>
+            </div>
+            <div style={{ background: '#f8fafc', border: '0.5px solid #e2e8f0', borderRadius: 8, padding: '10px 14px', marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Pagador actual</div>
+              <div style={{ fontWeight: 600 }}>{nombrePagador(modalEditPagador)}</div>
+              {modalEditPagador.num_referencia && (
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>N referencia: <strong>{modalEditPagador.num_referencia}</strong> (se mantiene igual)</div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              {['socio', 'externo'].map(t => (
+                <button key={t} type="button" onClick={() => { setTipoPagadorEdit(t); setPagadorSelEdit(null); setBusquedaPagadorEdit(''); setNombrePagadorExternoEdit('') }}
+                  style={{ flex: 1, padding: '6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                    border: `1.5px solid ${tipoPagadorEdit === t ? '#1a5e3a' : '#e2e8f0'}`,
+                    background: tipoPagadorEdit === t ? '#f0fdf4' : '#f8fafc',
+                    color: tipoPagadorEdit === t ? '#1a5e3a' : '#64748b' }}>
+                  {t === 'socio' ? 'Socio del club' : 'Apoderado / Externo'}
+                </button>
+              ))}
+            </div>
+
+            {tipoPagadorEdit === 'socio' ? (
+              <div style={{ position: 'relative', marginBottom: 16 }}>
+                {pagadorSelEdit ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#eff6ff', border: '1.5px solid #1a5e3a', borderRadius: 8, padding: '8px 12px' }}>
+                    <span style={{ flex: 1, fontWeight: 600 }}>{pagadorSelEdit.nombre_comp}</span>
+                    <button onClick={() => { setPagadorSelEdit(null); setBusquedaPagadorEdit('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                      <i className="ti ti-x"></i>
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input value={busquedaPagadorEdit} onChange={e => setBusquedaPagadorEdit(e.target.value)} placeholder="Buscar nuevo socio pagador..." />
+                    {resultadosPagadorEdit.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,.1)', maxHeight: 200, overflowY: 'auto' }}>
+                        {resultadosPagadorEdit.map(p => (
+                          <div key={p.id_caif} onClick={() => { setPagadorSelEdit(p); setBusquedaPagadorEdit(''); setResultadosPagadorEdit([]) }}
+                            style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid #f1f5f9' }} className="hoverable">
+                            <div style={{ fontWeight: 500 }}>{p.nombre_comp}</div>
+                            <div style={{ fontSize: 11, color: '#64748b' }}>{p.atleta}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : (
+              <div style={{ marginBottom: 16 }}>
+                <input value={nombrePagadorExternoEdit} onChange={e => setNombrePagadorExternoEdit(e.target.value)}
+                  placeholder="Nombre del apoderado o persona que paga..." />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={() => setModalEditPagador(null)}>Cancelar</button>
+              <button className="btn primary" onClick={guardarPagadorEdit}
+                disabled={savingPagadorEdit || (tipoPagadorEdit === 'socio' ? !pagadorSelEdit : !nombrePagadorExternoEdit.trim())}
+                style={{ background: '#0369a1', borderColor: '#0369a1' }}>
+                {savingPagadorEdit ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>Guardando...</> : <><i className="ti ti-check"></i>Guardar cambio</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal editar asistentes */}
       {modalEditAsist && (
