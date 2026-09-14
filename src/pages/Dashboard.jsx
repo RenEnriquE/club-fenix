@@ -43,6 +43,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
   const [todasPersonas, setTodasPersonas] = useState([])
   const [saldoMovimientos, setSaldoMovimientos] = useState(null)
   const [actSelDash, setActSelDash] = useState(null)
+  const [ordenActDash, setOrdenActDash] = useState('referencia') // 'referencia' | 'nombre'
   const [loading, setLoading] = useState(!cached)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
@@ -52,7 +53,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
     if (!cached) setLoading(true)
     else setRefreshing(true)
     Promise.all([
-      supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero,f_ini_vig,f_reingreso,apodo,nombre,apellido,ap_mat').eq('vigente', 1),
+      supabase.from('personas').select('id_caif,nombre_comp,atleta,fecha_nac,genero,f_ini_vig,f_reingreso,apodo,nombre,apellido,ap_mat,apoderado').eq('vigente', 1),
       supabase.from('pagos').select('id_socio,mes,monto,anio,id_actividad,fecha_pago').eq('anio', anio),
         supabase.from('pagos').select('monto').gte('fecha_pago', `${anio}-01-01`).lte('fecha_pago', `${anio}-12-31`),
         supabase.from('actividades').select('*').eq('mostrar_dashboard', true).eq('tipo_cobro', 'unico'),
@@ -61,7 +62,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         supabase.from('movimientos').select('tipo,monto,fecha,id_categoria').gte('fecha', `${anio}-01-01`).lte('fecha', `${anio}-12-31`),
         supabase.from('movimientos').select('tipo,monto').ilike('item', '%cierre contable%'),
         supabase.from('categorias_movimiento').select('id_categoria,nombre'),
-        supabase.from('personas').select('id_caif,nombre_comp')
+        supabase.from('personas').select('id_caif,nombre_comp,atleta,apoderado')
     ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resAsisDash, resMov, resCierre, resCategorias, resTodasPersonas]) => {
       const p = resP.data || []
       const pg = resPg.data || []
@@ -273,20 +274,52 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
       {/* Modal detalle actividad */}
       {actSelDash && (() => {
         const insc = inscDashboard.filter(i => i.id_actividad === actSelDash.id_actividad)
-        const pagaron = insc.filter(i => i.pagado).sort((a,b) => a.num_referencia?.localeCompare(b.num_referencia))
-        const pendientes = insc.filter(i => !i.pagado).sort((a,b) => a.num_referencia?.localeCompare(b.num_referencia))
         const getNombre = insc => {
           if (insc.nombre_pagador_externo) return insc.nombre_pagador_externo
           const p = personas.find(p=>p.id_caif===insc.id_socio) || todasPersonas.find(p=>p.id_caif===insc.id_socio)
           return p ? p.nombre_comp : (insc.id_socio ? `ID ${insc.id_socio}` : 'Sin nombre')
         }
+        const getPersona = insc => personas.find(p=>p.id_caif===insc.id_socio) || todasPersonas.find(p=>p.id_caif===insc.id_socio)
         const getCobertura = insc => {
           const asist = asisDashboard.filter(a => a.id_inscripcion === insc.id_inscripcion)
           const adultos = asist.filter(a => (a.tipo||'adulto') === 'adulto').length
           const ninos = asist.filter(a => a.tipo === 'nino').length
           return { adultos, ninos, total: asist.length }
         }
+        const comparador = (a,b) => ordenActDash === 'nombre'
+          ? getNombre(a).localeCompare(getNombre(b))
+          : (a.num_referencia||'').localeCompare(b.num_referencia||'', undefined, {numeric:true})
+        const pagaron = insc.filter(i => i.pagado).sort(comparador)
+        const pendientes = insc.filter(i => !i.pagado).sort(comparador)
         const tieneReferencias = insc.some(i => i.num_referencia)
+
+        function exportarExcel(lista, etiqueta) {
+          const filas = lista.map(i => {
+            const p = getPersona(i)
+            const esNino = p?.atleta && p.atleta.includes('Ni')
+            return {
+              'N Referencia': i.num_referencia || '',
+              'Nombre Socio': getNombre(i),
+              'Tipo Atleta': p ? (esNino ? 'Nino' : 'Adulto') : '',
+              'Apoderado': p?.apoderado || ''
+            }
+          })
+          const encabezados = Object.keys(filas[0] || {'N Referencia':'','Nombre Socio':'','Tipo Atleta':'','Apoderado':''})
+          const csvRows = [
+            encabezados.join(';'),
+            ...filas.map(f => encabezados.map(h => `"${(f[h]||'').toString().replace(/"/g,'""')}"`).join(';'))
+          ]
+          const csvContent = '\uFEFF' + csvRows.join('\r\n')
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `${actSelDash.nombre.replace(/[^a-z0-9]/gi,'_')}_${etiqueta}.csv`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+        }
         return (
           <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setActSelDash(null)}>
             <div className="modal" style={{width:'min(720px,95vw)',maxHeight:'90vh',overflowY:'auto'}}>
@@ -306,9 +339,30 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   </div>
                 ))}
               </div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:16}}>
+                <div style={{display:'flex',gap:4}}>
+                  {[{k:'referencia',l:'N referencia'},{k:'nombre',l:'Nombre'}].map(op=>(
+                    <button key={op.k} type="button" onClick={()=>setOrdenActDash(op.k)}
+                      style={{
+                        padding:'5px 10px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:11,fontWeight:600,
+                        border:`1.5px solid ${ordenActDash===op.k?'#1a5e3a':'#e2e8f0'}`,
+                        background:ordenActDash===op.k?'#f0fdf4':'#f8fafc',
+                        color:ordenActDash===op.k?'#1a5e3a':'#64748b'
+                      }}>
+                      Ordenar: {op.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {pendientes.length > 0 && (
                 <div style={{marginBottom:16}}>
-                  <div style={{fontSize:12,fontWeight:700,color:'#dc2626',textTransform:'uppercase',marginBottom:8}}>Pendientes de pago ({pendientes.length})</div>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:8}}>
+                    <div style={{fontSize:12,fontWeight:700,color:'#dc2626',textTransform:'uppercase'}}>Pendientes de pago ({pendientes.length})</div>
+                    <button type="button" onClick={()=>exportarExcel(pendientes,'pendientes')}
+                      style={{fontSize:11,fontWeight:600,padding:'4px 10px',borderRadius:6,border:'1.5px solid #dc2626',background:'#fef2f2',color:'#dc2626',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+                      <i className="ti ti-download"></i>Excel
+                    </button>
+                  </div>
                   <div style={{display:'flex',flexDirection:'column',gap:6}}>
                     {pendientes.map(i=>{
                       const cob = getCobertura(i)
@@ -330,7 +384,13 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               )}
               {pagaron.length > 0 && (
                 <div>
-                  <div style={{fontSize:12,fontWeight:700,color:'#16a34a',textTransform:'uppercase',marginBottom:8}}>Ya pagaron ({pagaron.length})</div>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:8}}>
+                    <div style={{fontSize:12,fontWeight:700,color:'#16a34a',textTransform:'uppercase'}}>Ya pagaron ({pagaron.length})</div>
+                    <button type="button" onClick={()=>exportarExcel(pagaron,'pagaron')}
+                      style={{fontSize:11,fontWeight:600,padding:'4px 10px',borderRadius:6,border:'1.5px solid #16a34a',background:'#f0fdf4',color:'#16a34a',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+                      <i className="ti ti-download"></i>Excel
+                    </button>
+                  </div>
                   <div style={{display:'flex',flexDirection:'column',gap:6}}>
                     {pagaron.map(i=>{
                       const cob = getCobertura(i)
