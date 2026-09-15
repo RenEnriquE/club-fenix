@@ -304,21 +304,18 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               'Apoderado': p?.apoderado || ''
             }
           })
-          const encabezados = Object.keys(filas[0] || {'N Referencia':'','Nombre Socio':'','Tipo Atleta':'','Apoderado':''})
-          const csvRows = [
-            encabezados.join(';'),
-            ...filas.map(f => encabezados.map(h => `"${(f[h]||'').toString().replace(/"/g,'""')}"`).join(';'))
+          const datos = [
+            ['N Referencia','Nombre Socio','Tipo Atleta','Apoderado'],
+            ...filas.map(f => [f['N Referencia'], f['Nombre Socio'], f['Tipo Atleta'], f['Apoderado']])
           ]
-          const csvContent = '\uFEFF' + csvRows.join('\r\n')
-          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `${actSelDash.nombre.replace(/[^a-z0-9]/gi,'_')}_${etiqueta}.csv`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
+          const nombreArchivo = `${actSelDash.nombre.replace(/[^a-zA-Z0-9]/g,'_')}_${etiqueta}.xlsx`
+          import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs').then(XLSX => {
+            const wb = XLSX.utils.book_new()
+            const ws = XLSX.utils.aoa_to_sheet(datos)
+            ws['!cols'] = [{wch:14},{wch:32},{wch:12},{wch:28}]
+            XLSX.utils.book_append_sheet(wb, ws, etiqueta === 'pendientes' ? 'Pendientes' : 'Pagaron')
+            XLSX.writeFile(wb, nombreArchivo)
+          })
         }
         return (
           <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setActSelDash(null)}>
