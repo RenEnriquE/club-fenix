@@ -588,18 +588,13 @@ export default function Egresos({ isAdmin = true }) {
                 <i className="ti ti-list"></i>
                 Movimientos {mes ? `${MESES_ES[mes - 1]} ${anio}` : anio}
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table className="tbl" style={{ fontSize: 12 }}>
+              <div>
+                <table className="tbl" style={{ fontSize: 12, tableLayout: 'auto' }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 90 }}>Fecha</th>
-                      <th style={{ width: 80 }}>Tipo</th>
-                      <th style={{ minWidth: 160 }}>Item</th>
-                      <th style={{ minWidth: 120 }}>Categoria</th>
-                      <th style={{ width: 100, textAlign: 'right' }}>Monto</th>
-                      <th style={{ width: 90 }}>Metodo</th>
-                      <th>Observaciones</th>
-                      <th style={{ width: 70 }}></th>
+                      <th style={{ width: 'auto' }}>Movimiento</th>
+                      <th style={{ width: 90, textAlign: 'right' }}>Monto</th>
+                      <th style={{ width: 60 }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -681,28 +676,33 @@ export default function Egresos({ isAdmin = true }) {
                       return fb - fa
                     }).map(m => (
                       <tr key={m.key}>
-                        <td style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{m.fecha ? m.fecha : `${MESES_ES[(m.mes||1)-1].substring(0,3)} ${m.anio||anio}`}</td>
                         <td>
-                          <span style={{
-                            fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
-                            background: m.tipo === 'ingreso' ? '#f0fdf4' : '#fef2f2',
-                            color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626',
-                            border: `0.5px solid ${m.tipo === 'ingreso' ? '#a7f3d0' : '#fecaca'}`
-                          }}>
-                            {m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
-                          </span>
+                          <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',marginBottom:3}}>
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 4,
+                              background: m.tipo === 'ingreso' ? '#f0fdf4' : '#fef2f2',
+                              color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626',
+                              border: `0.5px solid ${m.tipo === 'ingreso' ? '#a7f3d0' : '#fecaca'}`
+                            }}>
+                              {m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
+                            </span>
+                            <span style={{fontWeight:600,fontSize:13,wordBreak:'break-word'}}>{m.item}</span>
+                          </div>
+                          <div style={{fontSize:11,color:'var(--text-3)',display:'flex',gap:6,flexWrap:'wrap'}}>
+                            <span>{m.fecha ? m.fecha : `${MESES_ES[(m.mes||1)-1].substring(0,3)} ${m.anio||anio}`}</span>
+                            {m.categoria && <span>&middot; {m.categoria}</span>}
+                            {m.metodo && m.metodo !== '-' && <span>&middot; {m.metodo}</span>}
+                          </div>
+                          {m.obs && m.obs !== '-' && (
+                            <div style={{fontSize:11,color:'#94a3b8',fontStyle:'italic',marginTop:2,wordBreak:'break-word'}}>{m.obs}</div>
+                          )}
                         </td>
-                        <td style={{ fontWeight: 500, whiteSpace:'normal', wordBreak:'break-word' }}>{m.item}</td>
-                        <td style={{ color: 'var(--text-3)' }}>{m.categoria}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600, color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>
                           {m.tipo === 'ingreso' ? '+' : '-'}{formatMoney(m.monto)}
                         </td>
-                        <td style={{ color: 'var(--text-3)' }}>{m.metodo}</td>
-                        <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-3)' }}
-                          title={m.obs}>{m.obs}</td>
                         <td>
                           {m.editable && isAdmin && (
-                            <div style={{ display: 'flex', gap: 4 }}>
+                            <div style={{ display: 'flex', gap: 4, justifyContent:'flex-end' }}>
                               <button className="btn sm" onClick={() => setEditando(m.raw)} title="Editar"><i className="ti ti-pencil"></i></button>
                               <button className="btn sm danger" onClick={() => eliminar(m.id)} title="Eliminar"><i className="ti ti-trash"></i></button>
                             </div>
@@ -710,16 +710,14 @@ export default function Egresos({ isAdmin = true }) {
                         </td>
                       </tr>
                     ))}
-                    {/* --- linea que reemplaza el map original --- */}
-                                        {/* Totales */}
                     <tr style={{ background: '#f8fafc', fontWeight: 700, fontSize: 13 }}>
-                      <td colSpan={4}>TOTAL</td>
+                      <td>TOTAL</td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ color: '#16a34a', fontSize: 11 }}>+{formatMoney(totalIngresos)}</div>
                         <div style={{ color: '#dc2626', fontSize: 11 }}>-{formatMoney(totalEgresos)}</div>
                         <div style={{ color: saldo >= 0 ? '#1d4ed8' : '#dc2626' }}>{formatMoney(saldo)}</div>
                       </td>
-                      <td colSpan={3}></td>
+                      <td></td>
                     </tr>
                   </tbody>
                 </table>
