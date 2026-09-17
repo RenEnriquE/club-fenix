@@ -1,6 +1,6 @@
 export const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 export const MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-export const AÑOS = [2024, 2025, 2026]
+export const AÑOS = [2024, 2025, 2026, 2027]
 
 // Cuota esperada segun tipo de atleta y periodo
 export function cuotaEsperada(atleta, anio, mes) {
