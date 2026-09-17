@@ -594,7 +594,7 @@ export default function Egresos({ isAdmin = true }) {
                     <tr>
                       <th style={{ width: 'auto' }}>Movimiento</th>
                       <th style={{ width: 90, textAlign: 'right' }}>Monto</th>
-                      <th style={{ width: 60 }}></th>
+                      <th style={{ width: 90 }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -700,11 +700,11 @@ export default function Egresos({ isAdmin = true }) {
                         <td style={{ textAlign: 'right', fontWeight: 700, color: m.tipo === 'ingreso' ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>
                           {m.tipo === 'ingreso' ? '+' : '-'}{formatMoney(m.monto)}
                         </td>
-                        <td>
+                        <td style={{ overflow: 'visible', whiteSpace: 'normal', textOverflow: 'clip' }}>
                           {m.editable && isAdmin && (
                             <div style={{ display: 'flex', gap: 4, justifyContent:'flex-end' }}>
-                              <button className="btn sm" onClick={() => setEditando(m.raw)} title="Editar"><i className="ti ti-pencil"></i></button>
-                              <button className="btn sm danger" onClick={() => eliminar(m.id)} title="Eliminar"><i className="ti ti-trash"></i></button>
+                              <button className="btn sm" onClick={() => setEditando(m.raw)} title="Editar" style={{padding:'4px 6px'}}><i className="ti ti-pencil"></i></button>
+                              <button className="btn sm danger" onClick={() => eliminar(m.id)} title="Eliminar" style={{padding:'4px 6px'}}><i className="ti ti-trash"></i></button>
                             </div>
                           )}
                         </td>
