@@ -342,6 +342,8 @@ export default function Pagos({ isAdmin = true }) {
 
   const pagosAnio = socioSel ? pagosPorSocioAnio(socioSel.id_caif, anio, pagosInd) : []
   const mesesPagados = pagosAnio.filter(p=>Number(p.id_actividad)===0).map(p=>p.mes)
+  const anioActualReal = new Date().getFullYear()
+  const historialPagos = socioSel ? pagosInd.filter(p => p.anio >= anioActualReal) : []
   const totalGrupal = entries.reduce((a,e)=>a+e.monto*e.mesesSel.length,0)
   const totalMesesGrupal = entries.reduce((a,e)=>a+e.mesesSel.length,0)
   const idsEnGrupo = entries.map(e=>e.socio.id_caif)
@@ -463,12 +465,16 @@ export default function Pagos({ isAdmin = true }) {
           </div>
 
           <div className="card">
-            <div className="card-title"><i className="ti ti-history"></i>Historial &mdash; {anio}</div>
-            {pagosAnio.length===0?<div className="empty"><i className="ti ti-calendar-x"></i>Sin pagos en {anio}</div>:(
+            <div className="card-title"><i className="ti ti-history"></i>Historial &mdash; {anioActualReal} en adelante</div>
+            {historialPagos.length===0?<div className="empty"><i className="ti ti-calendar-x"></i>Sin pagos registrados</div>:(
               <div className="tbl-wrap"><table className="tbl" style={{tableLayout:'auto'}}>
                 <thead><tr><th style={{minWidth:150}}>Pago</th><th style={{width:80,textAlign:'right'}}>Monto</th><th style={{width:70}}></th></tr></thead>
                 <tbody>
-                  {pagosAnio.sort((a,b)=>{ const fd=new Date(b.fecha_pago||0)-new Date(a.fecha_pago||0); return fd!==0?fd:b.mes-a.mes }).map(p=>{
+                  {historialPagos.slice().sort((a,b)=>{
+                    if (b.anio !== a.anio) return b.anio - a.anio
+                    const fd=new Date(b.fecha_pago||0)-new Date(a.fecha_pago||0)
+                    return fd!==0?fd:b.mes-a.mes
+                  }).map(p=>{
                     const nomAct = actividades.find(a=>a.id_actividad===Number(p.id_actividad))?.nombre || 'Cuotas'
                     const esCuota = Number(p.id_actividad) === 0
                     const metodoAbrev = { 'Transferencia':'Trans.', 'Efectivo':'Efec.', 'Cheque':'Cheq.' }[p.tipo_pago] || p.tipo_pago
@@ -476,7 +482,7 @@ export default function Pagos({ isAdmin = true }) {
                       <tr key={p.id_pago}>
                         <td style={{whiteSpace:'normal'}}>
                           <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',marginBottom:3}}>
-                            <span style={{fontWeight:600,fontSize:13}}>{MESES[p.mes-1]}</span>
+                            <span style={{fontWeight:600,fontSize:13}}>{MESES[p.mes-1]} {p.anio}</span>
                             {esCuota
                               ? <span style={{fontSize:10,color:'#64748b'}}>Cuotas</span>
                               : <span style={{fontSize:10,fontWeight:600,color:'#92400e',background:'#fffbeb',padding:'1px 6px',borderRadius:4,border:'0.5px solid #fde68a'}}>{nomAct}</span>
