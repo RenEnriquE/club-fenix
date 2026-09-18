@@ -1,4 +1,3 @@
-// Redeploy forzado - fix export Excel actividades
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { estadoSocio, mesesPendientes, MESES_SHORT, formatMoney } from '../lib/helpers'
