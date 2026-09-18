@@ -320,7 +320,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               filas.push({ ...base, 'Persona Cubierta': getNombre(i), 'Tipo Persona Cubierta': base['Tipo Atleta Pagador'] })
             }
           })
-          const encabezados = ['N Referencia','Nombre Pagador','Tipo Atleta Pagador','Apoderado','Persona Cubierta','Tipo Persona Cubierta','Monto Pagado','Fecha Pago']
+          const encabezados = ['N Referencia','Apoderado','Nombre Pagador','Persona Cubierta','Tipo Persona Cubierta','Fecha Pago','Monto Pagado']
           const datos = [
             encabezados,
             ...filas.map(f => encabezados.map(h => f[h]))
@@ -329,7 +329,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
           import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs').then(XLSX => {
             const wb = XLSX.utils.book_new()
             const ws = XLSX.utils.aoa_to_sheet(datos)
-            ws['!cols'] = [{wch:12},{wch:28},{wch:14},{wch:24},{wch:28},{wch:14},{wch:12},{wch:12}]
+            ws['!cols'] = [{wch:12},{wch:24},{wch:28},{wch:28},{wch:14},{wch:12},{wch:12}]
             XLSX.utils.book_append_sheet(wb, ws, etiqueta === 'pendientes' ? 'Pendientes' : 'Pagaron')
             XLSX.writeFile(wb, nombreArchivo)
           })
