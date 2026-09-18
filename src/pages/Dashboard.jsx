@@ -294,25 +294,42 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         const tieneReferencias = insc.some(i => i.num_referencia)
 
         function exportarExcel(lista, etiqueta) {
-          const filas = lista.map(i => {
+          const filas = []
+          lista.forEach(i => {
             const p = getPersona(i)
             const esNino = p?.atleta && p.atleta.includes('Ni')
-            return {
+            const asistInscExport = asisDashboard.filter(a => a.id_inscripcion === i.id_inscripcion)
+            const base = {
               'N Referencia': i.num_referencia || '',
-              'Nombre Socio': getNombre(i),
-              'Tipo Atleta': p ? (esNino ? 'Nino' : 'Adulto') : '',
-              'Apoderado': p?.apoderado || ''
+              'Nombre Pagador': getNombre(i),
+              'Tipo Atleta Pagador': p ? (esNino ? 'Nino' : 'Adulto') : '',
+              'Apoderado': p?.apoderado || '',
+              'Monto Pagado': i.monto || 0,
+              'Fecha Pago': i.fecha_pago || ''
+            }
+            if (asistInscExport.length > 0) {
+              // Una fila por cada persona cubierta, repitiendo datos del pagador
+              asistInscExport.forEach(a => {
+                const pAsist = a.id_socio ? (personas.find(p2=>p2.id_caif===a.id_socio) || todasPersonas.find(p2=>p2.id_caif===a.id_socio)) : null
+                const nombreAsist = pAsist ? pAsist.nombre_comp : (a.nombre_asistente || '')
+                const tipoAsist = a.tipo === 'nino' ? 'Nino' : 'Adulto'
+                filas.push({ ...base, 'Persona Cubierta': nombreAsist, 'Tipo Persona Cubierta': tipoAsist })
+              })
+            } else {
+              // Sin asistentes registrados (ej: rifa individual): una sola fila, cubierta = el mismo pagador
+              filas.push({ ...base, 'Persona Cubierta': getNombre(i), 'Tipo Persona Cubierta': base['Tipo Atleta Pagador'] })
             }
           })
+          const encabezados = ['N Referencia','Nombre Pagador','Tipo Atleta Pagador','Apoderado','Persona Cubierta','Tipo Persona Cubierta','Monto Pagado','Fecha Pago']
           const datos = [
-            ['N Referencia','Nombre Socio','Tipo Atleta','Apoderado'],
-            ...filas.map(f => [f['N Referencia'], f['Nombre Socio'], f['Tipo Atleta'], f['Apoderado']])
+            encabezados,
+            ...filas.map(f => encabezados.map(h => f[h]))
           ]
           const nombreArchivo = `${actSelDash.nombre.replace(/[^a-zA-Z0-9]/g,'_')}_${etiqueta}.xlsx`
           import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs').then(XLSX => {
             const wb = XLSX.utils.book_new()
             const ws = XLSX.utils.aoa_to_sheet(datos)
-            ws['!cols'] = [{wch:14},{wch:32},{wch:12},{wch:28}]
+            ws['!cols'] = [{wch:12},{wch:28},{wch:14},{wch:24},{wch:28},{wch:14},{wch:12},{wch:12}]
             XLSX.utils.book_append_sheet(wb, ws, etiqueta === 'pendientes' ? 'Pendientes' : 'Pagaron')
             XLSX.writeFile(wb, nombreArchivo)
           })
