@@ -425,17 +425,26 @@ export default function Egresos({ isAdmin = true }) {
                                 <span style={{fontWeight:600,color:'#16a34a'}}>+{formatMoney(totalAct)}</span>
                               </div>
                             )}
-                            {movsOrdenados.map(m => (
+                            {movsOrdenados.map(m => {
+                              const personasEquiv = (m.tipo === 'ingreso' && act.monto_default > 0)
+                                ? Math.round(m.monto / act.monto_default)
+                                : null
+                              return (
                               <div key={m.id_movimiento} style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #f3e8ff',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12}}>
                                 <div>
                                   <div style={{color:'var(--text-2)'}}>{m.item}</div>
                                   <div style={{color:'#94a3b8',fontSize:11}}>{m.fecha}{m.obs ? ` \u00b7 ${m.obs}` : ''}</div>
                                 </div>
-                                <span style={{fontWeight:600,color:m.tipo==='ingreso'?'#16a34a':'#dc2626'}}>
-                                  {m.tipo==='ingreso'?'+':'-'}{formatMoney(m.monto)}
-                                </span>
+                                <div style={{textAlign:'right'}}>
+                                  <div style={{fontWeight:600,color:m.tipo==='ingreso'?'#16a34a':'#dc2626'}}>
+                                    {m.tipo==='ingreso'?'+':'-'}{formatMoney(m.monto)}
+                                  </div>
+                                  {personasEquiv > 0 && (
+                                    <div style={{fontSize:10,color:'#7c3aed'}}>&asymp; {personasEquiv} asistente{personasEquiv!==1?'s':''} adicional{personasEquiv!==1?'es':''}</div>
+                                  )}
+                                </div>
                               </div>
-                            ))}
+                            )})}
                           </div>
                         )}
                       </div>
