@@ -295,17 +295,19 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
 
         function exportarExcel(lista, etiqueta) {
           const filas = []
+          let hayReferencias = false
           lista.forEach(i => {
             const p = getPersona(i)
-            const esNino = p?.atleta && p.atleta.includes('Ni')
             const asistInscExport = asisDashboard.filter(a => a.id_inscripcion === i.id_inscripcion)
+            const cantCubiertos = asistInscExport.length > 0 ? asistInscExport.length : 1
+            const montoPersona = Math.round((i.monto || 0) / cantCubiertos)
+            if (i.num_referencia) hayReferencias = true
             const base = {
               'N Referencia': i.num_referencia || '',
-              'Nombre Pagador': getNombre(i),
-              'Tipo Atleta Pagador': p ? (esNino ? 'Nino' : 'Adulto') : '',
               'Apoderado': p?.apoderado || '',
-              'Monto Pagado': i.monto || 0,
-              'Fecha Pago': i.fecha_pago || ''
+              'Nombre Pagador': getNombre(i),
+              'Fecha Pago': i.fecha_pago || '',
+              'Monto Pagado': montoPersona
             }
             if (asistInscExport.length > 0) {
               // Una fila por cada persona cubierta, repitiendo datos del pagador
@@ -317,10 +319,14 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               })
             } else {
               // Sin asistentes registrados (ej: rifa individual): una sola fila, cubierta = el mismo pagador
-              filas.push({ ...base, 'Persona Cubierta': getNombre(i), 'Tipo Persona Cubierta': base['Tipo Atleta Pagador'] })
+              const esNino = p?.atleta && p.atleta.includes('Ni')
+              filas.push({ ...base, 'Persona Cubierta': getNombre(i), 'Tipo Persona Cubierta': p ? (esNino?'Nino':'Adulto') : '' })
             }
           })
-          const encabezados = ['N Referencia','Apoderado','Nombre Pagador','Persona Cubierta','Tipo Persona Cubierta','Fecha Pago','Monto Pagado']
+          const encabezados = [
+            ...(hayReferencias ? ['N Referencia'] : []),
+            'Apoderado','Nombre Pagador','Persona Cubierta','Tipo Persona Cubierta','Fecha Pago','Monto Pagado'
+          ]
           const datos = [
             encabezados,
             ...filas.map(f => encabezados.map(h => f[h]))
@@ -329,10 +335,54 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
           import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs').then(XLSX => {
             const wb = XLSX.utils.book_new()
             const ws = XLSX.utils.aoa_to_sheet(datos)
-            ws['!cols'] = [{wch:12},{wch:24},{wch:28},{wch:28},{wch:14},{wch:12},{wch:12}]
+            ws['!cols'] = hayReferencias
+              ? [{wch:12},{wch:24},{wch:28},{wch:28},{wch:14},{wch:12},{wch:12}]
+              : [{wch:24},{wch:28},{wch:28},{wch:14},{wch:12},{wch:12}]
             XLSX.utils.book_append_sheet(wb, ws, etiqueta === 'pendientes' ? 'Pendientes' : 'Pagaron')
             XLSX.writeFile(wb, nombreArchivo)
           })
+        }
+
+        function imprimirNumerosSorteo() {
+          const numeros = []
+          insc.forEach(i => {
+            if (!i.num_referencia) return
+            const partes = i.num_referencia.split(',').map(n => n.trim()).filter(Boolean)
+            partes.forEach(n => numeros.push(n))
+          })
+          const numerosOrdenados = numeros.sort((a,b) => {
+            const na = parseInt(a), nb = parseInt(b)
+            if (!isNaN(na) && !isNaN(nb)) return na - nb
+            return a.localeCompare(b)
+          })
+          const circulos = numerosOrdenados.map(n => `
+            <div class="circulo">${n}</div>
+          `).join('')
+          const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Numeros ${actSelDash.nombre}</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  h2 { text-align: center; color: #1a5e3a; margin-bottom: 4px; }
+  .sub { text-align: center; color: #666; font-size: 12px; margin-bottom: 20px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+  .circulo {
+    width: 90px; height: 90px; border-radius: 50%;
+    border: 3px dashed #1a5e3a;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-weight: 700; color: #1a5e3a;
+    page-break-inside: avoid;
+  }
+  @media print { .circulo { border-color: #000; color: #000; } }
+</style></head>
+<body>
+  <h2>${actSelDash.nombre}</h2>
+  <div class="sub">Numeros para sorteo - ${numerosOrdenados.length} en total</div>
+  <div class="grid">${circulos}</div>
+</body></html>`
+          const ventana = window.open('', '_blank')
+          ventana.document.write(html)
+          ventana.document.close()
+          setTimeout(() => ventana.print(), 500)
         }
         return (
           <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setActSelDash(null)}>
@@ -367,6 +417,12 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                     </button>
                   ))}
                 </div>
+                {tieneReferencias && (
+                  <button type="button" onClick={imprimirNumerosSorteo}
+                    style={{fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:8,border:'1.5px solid #7c3aed',background:'#faf5ff',color:'#7c3aed',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+                    <i className="ti ti-printer"></i>Imprimir numeros (sorteo)
+                  </button>
+                )}
               </div>
               {pendientes.length > 0 && (
                 <div style={{marginBottom:16}}>
