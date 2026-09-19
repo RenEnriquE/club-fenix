@@ -390,20 +390,25 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         }
 
         function imprimirNumerosSorteo() {
-          const numeros = []
-          insc.forEach(i => {
-            if (!i.num_referencia) return
-            const partes = i.num_referencia.split(',').map(n => n.trim()).filter(Boolean)
-            partes.forEach(n => numeros.push(n))
-          })
-          const numerosOrdenados = numeros.sort((a,b) => {
+          const ordenarNums = (a,b) => {
             const na = parseInt(a), nb = parseInt(b)
             if (!isNaN(na) && !isNaN(nb)) return na - nb
             return a.localeCompare(b)
+          }
+
+          const numerosPagados = []
+          const numerosNoPagados = []
+          insc.forEach(i => {
+            if (!i.num_referencia) return
+            const partes = i.num_referencia.split(',').map(n => n.trim()).filter(Boolean)
+            partes.forEach(n => { i.pagado ? numerosPagados.push(n) : numerosNoPagados.push(n) })
           })
-          const circulos = numerosOrdenados.map(n => `
-            <div class="circulo">${n}</div>
-          `).join('')
+          numerosPagados.sort(ordenarNums)
+          numerosNoPagados.sort(ordenarNums)
+
+          const circulosPagados = numerosPagados.map(n => `<div class="circulo">${n}</div>`).join('')
+          const circulosNoPagados = numerosNoPagados.map(n => `<div class="circulo negro">${n}</div>`).join('')
+
           const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Numeros ${actSelDash.nombre}</title>
 <style>
@@ -418,12 +423,20 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
     font-size: 32px; font-weight: 700; color: #1a5e3a;
     page-break-inside: avoid;
   }
-  @media print { .circulo { border-color: #000; color: #000; } }
+  .circulo.negro {
+    background: #000; border: 3px dashed #000; color: #fff;
+  }
+  .titulo-nopagados { text-align: center; color: #dc2626; font-size: 14px; font-weight: 700; text-transform: uppercase; margin: 30px 0 14px; border-top: 2px dashed #cbd5e1; padding-top: 20px; }
+  @media print {
+    .circulo { border-color: #000; color: #000; }
+    .circulo.negro { background: #000 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
 </style></head>
 <body>
   <h2>${actSelDash.nombre}</h2>
-  <div class="sub">Numeros para sorteo - ${numerosOrdenados.length} en total</div>
-  <div class="grid">${circulos}</div>
+  <div class="sub">Numeros para sorteo - ${numerosPagados.length} pagados${numerosNoPagados.length ? ` &middot; ${numerosNoPagados.length} no pagados` : ''}</div>
+  <div class="grid">${circulosPagados}</div>
+  ${numerosNoPagados.length ? `<div class="titulo-nopagados">No pagados (no participan en el sorteo)</div><div class="grid">${circulosNoPagados}</div>` : ''}
 </body></html>`
           const ventana = window.open('', '_blank')
           ventana.document.write(html)
