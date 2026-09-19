@@ -13,6 +13,7 @@ export default function Actividades() {
   const [montoDefault, setMontoDefault] = useState('')
   const [mostrarDashboard, setMostrarDashboard] = useState(false)
   const [permiteGrupo, setPermiteGrupo] = useState(false)
+  const [esCompetencia, setEsCompetencia] = useState(false)
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState(null)
   const [actividadSel, setActividadSel] = useState(null)
@@ -107,6 +108,7 @@ export default function Actividades() {
     setMontoDefault(act.monto_default || '')
     setMostrarDashboard(act.mostrar_dashboard || false)
     setPermiteGrupo(act.permite_grupo || false)
+    setEsCompetencia(act.es_competencia || false)
     setModal(true)
   }
 
@@ -130,7 +132,8 @@ export default function Actividades() {
         tipo_cobro: tipoCobro,
         monto_default: montoDefault ? Number(montoDefault) : null,
         mostrar_dashboard: mostrarDashboard,
-        permite_grupo: permiteGrupo
+        permite_grupo: permiteGrupo,
+        es_competencia: esCompetencia
       }
       if (editando) {
         const { error } = await supabase.from('actividades').update(payload).eq('id_actividad', editando.id_actividad)
@@ -414,6 +417,18 @@ export default function Actividades() {
                   </select>
                   <span style={{fontSize:11,color:'#64748b',marginTop:3,display:'block'}}>
                     Individual: solo socios activos, un registro por socio. Grupal: un pagador puede cubrir a varios socios y/o externos.
+                  </span>
+                </div>
+              )}
+              {tipoCobro === 'unico' && (
+                <div className="form-group">
+                  <label>Tipo de actividad</label>
+                  <select value={esCompetencia} onChange={e => setEsCompetencia(e.target.value === 'true')}>
+                    <option value="false">No es competencia (rifa, fonda, paseo, etc)</option>
+                    <option value="true">Es competencia (torneo, cross, atletismo)</option>
+                  </select>
+                  <span style={{fontSize:11,color:'#64748b',marginTop:3,display:'block'}}>
+                    Cambia los campos que se incluyen en el Excel exportado: si es competencia se agregan genero, fecha nacimiento y edad de cada atleta.
                   </span>
                 </div>
               )}

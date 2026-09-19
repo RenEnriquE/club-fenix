@@ -62,7 +62,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         supabase.from('movimientos').select('tipo,monto,fecha,id_categoria').gte('fecha', `${anio}-01-01`).lte('fecha', `${anio}-12-31`),
         supabase.from('movimientos').select('tipo,monto').ilike('item', '%cierre contable%'),
         supabase.from('categorias_movimiento').select('id_categoria,nombre'),
-        supabase.from('personas').select('id_caif,nombre_comp,atleta,apoderado')
+        supabase.from('personas').select('id_caif,nombre_comp,atleta,apoderado,fecha_nac,genero')
     ]).then(([resP, resPg, resPgSaldo, resActDash, resInscDash, resAsisDash, resMov, resCierre, resCategorias, resTodasPersonas]) => {
       const p = resP.data || []
       const pg = resPg.data || []
@@ -294,6 +294,29 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         const tieneReferencias = insc.some(i => i.num_referencia)
 
         function exportarExcel(lista, etiqueta) {
+          const esCompetencia = actSelDash.es_competencia === true
+
+          function calcEdadExport(fechaNac) {
+            if (!fechaNac) return ''
+            const d = new Date(fechaNac + 'T12:00:00-04:00')
+            const hoy = new Date()
+            let e = hoy.getFullYear() - d.getFullYear()
+            const m = hoy.getMonth() - d.getMonth()
+            if (m < 0 || (m === 0 && hoy.getDate() < d.getDate())) e--
+            return e
+          }
+          function generoLetra(genero) {
+            if (!genero) return ''
+            const g = genero.toLowerCase()
+            if (g.startsWith('f')) return 'D'
+            if (g.startsWith('m')) return 'V'
+            return ''
+          }
+          function fechaNacFormato(fechaNac) {
+            if (!fechaNac) return ''
+            return fechaNac.split('-').reverse().join('-')
+          }
+
           const filas = []
           let hayReferencias = false
           lista.forEach(i => {
@@ -302,31 +325,52 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
             const cantCubiertos = asistInscExport.length > 0 ? asistInscExport.length : 1
             const montoPersona = Math.round((i.monto || 0) / cantCubiertos)
             if (i.num_referencia) hayReferencias = true
-            const base = {
-              'N Referencia': i.num_referencia || '',
-              'Apoderado': p?.apoderado || '',
-              'Nombre Pagador': getNombre(i),
-              'Fecha Pago': i.fecha_pago || '',
-              'Monto Pagado': montoPersona
-            }
-            if (asistInscExport.length > 0) {
-              // Una fila por cada persona cubierta, repitiendo datos del pagador
-              asistInscExport.forEach(a => {
-                const pAsist = a.id_socio ? (personas.find(p2=>p2.id_caif===a.id_socio) || todasPersonas.find(p2=>p2.id_caif===a.id_socio)) : null
-                const nombreAsist = pAsist ? pAsist.nombre_comp : (a.nombre_asistente || '')
-                const tipoAsist = a.tipo === 'nino' ? 'Nino' : 'Adulto'
-                filas.push({ ...base, 'Persona Cubierta': nombreAsist, 'Tipo Persona Cubierta': tipoAsist })
-              })
-            } else {
-              // Sin asistentes registrados (ej: rifa individual): una sola fila, cubierta = el mismo pagador
-              const esNino = p?.atleta && p.atleta.includes('Ni')
-              filas.push({ ...base, 'Persona Cubierta': getNombre(i), 'Tipo Persona Cubierta': p ? (esNino?'Nino':'Adulto') : '' })
-            }
+
+            const cubiertos = asistInscExport.length > 0
+              ? asistInscExport.map(a => {
+                  const pAsist = a.id_socio ? (personas.find(p2=>p2.id_caif===a.id_socio) || todasPersonas.find(p2=>p2.id_caif===a.id_socio)) : null
+                  return {
+                    nombre: pAsist ? pAsist.nombre_comp : (a.nombre_asistente || ''),
+                    tipo: a.tipo === 'nino' ? 'Nino' : 'Adulto',
+                    persona: pAsist
+                  }
+                })
+              : [{
+                  nombre: getNombre(i),
+                  tipo: p ? (p.atleta && p.atleta.includes('Ni') ? 'Nino' : 'Adulto') : '',
+                  persona: p
+                }]
+
+            cubiertos.forEach(c => {
+              if (esCompetencia) {
+                filas.push({
+                  'N Referencia': i.num_referencia || '',
+                  'Atleta': c.nombre,
+                  'Tipo Atleta': c.tipo,
+                  'Genero': generoLetra(c.persona?.genero),
+                  'Fecha Nacimiento': fechaNacFormato(c.persona?.fecha_nac),
+                  'Edad': calcEdadExport(c.persona?.fecha_nac),
+                  'Monto Pagado': formatMoney(montoPersona),
+                  'Fecha de Pago': i.fecha_pago || ''
+                })
+              } else {
+                filas.push({
+                  'N Referencia': i.num_referencia || '',
+                  'Apoderado': p?.apoderado || '',
+                  'Nombre Pagador': getNombre(i),
+                  'Persona Cubierta': c.nombre,
+                  'Tipo Persona Cubierta': c.tipo,
+                  'Monto Pagado': formatMoney(montoPersona),
+                  'Fecha Pago': i.fecha_pago || ''
+                })
+              }
+            })
           })
-          const encabezados = [
-            ...(hayReferencias ? ['N Referencia'] : []),
-            'Apoderado','Nombre Pagador','Persona Cubierta','Tipo Persona Cubierta','Fecha Pago','Monto Pagado'
-          ]
+
+          const encabezados = esCompetencia
+            ? [...(hayReferencias ? ['N Referencia'] : []), 'Atleta','Tipo Atleta','Genero','Fecha Nacimiento','Edad','Monto Pagado','Fecha de Pago']
+            : [...(hayReferencias ? ['N Referencia'] : []), 'Apoderado','Nombre Pagador','Persona Cubierta','Tipo Persona Cubierta','Monto Pagado','Fecha Pago']
+
           const datos = [
             encabezados,
             ...filas.map(f => encabezados.map(h => f[h]))
@@ -335,9 +379,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
           import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs').then(XLSX => {
             const wb = XLSX.utils.book_new()
             const ws = XLSX.utils.aoa_to_sheet(datos)
-            ws['!cols'] = hayReferencias
-              ? [{wch:12},{wch:24},{wch:28},{wch:28},{wch:14},{wch:12},{wch:12}]
-              : [{wch:24},{wch:28},{wch:28},{wch:14},{wch:12},{wch:12}]
+            ws['!cols'] = esCompetencia
+              ? [...(hayReferencias ? [{wch:12}] : []), {wch:28},{wch:12},{wch:9},{wch:14},{wch:8},{wch:12},{wch:12}]
+              : [...(hayReferencias ? [{wch:12}] : []), {wch:24},{wch:28},{wch:28},{wch:14},{wch:12},{wch:12}]
             XLSX.utils.book_append_sheet(wb, ws, etiqueta === 'pendientes' ? 'Pendientes' : 'Pagaron')
             XLSX.writeFile(wb, nombreArchivo)
           })
