@@ -219,8 +219,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
             const idsInsc = insc.map(i => i.id_inscripcion)
             const asistInsc = asisDashboard.filter(a => idsInsc.includes(a.id_inscripcion))
             const esGrupalAct = act.permite_grupo === true
-            const nAdultos = asistInsc.filter(a => (a.tipo||'adulto') === 'adulto').length
-            const nNinos = asistInsc.filter(a => a.tipo === 'nino').length
+            const idsInscPagados = pagaron.map(i => i.id_inscripcion)
+            const asistPagados = asistInsc.filter(a => idsInscPagados.includes(a.id_inscripcion)).length
+            const asistNoPagados = asistInsc.length - asistPagados
             // Gastos de la actividad: categoria de movimientos con el mismo nombre
             const catCoincide = categoriasDash.find(c => c.nombre.trim().toLowerCase() === act.nombre.trim().toLowerCase())
             const gastosAct = catCoincide
@@ -238,12 +239,11 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   </div>
                   <i className="ti ti-chevron-right" style={{color:'#93c5fd',fontSize:16}}></i>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:8}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:8}}>
                   {(esGrupalAct ? [
-                    {label:'Asistentes',val:asistInsc.length,color:'#7c3aed'},
-                    {label:'Adultos',val:nAdultos,color:'#0369a1'},
-                    {label:'Ninos',val:nNinos,color:'#c026d3'},
-                    {label:'Pendientes',val:pendientes.length,color:'#dc2626'},
+                    {label:'Total inscritos',val:asistInsc.length,color:'#7c3aed'},
+                    {label:'Pagados',val:asistPagados,color:'#16a34a'},
+                    {label:'No pagaron',val:asistNoPagados,color:'#dc2626'},
                   ] : [
                     {label:'Asignadas',val:insc.length,color:'#1d4ed8'},
                     {label:'Pagaron',val:pagaron.length,color:'#16a34a'},
@@ -293,7 +293,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         const pendientes = insc.filter(i => !i.pagado).sort(comparador)
         const tieneReferencias = insc.some(i => i.num_referencia)
 
-        function exportarExcel(lista, etiqueta) {
+        function exportarExcel(lista, etiqueta, esResumen = false) {
           const esCompetencia = actSelDash.es_competencia === true
 
           function calcEdadExport(fechaNac) {
@@ -323,7 +323,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
             const p = getPersona(i)
             const asistInscExport = asisDashboard.filter(a => a.id_inscripcion === i.id_inscripcion)
             const cantCubiertos = asistInscExport.length > 0 ? asistInscExport.length : 1
-            const montoPersona = Math.round((i.monto || 0) / cantCubiertos)
+            const montoPersona = (esResumen && !i.pagado) ? 0 : Math.round((i.monto || 0) / cantCubiertos)
             if (i.num_referencia) hayReferencias = true
 
             const cubiertos = asistInscExport.length > 0
@@ -351,7 +351,8 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   'Fecha Nacimiento': fechaNacFormato(c.persona?.fecha_nac),
                   'Edad': calcEdadExport(c.persona?.fecha_nac),
                   'Monto Pagado': formatMoney(montoPersona),
-                  'Fecha de Pago': i.fecha_pago || ''
+                  'Fecha de Pago': i.fecha_pago || '',
+                  ...(esResumen ? { 'Pagado': i.pagado ? 'Si' : 'No' } : {})
                 })
               } else {
                 filas.push({
@@ -361,15 +362,16 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   'Persona Cubierta': c.nombre,
                   'Tipo Persona Cubierta': c.tipo,
                   'Monto Pagado': formatMoney(montoPersona),
-                  'Fecha Pago': i.fecha_pago || ''
+                  'Fecha Pago': i.fecha_pago || '',
+                  ...(esResumen ? { 'Pagado': i.pagado ? 'Si' : 'No' } : {})
                 })
               }
             })
           })
 
           const encabezados = esCompetencia
-            ? [...(hayReferencias ? ['N Referencia'] : []), 'Atleta','Tipo Atleta','Genero','Fecha Nacimiento','Edad','Monto Pagado','Fecha de Pago']
-            : [...(hayReferencias ? ['N Referencia'] : []), 'Apoderado','Nombre Pagador','Persona Cubierta','Tipo Persona Cubierta','Monto Pagado','Fecha Pago']
+            ? [...(hayReferencias ? ['N Referencia'] : []), 'Atleta','Tipo Atleta','Genero','Fecha Nacimiento','Edad','Monto Pagado','Fecha de Pago', ...(esResumen ? ['Pagado'] : [])]
+            : [...(hayReferencias ? ['N Referencia'] : []), 'Apoderado','Nombre Pagador','Persona Cubierta','Tipo Persona Cubierta','Monto Pagado','Fecha Pago', ...(esResumen ? ['Pagado'] : [])]
 
           const datos = [
             encabezados,
@@ -380,9 +382,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
             const wb = XLSX.utils.book_new()
             const ws = XLSX.utils.aoa_to_sheet(datos)
             ws['!cols'] = esCompetencia
-              ? [...(hayReferencias ? [{wch:12}] : []), {wch:28},{wch:12},{wch:9},{wch:14},{wch:8},{wch:12},{wch:12}]
-              : [...(hayReferencias ? [{wch:12}] : []), {wch:24},{wch:28},{wch:28},{wch:14},{wch:12},{wch:12}]
-            XLSX.utils.book_append_sheet(wb, ws, etiqueta === 'pendientes' ? 'Pendientes' : 'Pagaron')
+              ? [...(hayReferencias ? [{wch:12}] : []), {wch:28},{wch:12},{wch:9},{wch:14},{wch:8},{wch:12},{wch:12}, ...(esResumen ? [{wch:8}] : [])]
+              : [...(hayReferencias ? [{wch:12}] : []), {wch:24},{wch:28},{wch:28},{wch:14},{wch:12},{wch:12}, ...(esResumen ? [{wch:8}] : [])]
+            XLSX.utils.book_append_sheet(wb, ws, etiqueta === 'pendientes' ? 'Pendientes' : etiqueta === 'pagaron' ? 'Pagaron' : 'Resumen')
             XLSX.writeFile(wb, nombreArchivo)
           })
         }
@@ -461,12 +463,18 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                     </button>
                   ))}
                 </div>
-                {tieneReferencias && (
-                  <button type="button" onClick={imprimirNumerosSorteo}
-                    style={{fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:8,border:'1.5px solid #7c3aed',background:'#faf5ff',color:'#7c3aed',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
-                    <i className="ti ti-printer"></i>Imprimir numeros (sorteo)
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  <button type="button" onClick={()=>exportarExcel(insc,'resumen',true)}
+                    style={{fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:8,border:'1.5px solid #0369a1',background:'#f0f9ff',color:'#0369a1',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+                    <i className="ti ti-download"></i>Excel: Todos ({insc.reduce((a,i)=>a+Math.max(getCobertura(i).total,1),0)})
                   </button>
-                )}
+                  {tieneReferencias && (
+                    <button type="button" onClick={imprimirNumerosSorteo}
+                      style={{fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:8,border:'1.5px solid #7c3aed',background:'#faf5ff',color:'#7c3aed',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+                      <i className="ti ti-printer"></i>Imprimir numeros (sorteo)
+                    </button>
+                  )}
+                </div>
               </div>
               {pendientes.length > 0 && (
                 <div style={{marginBottom:16}}>
