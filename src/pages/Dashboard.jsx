@@ -286,12 +286,18 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
           const ninos = asist.filter(a => a.tipo === 'nino').length
           return { adultos, ninos, total: asist.length }
         }
-        const comparador = (a,b) => ordenActDash === 'nombre'
-          ? getNombre(a).localeCompare(getNombre(b))
-          : (a.num_referencia||'').localeCompare(b.num_referencia||'', undefined, {numeric:true})
+        const tieneReferencias = insc.some(i => i.num_referencia)
+        const ordenActivo = (!tieneReferencias && ordenActDash === 'referencia') ? 'fecha' : ordenActDash
+        const comparador = (a,b) => {
+          if (ordenActivo === 'nombre') return getNombre(a).localeCompare(getNombre(b))
+          if (ordenActivo === 'fecha') return (a.fecha_pago||'9999').localeCompare(b.fecha_pago||'9999')
+          return (a.num_referencia||'').localeCompare(b.num_referencia||'', undefined, {numeric:true})
+        }
         const pagaron = insc.filter(i => i.pagado).sort(comparador)
         const pendientes = insc.filter(i => !i.pagado).sort(comparador)
-        const tieneReferencias = insc.some(i => i.num_referencia)
+        const opcionesOrden = tieneReferencias
+          ? [{k:'referencia',l:'N referencia'},{k:'nombre',l:'Nombre'}]
+          : [{k:'fecha',l:'Fecha de pago'},{k:'nombre',l:'Nombre'}]
 
         function exportarExcel(lista, etiqueta, esResumen = false) {
           const esCompetencia = actSelDash.es_competencia === true
@@ -340,6 +346,8 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   tipo: p ? (p.atleta && p.atleta.includes('Ni') ? 'Nino' : 'Adulto') : '',
                   persona: p
                 }]
+
+            if (ordenActivo === 'nombre') cubiertos.sort((a,b) => a.nombre.localeCompare(b.nombre))
 
             cubiertos.forEach(c => {
               if (esCompetencia) {
@@ -464,20 +472,20 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:16}}>
                 <div style={{display:'flex',gap:4}}>
-                  {[{k:'referencia',l:'N referencia'},{k:'nombre',l:'Nombre'}].map(op=>(
+                  {opcionesOrden.map(op=>(
                     <button key={op.k} type="button" onClick={()=>setOrdenActDash(op.k)}
                       style={{
                         padding:'5px 10px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:11,fontWeight:600,
-                        border:`1.5px solid ${ordenActDash===op.k?'#1a5e3a':'#e2e8f0'}`,
-                        background:ordenActDash===op.k?'#f0fdf4':'#f8fafc',
-                        color:ordenActDash===op.k?'#1a5e3a':'#64748b'
+                        border:`1.5px solid ${ordenActivo===op.k?'#1a5e3a':'#e2e8f0'}`,
+                        background:ordenActivo===op.k?'#f0fdf4':'#f8fafc',
+                        color:ordenActivo===op.k?'#1a5e3a':'#64748b'
                       }}>
                       Ordenar: {op.l}
                     </button>
                   ))}
                 </div>
                 <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                  <button type="button" onClick={()=>exportarExcel(insc,'resumen',true)}
+                  <button type="button" onClick={()=>exportarExcel(insc.slice().sort(comparador),'resumen',true)}
                     style={{fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:8,border:'1.5px solid #0369a1',background:'#f0f9ff',color:'#0369a1',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
                     <i className="ti ti-download"></i>Excel: Todos ({insc.reduce((a,i)=>a+Math.max(getCobertura(i).total,1),0)})
                   </button>
