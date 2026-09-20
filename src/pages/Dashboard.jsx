@@ -44,10 +44,43 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
   const [saldoMovimientos, setSaldoMovimientos] = useState(null)
   const [actSelDash, setActSelDash] = useState(null)
   const [ordenActDash, setOrdenActDash] = useState('referencia') // 'referencia' | 'nombre'
+  const [ganadoresAct, setGanadoresAct] = useState([])
+  const [nuevoGanadorRef, setNuevoGanadorRef] = useState('')
+  const [nuevoGanadorNum, setNuevoGanadorNum] = useState('')
+  const [nuevoGanadorPremio, setNuevoGanadorPremio] = useState('')
+  const [savingGanador, setSavingGanador] = useState(false)
   const [loading, setLoading] = useState(!cached)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [intento, setIntento] = useState(0)
+
+  useEffect(() => {
+    if (!actSelDash) { setGanadoresAct([]); return }
+    supabase.from('rifa_ganadores').select('*').eq('id_actividad', actSelDash.id_actividad).order('created_at')
+      .then(({data}) => setGanadoresAct(data || []))
+  }, [actSelDash])
+
+  async function guardarGanador() {
+    if (!nuevoGanadorRef.trim() || !nuevoGanadorPremio.trim()) return
+    setSavingGanador(true)
+    try {
+      await supabase.from('rifa_ganadores').insert([{
+        id_actividad: actSelDash.id_actividad,
+        num_referencia: nuevoGanadorRef.trim(),
+        numero_sorteado: nuevoGanadorNum ? Number(nuevoGanadorNum) : null,
+        premio: nuevoGanadorPremio.trim()
+      }])
+      setNuevoGanadorRef(''); setNuevoGanadorNum(''); setNuevoGanadorPremio('')
+      const { data } = await supabase.from('rifa_ganadores').select('*').eq('id_actividad', actSelDash.id_actividad).order('created_at')
+      setGanadoresAct(data || [])
+    } finally { setSavingGanador(false) }
+  }
+
+  async function eliminarGanador(id) {
+    if (!confirm('Eliminar este resultado?')) return
+    await supabase.from('rifa_ganadores').delete().eq('id_ganador', id)
+    setGanadoresAct(prev => prev.filter(g => g.id_ganador !== id))
+  }
 
   useEffect(() => {
     if (!cached) setLoading(true)
@@ -497,6 +530,61 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   )}
                 </div>
               </div>
+
+              {/* Resultados del sorteo */}
+              {tieneReferencias && (
+                <div style={{marginBottom:16,background:'#fffbeb',border:'0.5px solid #fde68a',borderRadius:10,padding:'12px 14px'}}>
+                  <div style={{fontSize:12,fontWeight:700,color:'#92400e',textTransform:'uppercase',marginBottom:10,display:'flex',alignItems:'center',gap:6}}>
+                    <i className="ti ti-trophy"></i>Resultados del sorteo
+                  </div>
+
+                  {ganadoresAct.length > 0 && (
+                    <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:isAdmin?12:0}}>
+                      {ganadoresAct.map(g => {
+                        const inscGanador = insc.find(i => (i.num_referencia||'').split(',').map(n=>n.trim()).includes(g.num_referencia))
+                        const nombreGanador = inscGanador ? getNombre(inscGanador) : 'No encontrado'
+                        return (
+                          <div key={g.id_ganador} style={{background:'#fff',border:'0.5px solid #fde68a',borderRadius:8,padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                            <div>
+                              <div style={{fontWeight:700,fontSize:13}}>
+                                <span style={{fontFamily:'monospace',color:'#92400e'}}>#{g.num_referencia}</span>
+                                {g.numero_sorteado && <span style={{color:'#7c3aed'}}> &middot; N&deg; {g.numero_sorteado}</span>}
+                              </div>
+                              <div style={{fontSize:12,color:'var(--text-2)'}}>{nombreGanador}</div>
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:8}}>
+                              <span style={{fontWeight:600,color:'#16a34a',fontSize:13}}>{g.premio}</span>
+                              {isAdmin && (
+                                <button type="button" onClick={()=>eliminarGanador(g.id_ganador)} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>
+                                  <i className="ti ti-trash"></i>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {isAdmin && (
+                    <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
+                      <input value={nuevoGanadorRef} onChange={e=>setNuevoGanadorRef(e.target.value)}
+                        placeholder="N referencia" style={{width:100,padding:'6px 8px'}}/>
+                      <select value={nuevoGanadorNum} onChange={e=>setNuevoGanadorNum(e.target.value)} style={{width:110,padding:'6px 8px'}}>
+                        <option value="">N sorteado</option>
+                        {Array.from({length:10},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}</option>)}
+                      </select>
+                      <input value={nuevoGanadorPremio} onChange={e=>setNuevoGanadorPremio(e.target.value)}
+                        placeholder="Premio" style={{flex:1,minWidth:120,padding:'6px 8px'}}/>
+                      <button type="button" onClick={guardarGanador} disabled={savingGanador || !nuevoGanadorRef.trim() || !nuevoGanadorPremio.trim()}
+                        style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #1a5e3a',background:'#1a5e3a',color:'#fff',fontWeight:600,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>
+                        {savingGanador ? '...' : 'Agregar'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {pendientes.length > 0 && (
                 <div style={{marginBottom:16}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:8}}>
