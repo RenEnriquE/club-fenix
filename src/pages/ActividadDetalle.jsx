@@ -264,7 +264,8 @@ export default function ActividadDetalle({ actividad, onVolver }) {
         tipo_pago: 'Transferencia', cuenta: 'CAIF',
         anio: fp.getFullYear(), mes: fp.getMonth() + 1,
         id_actividad: actividad.id_actividad,
-        num_transacc: insc.num_referencia
+        num_transacc: insc.num_referencia,
+        id_inscripcion: insc.id_inscripcion
       }])
       await supabase.from('actividad_inscripciones').update({ pagado: true, fecha_pago: fechaPago }).eq('id_inscripcion', insc.id_inscripcion)
       setModalPago(null)
@@ -344,6 +345,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       if (actividad.monto_default) {
         const nuevoMonto = asistEditando.length * actividad.monto_default
         await supabase.from('actividad_inscripciones').update({ monto: nuevoMonto }).eq('id_inscripcion', modalEditAsist.id_inscripcion)
+        if (modalEditAsist.pagado) await sincronizarPago(modalEditAsist, { monto: nuevoMonto })
       }
       setModalEditAsist(null)
       mostrarAlert('success', 'Asistentes actualizados.')
@@ -391,9 +393,28 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     setEditandoRef(null); setSavingRef(false); cargar()
   }
 
+  async function sincronizarPago(insc, cambios) {
+    // Intenta encontrar el pago vinculado y actualizarlo (por id_inscripcion, o por coincidencia si es un pago antiguo sin vincular)
+    let { data: pagoDirecto } = await supabase.from('pagos').select('id_pago').eq('id_inscripcion', insc.id_inscripcion).limit(1)
+    let idPago = pagoDirecto?.[0]?.id_pago
+    if (!idPago) {
+      const { data: pagoFallback } = await supabase.from('pagos').select('id_pago')
+        .eq('id_actividad', actividad.id_actividad)
+        .eq('id_socio', insc.id_socio)
+        .eq('fecha_pago', insc.fecha_pago)
+        .limit(1)
+      idPago = pagoFallback?.[0]?.id_pago
+    }
+    if (idPago) {
+      await supabase.from('pagos').update({ ...cambios, id_inscripcion: insc.id_inscripcion }).eq('id_pago', idPago)
+    }
+  }
+
   async function guardarFechaPago(id_inscripcion) {
     if (!fechaTemp) return
     setSavingFecha(true)
+    const insc = inscripciones.find(i => i.id_inscripcion === id_inscripcion)
+    if (insc) await sincronizarPago(insc, { fecha_pago: fechaTemp })
     await supabase.from('actividad_inscripciones').update({ fecha_pago: fechaTemp }).eq('id_inscripcion', id_inscripcion)
     setEditandoFecha(null); setSavingFecha(false); cargar()
   }
