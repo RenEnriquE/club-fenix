@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { estadoSocio, mesesPendientes, MESES_SHORT, formatMoney } from '../lib/helpers'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend } from 'chart.js'
@@ -45,6 +45,8 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
   const [actSelDash, setActSelDash] = useState(null)
   const [ordenActDash, setOrdenActDash] = useState('referencia') // 'referencia' | 'nombre'
   const [ganadoresAct, setGanadoresAct] = useState([])
+  const [ordenLocal, setOrdenLocal] = useState([])
+  const draggingRef = useRef(null)
   const [nuevoGanadorRef, setNuevoGanadorRef] = useState('')
   const [nuevoGanadorNum, setNuevoGanadorNum] = useState('')
   const [nuevoGanadorPremio, setNuevoGanadorPremio] = useState('')
@@ -84,20 +86,40 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
     setGanadoresAct(prev => prev.filter(g => g.id_ganador !== id))
   }
 
-  async function moverGanador(index, direccion) {
-    const lista = ganadoresAct.slice().sort((a,b) => (a.orden||0) - (b.orden||0))
-    const otroIndex = index + direccion
-    if (otroIndex < 0 || otroIndex >= lista.length) return
-    const a = lista[index], b = lista[otroIndex]
-    const ordenA = a.orden||0, ordenB = b.orden||0
-    await Promise.all([
-      supabase.from('rifa_ganadores').update({ orden: ordenB }).eq('id_ganador', a.id_ganador),
-      supabase.from('rifa_ganadores').update({ orden: ordenA }).eq('id_ganador', b.id_ganador)
-    ])
+  useEffect(() => {
+    setOrdenLocal(ganadoresAct.slice().sort((a,b) => (a.orden||0) - (b.orden||0)))
+  }, [ganadoresAct])
+
+  function iniciarDrag(e, idx) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    draggingRef.current = idx
+  }
+
+  function moverDrag(e) {
+    if (draggingRef.current === null) return
+    const el = document.elementFromPoint(e.clientX, e.clientY)
+    const fila = el && el.closest('[data-ganador-idx]')
+    if (!fila) return
+    const targetIdx = Number(fila.getAttribute('data-ganador-idx'))
+    const fromIdx = draggingRef.current
+    if (targetIdx === fromIdx) return
+    setOrdenLocal(prev => {
+      const arr = prev.slice()
+      const [item] = arr.splice(fromIdx, 1)
+      arr.splice(targetIdx, 0, item)
+      return arr
+    })
+    draggingRef.current = targetIdx
+  }
+
+  async function soltarDrag() {
+    if (draggingRef.current === null) return
+    draggingRef.current = null
+    const updates = ordenLocal.map((g, i) => ({ id_ganador: g.id_ganador, orden: i }))
+    await Promise.all(updates.map(u => supabase.from('rifa_ganadores').update({ orden: u.orden }).eq('id_ganador', u.id_ganador)))
     setGanadoresAct(prev => prev.map(g => {
-      if (g.id_ganador === a.id_ganador) return { ...g, orden: ordenB }
-      if (g.id_ganador === b.id_ganador) return { ...g, orden: ordenA }
-      return g
+      const u = updates.find(x => x.id_ganador === g.id_ganador)
+      return u ? { ...g, orden: u.orden } : g
     }))
   }
 
@@ -559,11 +581,12 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
 
                   {ganadoresAct.length > 0 && (
                     <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:isAdmin?12:0}}>
-                      {ganadoresAct.slice().sort((a,b)=>(a.orden||0)-(b.orden||0)).map((g,idx,arr) => {
+                      {ordenLocal.map((g,idx) => {
                         const inscGanador = insc.find(i => (i.num_referencia||'').split(',').map(n=>n.trim()).includes(g.num_referencia))
                         const nombreGanador = inscGanador ? getNombre(inscGanador) : 'No encontrado'
                         return (
-                          <div key={g.id_ganador} style={{background:'#fff',border:'0.5px solid #fde68a',borderRadius:8,padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                          <div key={g.id_ganador} data-ganador-idx={idx}
+                            style={{background:'#fff',border:'0.5px solid #fde68a',borderRadius:8,padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                             <div>
                               <div style={{fontWeight:700,fontSize:15,color:'#16a34a'}}>{g.premio}</div>
                               <div style={{fontSize:13,color:'#1e293b',fontWeight:500,marginTop:2}}>{nombreGanador}</div>
@@ -572,15 +595,11 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                               </div>
                             </div>
                             {isAdmin && (
-                              <div style={{display:'flex',alignItems:'center',gap:2}}>
-                                <button type="button" onClick={()=>moverGanador(idx,-1)} disabled={idx===0}
-                                  style={{background:'none',border:'none',cursor:idx===0?'default':'pointer',color:idx===0?'#e2e8f0':'#64748b',padding:4}}>
-                                  <i className="ti ti-chevron-up"></i>
-                                </button>
-                                <button type="button" onClick={()=>moverGanador(idx,1)} disabled={idx===arr.length-1}
-                                  style={{background:'none',border:'none',cursor:idx===arr.length-1?'default':'pointer',color:idx===arr.length-1?'#e2e8f0':'#64748b',padding:4}}>
-                                  <i className="ti ti-chevron-down"></i>
-                                </button>
+                              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                                <div onPointerDown={(e)=>iniciarDrag(e,idx)} onPointerMove={moverDrag} onPointerUp={soltarDrag} onPointerCancel={soltarDrag}
+                                  style={{touchAction:'none',cursor:'grab',color:'#94a3b8',padding:8,fontSize:18,userSelect:'none'}}>
+                                  <i className="ti ti-grip-vertical"></i>
+                                </div>
                                 <button type="button" onClick={()=>eliminarGanador(g.id_ganador)} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626',padding:4}}>
                                   <i className="ti ti-trash"></i>
                                 </button>
