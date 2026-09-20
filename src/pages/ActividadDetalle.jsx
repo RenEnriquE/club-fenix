@@ -457,7 +457,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10, marginBottom: 16 }}>
         {[
-          { label: 'Pagadores', val: inscripciones.length, color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+          { label: 'Asignadas', val: inscripcionesActivas.length, color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
           { label: 'Asistentes', val: totalAsistentes, color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe' },
           { label: 'Adultos', val: totalAdultos, color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
           { label: 'Ninos', val: totalNinos, color: '#c026d3', bg: '#fdf4ff', border: '#f5d0fe' },
