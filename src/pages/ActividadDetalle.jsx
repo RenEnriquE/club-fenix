@@ -71,6 +71,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   const [fechaTemp, setFechaTemp] = useState('')
   const [savingFecha, setSavingFecha] = useState(false)
   const [busquedaLista, setBusquedaLista] = useState('')
+  const [mostrarAnulados, setMostrarAnulados] = useState(false)
 
   useEffect(() => { cargar() }, [])
 
@@ -281,6 +282,22 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     cargar()
   }
 
+  async function anularInscripcion(insc) {
+    const motivo = prompt('Motivo de la anulacion (ej: no quiso pagar, se fue del club):')
+    if (motivo === null) return
+    if (!motivo.trim()) { mostrarAlert('error', 'Debes indicar un motivo.'); return }
+    await supabase.from('actividad_inscripciones').update({ anulado: true, motivo_anulacion: motivo.trim() }).eq('id_inscripcion', insc.id_inscripcion)
+    mostrarAlert('success', 'Registro anulado y ocultado.')
+    cargar()
+  }
+
+  async function reactivarInscripcion(insc) {
+    if (!confirm('Reactivar este registro? Volvera a aparecer en el listado normal.')) return
+    await supabase.from('actividad_inscripciones').update({ anulado: false, motivo_anulacion: null }).eq('id_inscripcion', insc.id_inscripcion)
+    mostrarAlert('success', 'Registro reactivado.')
+    cargar()
+  }
+
   function abrirEditAsist(insc) {
     const actuales = asistentesDeInsc(insc.id_inscripcion).map(a => ({
       id: a.id, // id real en BD (para saber si es existente)
@@ -411,12 +428,14 @@ export default function ActividadDetalle({ actividad, onVolver }) {
     setTimeout(() => setAlert(null), 4000)
   }
 
-  const totalPagados = inscripciones.filter(i => i.pagado).length
-  const totalPendientes = inscripciones.filter(i => !i.pagado).length
-  const montoPagado = inscripciones.filter(i => i.pagado).reduce((a, i) => a + i.monto, 0)
-  const montoPendiente = inscripciones.filter(i => !i.pagado).reduce((a, i) => a + i.monto, 0)
-  const totalAsistentes = inscripciones.reduce((a, i) => a + asistentesDeInsc(i.id_inscripcion).length, 0)
-  const idsInscActividad = inscripciones.map(i => i.id_inscripcion)
+  const inscripcionesActivas = inscripciones.filter(i => !i.anulado)
+  const inscripcionesAnuladas = inscripciones.filter(i => i.anulado)
+  const totalPagados = inscripcionesActivas.filter(i => i.pagado).length
+  const totalPendientes = inscripcionesActivas.filter(i => !i.pagado).length
+  const montoPagado = inscripcionesActivas.filter(i => i.pagado).reduce((a, i) => a + i.monto, 0)
+  const montoPendiente = inscripcionesActivas.filter(i => !i.pagado).reduce((a, i) => a + i.monto, 0)
+  const totalAsistentes = inscripcionesActivas.reduce((a, i) => a + asistentesDeInsc(i.id_inscripcion).length, 0)
+  const idsInscActividad = inscripcionesActivas.map(i => i.id_inscripcion)
   const asistentesActividad = asistentes.filter(a => idsInscActividad.includes(a.id_inscripcion))
   const totalAdultos = asistentesActividad.filter(a => tipoDeAsistente(a) === 'adulto').length
   const totalNinos = asistentesActividad.filter(a => tipoDeAsistente(a) === 'nino').length
@@ -678,11 +697,11 @@ export default function ActividadDetalle({ actividad, onVolver }) {
         {(() => {
           const q = busquedaLista.trim().toLowerCase()
           const listaFiltrada = q
-            ? inscripciones.filter(insc => textoBusquedaInsc(insc).includes(q))
-            : inscripciones
+            ? inscripcionesActivas.filter(insc => textoBusquedaInsc(insc).includes(q))
+            : inscripcionesActivas
           return loading ? (
           <div className="loading-center"><div className="spinner"></div></div>
-        ) : inscripciones.length === 0 ? (
+        ) : inscripcionesActivas.length === 0 ? (
           <div className="empty"><i className="ti ti-ticket-off"></i>Sin registros aun</div>
         ) : listaFiltrada.length === 0 ? (
           <div className="empty"><i className="ti ti-search-off"></i>Sin resultados para "{busquedaLista}"</div>
@@ -784,6 +803,10 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                               <i className="ti ti-calendar-edit"></i>
                             </button>
                           )}
+                          <button type="button" className="btn sm" onClick={() => anularInscripcion(insc)} title="Anular (ocultar del listado)"
+                            style={{ padding: '5px 8px', color: '#92400e', borderColor: '#fde68a', background: '#fffbeb' }}>
+                            <i className="ti ti-eye-off"></i>
+                          </button>
                           {!insc.pagado && (
                             <button className="btn sm danger" onClick={() => eliminarInscripcion(insc)} title="Eliminar" style={{ padding: '5px 8px' }}>
                               <i className="ti ti-trash"></i>
@@ -801,6 +824,37 @@ export default function ActividadDetalle({ actividad, onVolver }) {
         )
         })()}
       </div>
+
+      {/* Anulados */}
+      {inscripcionesAnuladas.length > 0 && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+            onClick={() => setMostrarAnulados(!mostrarAnulados)}>
+            <div className="card-title" style={{ marginBottom: 0, color: '#92400e' }}>
+              <i className={`ti ti-chevron-${mostrarAnulados ? 'down' : 'right'}`} style={{ marginRight: 6 }}></i>
+              <i className="ti ti-eye-off"></i>Anulados ({inscripcionesAnuladas.length})
+            </div>
+          </div>
+          {mostrarAnulados && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+              {inscripcionesAnuladas.map(insc => (
+                <div key={insc.id_inscripcion} style={{ background: '#fffbeb', border: '0.5px solid #fde68a', borderRadius: 8, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13, textDecoration: 'line-through', color: '#92400e' }}>
+                      {nombrePagador(insc)} {insc.num_referencia && <span style={{ fontFamily: 'monospace' }}>#{insc.num_referencia}</span>}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#78716c', fontStyle: 'italic' }}>Motivo: {insc.motivo_anulacion || 'Sin especificar'}</div>
+                  </div>
+                  <button type="button" className="btn sm" onClick={() => reactivarInscripcion(insc)}
+                    style={{ color: '#16a34a', borderColor: '#a7f3d0', background: '#f0fdf4' }}>
+                    <i className="ti ti-rotate"></i> Reactivar
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal editar pagador */}
       {modalEditPagador && (
