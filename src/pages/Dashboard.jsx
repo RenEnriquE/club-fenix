@@ -296,12 +296,13 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
             const idsInscPagados = pagaron.map(i => i.id_inscripcion)
             const asistPagados = asistInsc.filter(a => idsInscPagados.includes(a.id_inscripcion)).length
             const asistNoPagados = asistInsc.length - asistPagados
-            // Gastos de la actividad: categoria de movimientos con el mismo nombre
+            // Gastos e ingresos manuales de la actividad: categoria de movimientos con el mismo nombre
             const catCoincide = categoriasDash.find(c => c.nombre.trim().toLowerCase() === act.nombre.trim().toLowerCase())
-            const gastosAct = catCoincide
-              ? movimientosDash.filter(m => m.id_categoria === catCoincide.id_categoria && m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
-              : 0
-            const saldoNetoAct = recaudado - gastosAct
+            const movsCatAct = catCoincide ? movimientosDash.filter(m => m.id_categoria === catCoincide.id_categoria) : []
+            const gastosAct = movsCatAct.filter(m => m.tipo === 'egreso').reduce((a,m) => a+m.monto, 0)
+            const ingresosManualesAct = movsCatAct.filter(m => m.tipo === 'ingreso').reduce((a,m) => a+m.monto, 0)
+            const recaudadoTotal = recaudado + ingresosManualesAct
+            const saldoNetoAct = recaudadoTotal - gastosAct
             return (
               <div key={act.id_actividad} className="card"
                 style={{cursor:'pointer',border:'1.5px solid #bfdbfe',background:'#eff6ff'}}
@@ -333,11 +334,19 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(recaudado)} recaudado</span>
                   <span style={{color:'#d97706',fontWeight:600}}>{formatMoney(porCobrar)} pendiente</span>
                 </div>
-                {gastosAct > 0 && (
-                  <div style={{display:'flex',justifyContent:'space-between',marginTop:6,paddingTop:6,borderTop:'0.5px dashed #bfdbfe',fontSize:12}}>
-                    <span style={{color:'#dc2626',fontWeight:600}}>{formatMoney(gastosAct)} gastado</span>
-                    <span style={{color:saldoNetoAct>=0?'#1d4ed8':'#dc2626',fontWeight:700}}>{formatMoney(saldoNetoAct)} neto</span>
-                  </div>
+                {(gastosAct > 0 || ingresosManualesAct > 0) && (
+                  <>
+                    {ingresosManualesAct > 0 && (
+                      <div style={{display:'flex',justifyContent:'space-between',marginTop:6,paddingTop:6,borderTop:'0.5px dashed #bfdbfe',fontSize:12}}>
+                        <span style={{color:'#16a34a',fontWeight:600}}>+{formatMoney(ingresosManualesAct)} aportes</span>
+                        <span></span>
+                      </div>
+                    )}
+                    <div style={{display:'flex',justifyContent:'space-between',marginTop:ingresosManualesAct>0?2:6,paddingTop:ingresosManualesAct>0?0:6,borderTop:ingresosManualesAct>0?'none':'0.5px dashed #bfdbfe',fontSize:12}}>
+                      <span style={{color:'#dc2626',fontWeight:600}}>{formatMoney(gastosAct)} gastado</span>
+                      <span style={{color:saldoNetoAct>=0?'#1d4ed8':'#dc2626',fontWeight:700}}>{formatMoney(saldoNetoAct)} neto</span>
+                    </div>
+                  </>
                 )}
               </div>
             )
