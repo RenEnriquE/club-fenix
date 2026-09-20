@@ -56,7 +56,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
 
   useEffect(() => {
     if (!actSelDash) { setGanadoresAct([]); return }
-    supabase.from('rifa_ganadores').select('*').eq('id_actividad', actSelDash.id_actividad).order('created_at')
+    supabase.from('rifa_ganadores').select('*').eq('id_actividad', actSelDash.id_actividad).order('orden')
       .then(({data}) => setGanadoresAct(data || []))
   }, [actSelDash])
 
@@ -64,14 +64,16 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
     if (!nuevoGanadorRef.trim() || !nuevoGanadorPremio.trim()) return
     setSavingGanador(true)
     try {
+      const ordenMax = ganadoresAct.reduce((m,g) => Math.max(m, g.orden||0), 0)
       await supabase.from('rifa_ganadores').insert([{
         id_actividad: actSelDash.id_actividad,
         num_referencia: nuevoGanadorRef.trim(),
         numero_sorteado: nuevoGanadorNum ? Number(nuevoGanadorNum) : null,
-        premio: nuevoGanadorPremio.trim()
+        premio: nuevoGanadorPremio.trim(),
+        orden: ordenMax + 1
       }])
       setNuevoGanadorRef(''); setNuevoGanadorNum(''); setNuevoGanadorPremio('')
-      const { data } = await supabase.from('rifa_ganadores').select('*').eq('id_actividad', actSelDash.id_actividad).order('created_at')
+      const { data } = await supabase.from('rifa_ganadores').select('*').eq('id_actividad', actSelDash.id_actividad).order('orden')
       setGanadoresAct(data || [])
     } finally { setSavingGanador(false) }
   }
@@ -80,6 +82,23 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
     if (!confirm('Eliminar este resultado?')) return
     await supabase.from('rifa_ganadores').delete().eq('id_ganador', id)
     setGanadoresAct(prev => prev.filter(g => g.id_ganador !== id))
+  }
+
+  async function moverGanador(index, direccion) {
+    const lista = ganadoresAct.slice().sort((a,b) => (a.orden||0) - (b.orden||0))
+    const otroIndex = index + direccion
+    if (otroIndex < 0 || otroIndex >= lista.length) return
+    const a = lista[index], b = lista[otroIndex]
+    const ordenA = a.orden||0, ordenB = b.orden||0
+    await Promise.all([
+      supabase.from('rifa_ganadores').update({ orden: ordenB }).eq('id_ganador', a.id_ganador),
+      supabase.from('rifa_ganadores').update({ orden: ordenA }).eq('id_ganador', b.id_ganador)
+    ])
+    setGanadoresAct(prev => prev.map(g => {
+      if (g.id_ganador === a.id_ganador) return { ...g, orden: ordenB }
+      if (g.id_ganador === b.id_ganador) return { ...g, orden: ordenA }
+      return g
+    }))
   }
 
   useEffect(() => {
@@ -540,26 +559,33 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
 
                   {ganadoresAct.length > 0 && (
                     <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:isAdmin?12:0}}>
-                      {ganadoresAct.map(g => {
+                      {ganadoresAct.slice().sort((a,b)=>(a.orden||0)-(b.orden||0)).map((g,idx,arr) => {
                         const inscGanador = insc.find(i => (i.num_referencia||'').split(',').map(n=>n.trim()).includes(g.num_referencia))
                         const nombreGanador = inscGanador ? getNombre(inscGanador) : 'No encontrado'
                         return (
-                          <div key={g.id_ganador} style={{background:'#fff',border:'0.5px solid #fde68a',borderRadius:8,padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                          <div key={g.id_ganador} style={{background:'#fff',border:'0.5px solid #fde68a',borderRadius:8,padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                             <div>
-                              <div style={{fontWeight:700,fontSize:13}}>
-                                <span style={{fontFamily:'monospace',color:'#92400e'}}>#{g.num_referencia}</span>
-                                {g.numero_sorteado && <span style={{color:'#7c3aed'}}> &middot; N&deg; {g.numero_sorteado}</span>}
+                              <div style={{fontWeight:700,fontSize:15,color:'#16a34a'}}>{g.premio}</div>
+                              <div style={{fontSize:13,color:'#1e293b',fontWeight:500,marginTop:2}}>{nombreGanador}</div>
+                              <div style={{fontSize:12,color:'#94a3b8',fontFamily:'monospace',marginTop:2}}>
+                                {g.num_referencia}{g.numero_sorteado ? ` - ${g.numero_sorteado}` : ''}
                               </div>
-                              <div style={{fontSize:12,color:'var(--text-2)'}}>{nombreGanador}</div>
                             </div>
-                            <div style={{display:'flex',alignItems:'center',gap:8}}>
-                              <span style={{fontWeight:600,color:'#16a34a',fontSize:13}}>{g.premio}</span>
-                              {isAdmin && (
-                                <button type="button" onClick={()=>eliminarGanador(g.id_ganador)} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>
+                            {isAdmin && (
+                              <div style={{display:'flex',alignItems:'center',gap:2}}>
+                                <button type="button" onClick={()=>moverGanador(idx,-1)} disabled={idx===0}
+                                  style={{background:'none',border:'none',cursor:idx===0?'default':'pointer',color:idx===0?'#e2e8f0':'#64748b',padding:4}}>
+                                  <i className="ti ti-chevron-up"></i>
+                                </button>
+                                <button type="button" onClick={()=>moverGanador(idx,1)} disabled={idx===arr.length-1}
+                                  style={{background:'none',border:'none',cursor:idx===arr.length-1?'default':'pointer',color:idx===arr.length-1?'#e2e8f0':'#64748b',padding:4}}>
+                                  <i className="ti ti-chevron-down"></i>
+                                </button>
+                                <button type="button" onClick={()=>eliminarGanador(g.id_ganador)} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626',padding:4}}>
                                   <i className="ti ti-trash"></i>
                                 </button>
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </div>
                         )
                       })}
