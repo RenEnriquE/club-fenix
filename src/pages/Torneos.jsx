@@ -19,8 +19,25 @@ export default function Torneos() {
 
   async function cargarTorneos() {
     setLoading(true)
-    const { data } = await supabase.from('torneos').select('*').order('nombre')
-    setTorneos(data || [])
+    const [{ data }, { data: eds }] = await Promise.all([
+      supabase.from('torneos').select('*').order('nombre'),
+      supabase.from('ediciones_torneo').select('id_torneo,fecha')
+    ])
+    // Fecha de la edicion mas reciente de cada torneo
+    const ultima = {}
+    ;(eds || []).forEach(e => {
+      if (e.fecha && (!ultima[e.id_torneo] || e.fecha > ultima[e.id_torneo])) ultima[e.id_torneo] = e.fecha
+    })
+    // Mas reciente primero; los torneos sin ediciones quedan al final (por nombre)
+    const ordenados = (data || [])
+      .map(t => ({ ...t, ultima_fecha: ultima[t.id_torneo] || null }))
+      .sort((a, b) => {
+        if (a.ultima_fecha && b.ultima_fecha) return b.ultima_fecha.localeCompare(a.ultima_fecha)
+        if (a.ultima_fecha) return -1
+        if (b.ultima_fecha) return 1
+        return (a.nombre || '').localeCompare(b.nombre || '')
+      })
+    setTorneos(ordenados)
     setLoading(false)
   }
 
@@ -110,6 +127,7 @@ function ListaTorneos({ torneos, loading, onSelect, onRefresh }) {
                   <div style={{fontSize:12,color:'var(--text-3)',marginTop:2}}>
                     {t.organizador && <span>{t.organizador}</span>}
                     {t.email_organizador && <span style={{marginLeft:8}}>{t.email_organizador}</span>}
+                    {t.ultima_fecha && <span style={{marginLeft:8}}>&middot; Ultima edicion: {t.ultima_fecha}</span>}
                   </div>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
