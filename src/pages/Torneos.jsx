@@ -28,14 +28,15 @@ export default function Torneos() {
     ;(eds || []).forEach(e => {
       if (e.fecha && (!ultima[e.id_torneo] || e.fecha > ultima[e.id_torneo])) ultima[e.id_torneo] = e.fecha
     })
-    // Mas reciente primero; los torneos sin ediciones quedan al final (por nombre)
+    // Mas reciente primero; los torneos sin ediciones quedan al final
     const ordenados = (data || [])
       .map(t => ({ ...t, ultima_fecha: ultima[t.id_torneo] || null }))
       .sort((a, b) => {
-        if (a.ultima_fecha && b.ultima_fecha) return b.ultima_fecha.localeCompare(a.ultima_fecha)
-        if (a.ultima_fecha) return -1
-        if (b.ultima_fecha) return 1
-        return (a.nombre || '').localeCompare(b.nombre || '')
+        if (a.ultima_fecha && b.ultima_fecha && a.ultima_fecha !== b.ultima_fecha) return b.ultima_fecha.localeCompare(a.ultima_fecha)
+        if (a.ultima_fecha && !b.ultima_fecha) return -1
+        if (b.ultima_fecha && !a.ultima_fecha) return 1
+        // Empate o sin ediciones: el creado mas recientemente primero
+        return (b.id_torneo || 0) - (a.id_torneo || 0)
       })
     setTorneos(ordenados)
     setLoading(false)
@@ -375,6 +376,13 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
   const [obsAdicional, setObsAdicional] = useState('')
   const [savingAdicional, setSavingAdicional] = useState(false)
   const [modalPagoOrg, setModalPagoOrg] = useState(false)
+  const [modalAdicOrg, setModalAdicOrg] = useState(false)
+  const [montoAdicOrg, setMontoAdicOrg] = useState('')
+  const [fechaAdicOrg, setFechaAdicOrg] = useState(new Date().toISOString().split('T')[0])
+  const [metodoAdicOrg, setMetodoAdicOrg] = useState('Transferencia')
+  const [numTransAdicOrg, setNumTransAdicOrg] = useState('')
+  const [obsAdicOrg, setObsAdicOrg] = useState('')
+  const [savingAdicOrg, setSavingAdicOrg] = useState(false)
   const [edicionLocal, setEdicionLocal] = useState(edicion)
   const [fechaPagoOrg, setFechaPagoOrg] = useState(new Date().toISOString().split('T')[0])
   const [metodoPagoOrg, setMetodoPagoOrg] = useState('Transferencia')
@@ -592,6 +600,39 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
     finally { setSavingPagoOrg(false) }
   }
 
+  async function registrarPagoAdicionalOrg() {
+    const monto = Number(montoAdicOrg)
+    if (!fechaAdicOrg) { setAlert({ type:'error', msg:'La fecha es obligatoria.' }); return }
+    if (!monto || monto <= 0) { setAlert({ type:'error', msg:'El monto debe ser mayor a 0.' }); return }
+    setSavingAdicOrg(true)
+    try {
+      const { data: catData } = await supabase.from('categorias_movimiento')
+        .select('id_categoria').ilike('nombre', '%orneo%').limit(1)
+      const { error: errMov } = await supabase.from('movimientos').insert([{
+        fecha: fechaAdicOrg,
+        tipo: 'egreso',
+        id_categoria: catData?.[0]?.id_categoria || null,
+        item: `Pago adicional organizador ${torneo.nombre} ${edicion.fecha}`,
+        monto: monto,
+        metodo_pago: metodoAdicOrg,
+        num_comprobante: numTransAdicOrg || null,
+        obs: obsAdicOrg || `Pago adicional organizador torneo ${torneo.nombre}`,
+      }])
+      if (errMov) throw new Error(errMov.message)
+      // El total pagado al organizador pasa a ser lo ya pagado + el adicional
+      const nuevoTotal = (edicionLocal.valor_organizador || 0) + monto
+      const { error: errEd } = await supabase.from('ediciones_torneo')
+        .update({ valor_organizador: nuevoTotal })
+        .eq('id_edicion', edicion.id_edicion)
+      if (errEd) throw new Error(errEd.message)
+      setEdicionLocal(prev => ({...prev, valor_organizador: nuevoTotal}))
+      setModalAdicOrg(false)
+      setAlert({ type:'success', msg:`Pago adicional de ${formatMoney(monto)} registrado en Movimientos. Total pagado: ${formatMoney(nuevoTotal)}.` })
+      setTimeout(() => setAlert(null), 4000)
+    } catch(e) { setAlert({ type:'error', msg:'Error: '+e.message }) }
+    finally { setSavingAdicOrg(false) }
+  }
+
   function mesesToAlDia(idSocio) {
     const anioActual = new Date().getFullYear()
     const mesActual = new Date().getMonth() + 1
@@ -668,6 +709,15 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                 <span style={{fontSize:12,background:'#f0fdf4',color:'#16a34a',padding:'4px 12px',borderRadius:6,border:'0.5px solid #a7f3d0',fontWeight:600}}>
                   <i className="ti ti-check" style={{marginRight:4}}></i>Pagado {edicionLocal.fecha_pago_org}
                 </span>
+                <button className="btn sm" title="Registrar otro pago al organizador"
+                  onClick={()=>{
+                    setMontoAdicOrg(''); setNumTransAdicOrg('')
+                    setFechaAdicOrg(new Date().toISOString().split('T')[0])
+                    setObsAdicOrg(`Pago adicional organizador torneo ${torneo.nombre}`)
+                    setModalAdicOrg(true)
+                  }}>
+                  <i className="ti ti-plus"></i>Agregar pago adicional
+                </button>
               </div>
             ) : (
               <button className="btn primary" style={{background:'#dc2626',borderColor:'#dc2626'}}
@@ -918,6 +968,48 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
                   ? <><div className="spinner" style={{width:14,height:14,borderWidth:2}}></div>Registrando...</>
                   : <><i className="ti ti-check"></i>Confirmar egreso</>
                 }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pago adicional al organizador */}
+      {modalAdicOrg && (
+        <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setModalAdicOrg(false)}>
+          <div className="modal" style={{maxWidth:460}}>
+            <div className="modal-header">
+              <h2>Pago adicional al organizador</h2>
+              <button className="modal-close" onClick={()=>setModalAdicOrg(false)}>&times;</button>
+            </div>
+            <p style={{fontSize:12,color:'var(--text-3)',marginBottom:12}}>
+              Ya pagado: {formatMoney(edicionLocal.valor_organizador || 0)}. Este pago se registra como un egreso aparte en Movimientos, con su propia fecha.
+            </p>
+            <div className="form-grid">
+              <div className="form-group"><label>Monto *</label>
+                <input type="number" value={montoAdicOrg} onChange={e=>setMontoAdicOrg(e.target.value)} autoFocus/>
+              </div>
+              <div className="form-group"><label>Fecha de pago *</label>
+                <input type="date" value={fechaAdicOrg} onChange={e=>setFechaAdicOrg(e.target.value)}/>
+              </div>
+              <div className="form-group"><label>Metodo de pago</label>
+                <select value={metodoAdicOrg} onChange={e=>setMetodoAdicOrg(e.target.value)}>
+                  <option>Transferencia</option><option>Efectivo</option><option>Cheque</option>
+                </select>
+              </div>
+              <div className="form-group"><label>N comprobante</label>
+                <input value={numTransAdicOrg} onChange={e=>setNumTransAdicOrg(e.target.value)} placeholder="Opcional"/>
+              </div>
+              <div className="form-group full"><label>Observaciones</label>
+                <input value={obsAdicOrg} onChange={e=>setObsAdicOrg(e.target.value)}/>
+              </div>
+            </div>
+            {alert && <div className={`alert ${alert.type}`} style={{marginBottom:12}}>{alert.msg}</div>}
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn" onClick={()=>setModalAdicOrg(false)}>Cancelar</button>
+              <button className="btn primary" onClick={registrarPagoAdicionalOrg} disabled={savingAdicOrg}
+                style={{background:'#dc2626',borderColor:'#dc2626'}}>
+                {savingAdicOrg ? 'Registrando...' : <><i className="ti ti-check"></i>Confirmar egreso</>}
               </button>
             </div>
           </div>
