@@ -270,7 +270,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
           {label:'Morosos', val:morosos, sub:`sin pago en ${anio}`, icon:'ti-alert-circle', cls:'red'},
           {label:'Pago parcial', val:parcial, sub:'meses pendientes', icon:'ti-clock', cls:'amber'},
           {label:isAdmin?`Ingresos ${anio}`:`Ingresos Cuotas ${anio}`, val:isAdmin?formatMoney(ingTotal):formatMoney(ingCuotas), sub:isAdmin?'total recaudado':'cuotas adultos y ninos', icon:'ti-coin', cls:'', small:true},
-          ...((isAdmin || isCoach) && saldoMovimientos !== null ? [{label:'Saldo en caja', val:formatMoney(saldoMovimientos), sub:'ingresos menos egresos', icon:'ti-wallet', cls: saldoMovimientos >= 0 ? 'green' : 'red', small:true}] : []),
+          ...(saldoMovimientos !== null ? [{label:'Saldo en caja', val:formatMoney(saldoMovimientos), sub:'ingresos menos egresos', icon:'ti-wallet', cls: saldoMovimientos >= 0 ? 'green' : 'red', small:true}] : []),
         ].map((k,i) => (
           <div key={i} className={`kpi ${k.cls}`}>
             <div className="kpi-label">{k.label}</div>
