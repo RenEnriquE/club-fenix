@@ -90,3 +90,10 @@ npm run dev
 |-----|--------|
 | `admin` | Dashboard + Pagos + Socios (editar) + Comité |
 | `comite` | Dashboard + Socios (lectura) + Comité |
+
+## Usuarios y accesos
+
+El login usa las tablas `app_usuarios` y `app_sesiones` de Supabase (no hay claves en el codigo).
+Para activarlo ejecuta `supabase_usuarios.sql` una vez en el SQL Editor (edita antes `v_clave`, la clave del admin).
+Luego, desde la hoja **Usuarios** (solo admin) se crean accesos de comite o coach, se cambian claves,
+se activan/desactivan cuentas y se ve quien esta conectado.

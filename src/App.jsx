@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { getSession, logout } from './lib/auth'
+import { useState, useEffect } from 'react'
+import { getSession, logout, verificarSesion } from './lib/auth'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Pagos from './pages/Pagos'
@@ -8,6 +8,7 @@ import Comite from './pages/Comite'
 import Actividades from './pages/Actividades'
 import Torneos from './pages/Torneos'
 import Egresos from './pages/Egresos'
+import Usuarios from './pages/Usuarios'
 
 export default function App() {
   const [session, setSession] = useState(() => getSession())
@@ -15,6 +16,21 @@ export default function App() {
 
   function handleLogin(s) { setSession(s); setPage('dashboard') }
   function handleLogout() { logout(); setSession(null) }
+
+  // Valida la sesion contra la base de datos al abrir y cada 5 minutos (tambien sirve de "latido")
+  useEffect(() => {
+    if (!session) return
+    let activo = true
+    async function verificar() {
+      const vigente = await verificarSesion()
+      if (!activo) return
+      if (!vigente) setSession(null)
+      else setSession(prev => (prev && prev.role === vigente.role && prev.nombre === vigente.nombre) ? prev : vigente)
+    }
+    verificar()
+    const t = setInterval(verificar, 5 * 60 * 1000)
+    return () => { activo = false; clearInterval(t) }
+  }, [!!session])
 
   if (!session) return <Login onLogin={handleLogin} />
 
@@ -33,6 +49,9 @@ export default function App() {
       <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
     ),
     actividades: isAdmin ? <Actividades /> : (
+      <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
+    ),
+    usuarios: isAdmin ? <Usuarios /> : (
       <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
     ),
   }
@@ -65,6 +84,7 @@ export default function App() {
           ...((isAdmin || isCoach) ? [{key:'egresos', icon:'ti-arrows-exchange', label:'Movimientos'}] : []),
           ...(isAdmin ? [{key:'torneos', icon:'ti-trophy', label:'Torneos'}] : []),
           ...(isAdmin ? [{key:'actividades', icon:'ti-category', label:'Actividades'}] : []),
+          ...(isAdmin ? [{key:'usuarios', icon:'ti-user-cog', label:'Usuarios'}] : []),
         ].map(btn => (
           <button key={btn.key}
             onClick={() => setPage(btn.key)}

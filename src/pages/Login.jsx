@@ -7,16 +7,15 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      const session = login(email, password)
+      const session = await login(email, password)
       onLogin(session)
     } catch (err) {
-      setError('Email o contraseña incorrectos.')
-    } finally {
+      setError(err.message || 'Email o contraseña incorrectos.')
       setLoading(false)
     }
   }
