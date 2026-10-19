@@ -123,7 +123,7 @@ export default function Usuarios() {
         {alert && <div className={'alert ' + alert.type} style={{marginBottom:12}}>{alert.msg}</div>}
 
         {loading ? <div className="loading-center"><div className="spinner"></div></div> : (
-          <div className="tbl-scroll">
+          <div className="tbl-wrap" style={{border:'var(--border)'}}>
             <table className="tbl" style={{tableLayout:'auto'}}>
               <thead>
                 <tr>
