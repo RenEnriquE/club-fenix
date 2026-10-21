@@ -920,21 +920,26 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
         const ingreso = sp.f_reingreso || sp.f_ini_vig
         const up = ultimoPagoPerfil
         const ultimoPagado = up.loading ? 'Cargando...' : (up.data ? MESES_FULL[up.data.mes - 1] + ' ' + up.data.anio : '')
-        const items = [
-          { icon: 'ti-hash', label: 'ID', val: String(sp.id_caif) },
-          { icon: 'ti-id', label: 'RUT', val: rutFmt },
-          { icon: 'ti-id', label: 'DV', val: sp.dv || '' },
-          { icon: 'ti-user', label: 'Nombre completo', val: nombreCompleto || nombreMostrar(sp), full: true },
-          { icon: 'ti-gender-bigender', label: 'Genero', val: sp.genero || '' },
-          { icon: 'ti-calendar', label: 'Fecha de nacimiento', val: fmtFecha(sp.fecha_nac) },
-          { icon: 'ti-cake', label: 'Edad', val: edad !== null ? edad + ' años' : '' },
-          { icon: 'ti-tag', label: 'Tipo de socio', val: sp.atleta || '' },
-          { icon: 'ti-circle-check', label: 'Estado', val: sp.vigente === 1 ? 'Activo' : 'Inactivo', siempre: true },
-          { icon: 'ti-login', label: 'Fecha de ingreso', val: fmtFecha(ingreso) },
-          ...(sp.f_fin_vig ? [{ icon: 'ti-logout', label: 'Fecha de salida', val: fmtFecha(sp.f_fin_vig) }] : []),
-          { icon: 'ti-cash', label: 'Ultimo mes pagado', val: ultimoPagado, vacioTxt: 'Sin pagos registrados' },
-          { icon: 'ti-phone', label: 'Celular', val: sp.celular || '' },
-          { icon: 'ti-mail', label: 'E-mail', val: sp.email || '', full: true },
+        const rutDv = rutFmt ? rutFmt + (sp.dv ? '-' + sp.dv : '') : ''
+        // Cada fila del detalle: una o dos tarjetas, en el orden pedido
+        const filas = [
+          [{ icon: 'ti-id', label: 'RUT', val: rutDv }],
+          [
+            { icon: 'ti-calendar', label: 'Fecha de nacimiento', val: fmtFecha(sp.fecha_nac) },
+            { icon: 'ti-cake', label: 'Edad', val: edad !== null ? edad + ' a\u00f1os' : '' },
+          ],
+          [
+            { icon: 'ti-gender-bigender', label: 'Genero', val: sp.genero || '' },
+            { icon: 'ti-tag', label: 'Tipo de socio', val: sp.atleta || '' },
+          ],
+          [
+            { icon: 'ti-login', label: 'Fecha de ingreso', val: fmtFecha(ingreso) },
+            { icon: 'ti-logout', label: 'Fecha de salida', val: fmtFecha(sp.f_fin_vig) || '-', siempre: true },
+          ],
+          [{ icon: 'ti-cash', label: 'Ultimo mes pagado', val: ultimoPagado, vacioTxt: 'Sin pagos registrados' }],
+          [{ icon: 'ti-phone', label: 'Celular', val: sp.celular || '' }],
+          [{ icon: 'ti-mail', label: 'E-mail', val: sp.email || '' }],
+          ...(sp.atleta === 'Atleta Ni\u00f1o' && sp.apoderado ? [[{ icon: 'ti-users', label: 'Apoderado', val: sp.apoderado }]] : []),
         ]
         return (
         <div className="modal-bg open" onClick={e=>e.target===e.currentTarget&&setModalPerfil(null)}>
@@ -944,14 +949,29 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
               <button className="modal-close" onClick={()=>setModalPerfil(null)}>&times;</button>
             </div>
 
-            {/* Estado de cuotas */}
+            {/* ID y estado del socio */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginBottom:10}}>
+              <div style={{fontSize:14,fontWeight:700,color:'#1e293b'}}>
+                <span style={{fontSize:11,color:'#94a3b8',fontWeight:600,marginRight:6}}>ID</span>{sp.id_caif}
+              </div>
+              <span style={{
+                fontSize:12,fontWeight:700,padding:'3px 10px',borderRadius:6,
+                background:sp.vigente===1?'#f0fdf4':'#f1f5f9',
+                color:sp.vigente===1?'#16a34a':'#64748b',
+                border:`0.5px solid ${sp.vigente===1?'#a7f3d0':'#e2e8f0'}`
+              }}>
+                {sp.vigente===1 ? 'Activo' : 'Inactivo'}
+              </span>
+            </div>
+
+            {/* Nombre y estado de cuotas */}
             <div style={{
               background: est==='al-dia'?'#f0fdf4':est==='moroso'?'#fef2f2':'#fffbeb',
               border:`0.5px solid ${est==='al-dia'?'#a7f3d0':est==='moroso'?'#fecaca':'#fde68a'}`,
-              borderRadius:10,padding:'12px 16px',marginBottom:16,
+              borderRadius:10,padding:'12px 16px',marginBottom:12,
               display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap'
             }}>
-              <div style={{fontWeight:700,fontSize:16}}>{nombreMostrar(sp)}</div>
+              <div style={{fontWeight:700,fontSize:16,minWidth:0,wordBreak:'break-word'}}>{nombreCompleto || nombreMostrar(sp)}</div>
               <span style={{
                 fontSize:12,fontWeight:700,padding:'3px 10px',borderRadius:6,color:'#fff',
                 background:est==='al-dia'?'#16a34a':est==='moroso'?'#dc2626':'#d97706'
@@ -961,26 +981,24 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
             </div>
 
             {/* Datos del socio */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
-              {items.map((d,i) => {
-                const vacio = !d.siempre && !d.val
-                return (
-                  <div key={i} style={{background:'#f8fafc',borderRadius:8,padding:'10px 12px',gridColumn:d.full?'1 / -1':'auto',minWidth:0}}>
-                    <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,marginBottom:2}}>
-                      <i className={`ti ${d.icon}`} style={{marginRight:4}}></i>{d.label}
-                    </div>
-                    <div style={{fontSize:13,wordBreak:'break-word',color:vacio?'#94a3b8':'#1e293b',fontStyle:vacio?'italic':'normal'}}>
-                      {vacio ? (d.vacioTxt || 'No registrado') : d.val}
-                    </div>
-                  </div>
-                )
-              })}
-              {sp.atleta==='Atleta Niño' && sp.apoderado && (
-                <div style={{background:'#f8fafc',borderRadius:8,padding:'10px 12px',gridColumn:'1 / -1'}}>
-                  <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,marginBottom:2}}><i className="ti ti-users" style={{marginRight:4}}></i>Apoderado</div>
-                  <div style={{fontSize:13,color:'#1e293b'}}>{sp.apoderado}</div>
+            <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+              {filas.map((fila,i) => (
+                <div key={i} style={{display:'grid',gridTemplateColumns:fila.length===2?'1fr 1fr':'1fr',gap:10}}>
+                  {fila.map((d,j) => {
+                    const vacio = !d.siempre && !d.val
+                    return (
+                      <div key={j} style={{background:'#f8fafc',borderRadius:8,padding:'10px 12px',minWidth:0}}>
+                        <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,marginBottom:2}}>
+                          <i className={`ti ${d.icon}`} style={{marginRight:4}}></i>{d.label}
+                        </div>
+                        <div style={{fontSize:13,wordBreak:'break-word',color:vacio?'#94a3b8':'#1e293b',fontStyle:vacio?'italic':'normal'}}>
+                          {vacio ? (d.vacioTxt || 'No registrado') : d.val}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              )}
+              ))}
             </div>
 
             {/* Pagos del año */}
