@@ -921,6 +921,27 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
         const up = ultimoPagoPerfil
         const ultimoPagado = up.loading ? 'Cargando...' : (up.data ? MESES_FULL[up.data.mes - 1] + ' ' + up.data.anio : '')
         const mesesDeudaPerfil = mesesPendientes(sp.id_caif, pagos, sp)
+        const copiarFicha = () => {
+          const texto = [
+            'Nombre: ' + (nombreCompleto || nombreMostrar(sp)),
+            'RUT: ' + (rutFmt ? rutFmt + (sp.dv ? '-' + sp.dv : '') : 'No Informado'),
+            'Fecha de nacimiento: ' + (fmtFecha(sp.fecha_nac) || 'No Informada'),
+            'Fecha de ingreso: ' + (fmtFecha(ingreso) || 'No Informada'),
+            ...(sp.apoderado && String(sp.apoderado).trim() ? ['Apoderado: ' + String(sp.apoderado).trim()] : []),
+          ].join('\n')
+          const marcar = () => { setCopiadoId('ficha-' + sp.id_caif); setTimeout(() => setCopiadoId(null), 2000) }
+          const respaldo = () => {
+            const ta = document.createElement('textarea')
+            ta.value = texto
+            ta.style.position = 'fixed'; ta.style.opacity = '0'
+            document.body.appendChild(ta); ta.select()
+            try { document.execCommand('copy'); marcar() } catch (e) {}
+            document.body.removeChild(ta)
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(marcar, respaldo)
+          else respaldo()
+        }
+        const copiado = copiadoId === 'ficha-' + sp.id_caif
         const rutDv = rutFmt ? rutFmt + (sp.dv ? '-' + sp.dv : '') : ''
         // Cada fila del detalle: una o dos tarjetas, en el orden pedido
         const filas = [
@@ -1031,7 +1052,11 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
               )
             })()}
 
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:16}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:16,gap:8,flexWrap:'wrap'}}>
+              <button className="btn" onClick={copiarFicha}
+                style={{color:copiado?'#16a34a':'#475569',borderColor:copiado?'#a7f3d0':'#e2e8f0',background:copiado?'#f0fdf4':'#f8fafc'}}>
+                <i className={`ti ${copiado?'ti-check':'ti-copy'}`}></i>{copiado?'Copiado':'Copiar datos'}
+              </button>
               {(isAdmin || isCoach) && sp.celular && est==='moroso' && (
                 <button className="btn" onClick={()=>{setModalPerfil(null);abrirModalWA(sp,mesesPendientes(sp.id_caif,pagos,sp))}}
                   style={{color:'#16a34a',borderColor:'#a7f3d0',background:'#f0fdf4'}}>
