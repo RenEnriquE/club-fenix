@@ -920,6 +920,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
         const ingreso = sp.f_reingreso || sp.f_ini_vig
         const up = ultimoPagoPerfil
         const ultimoPagado = up.loading ? 'Cargando...' : (up.data ? MESES_FULL[up.data.mes - 1] + ' ' + up.data.anio : '')
+        const mesesDeudaPerfil = mesesPendientes(sp.id_caif, pagos, sp)
         const rutDv = rutFmt ? rutFmt + (sp.dv ? '-' + sp.dv : '') : ''
         // Cada fila del detalle: una o dos tarjetas, en el orden pedido
         const filas = [
@@ -972,12 +973,19 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
               display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap'
             }}>
               <div style={{fontWeight:700,fontSize:16,minWidth:0,wordBreak:'break-word'}}>{nombreCompleto || nombreMostrar(sp)}</div>
-              <span style={{
-                fontSize:12,fontWeight:700,padding:'3px 10px',borderRadius:6,color:'#fff',
-                background:est==='al-dia'?'#16a34a':est==='moroso'?'#dc2626':'#d97706'
-              }}>
-                {estadoLabel(est)}
-              </span>
+              <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                {est==='moroso' && mesesDeudaPerfil > 0 && (
+                  <span style={{fontSize:12,fontWeight:600,color:'#b91c1c'}}>
+                    {mesesDeudaPerfil} {mesesDeudaPerfil===1?'mes':'meses'} para estar al dia
+                  </span>
+                )}
+                <span style={{
+                  fontSize:12,fontWeight:700,padding:'3px 10px',borderRadius:6,color:'#fff',
+                  background:est==='al-dia'?'#16a34a':est==='moroso'?'#dc2626':'#d97706'
+                }}>
+                  {estadoLabel(est)}
+                </span>
+              </div>
             </div>
 
             {/* Datos del socio */}
