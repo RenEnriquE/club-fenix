@@ -320,6 +320,48 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         ))}
       </div>
 
+      {/* Torneos por venir (activos) */}
+      {(isAdmin || isCoach) && torneosProx.length > 0 && (
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12,marginBottom:12}}>
+          {torneosProx.map(t => {
+            const inscritos = t.insc.length
+            const pagaron = t.insc.filter(i => i.pagado).length
+            const pendientes = inscritos - pagaron
+            const porCobrar = pendientes * (t.edicion.valor_atleta || 0)
+            const fechaT = new Date(t.edicion.fecha + 'T12:00:00-04:00')
+            return (
+              <div key={t.edicion.id_edicion} className="card"
+                style={{cursor:'pointer',border:'1.5px solid #fcd34d',background:'#fffbeb'}}
+                onClick={() => setTorneoSelId(t.edicion.id_edicion)}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:14,color:'#b45309'}}><i className="ti ti-trophy" style={{marginRight:6}}></i>{t.torneo?.nombre}</div>
+                    <div style={{fontSize:11,color:'#64748b',marginTop:2}}>{fechaT.toLocaleDateString('es-CL', {day:'2-digit',month:'2-digit',year:'numeric'})} &middot; Toca para ver detalle</div>
+                  </div>
+                  <i className="ti ti-chevron-right" style={{color:'#fcd34d',fontSize:16}}></i>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:8}}>
+                  {[
+                    {label:'Inscritos',val:inscritos,color:'#b45309'},
+                    {label:'Pagaron',val:pagaron,color:'#16a34a'},
+                    {label:'Pendientes',val:pendientes,color:'#dc2626'},
+                  ].map((k,i) => (
+                    <div key={i} style={{textAlign:'center'}}>
+                      <div style={{fontSize:18,fontWeight:700,color:k.color}}>{k.val}</div>
+                      <div style={{fontSize:9,color:'#64748b'}}>{k.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between',marginTop:8,paddingTop:8,borderTop:'0.5px solid #fde68a',fontSize:12}}>
+                  <span style={{color:'#64748b'}}>Saldo por cobrar</span>
+                  <span style={{color:porCobrar>0?'#d97706':'#16a34a',fontWeight:700}}>{formatMoney(porCobrar)}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Actividades en dashboard */}
       {(isAdmin || isCoach) && actDashboard.length > 0 && (
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12,marginBottom:12}}>
@@ -387,48 +429,6 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                     </div>
                   </>
                 )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Torneos por venir (activos) */}
-      {(isAdmin || isCoach) && torneosProx.length > 0 && (
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12,marginBottom:12}}>
-          {torneosProx.map(t => {
-            const inscritos = t.insc.length
-            const pagaron = t.insc.filter(i => i.pagado).length
-            const pendientes = inscritos - pagaron
-            const porCobrar = pendientes * (t.edicion.valor_atleta || 0)
-            const fechaT = new Date(t.edicion.fecha + 'T12:00:00-04:00')
-            return (
-              <div key={t.edicion.id_edicion} className="card"
-                style={{cursor:'pointer',border:'1.5px solid #fcd34d',background:'#fffbeb'}}
-                onClick={() => setTorneoSelId(t.edicion.id_edicion)}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
-                  <div>
-                    <div style={{fontWeight:700,fontSize:14,color:'#b45309'}}><i className="ti ti-trophy" style={{marginRight:6}}></i>{t.torneo?.nombre}</div>
-                    <div style={{fontSize:11,color:'#64748b',marginTop:2}}>{fechaT.toLocaleDateString('es-CL', {day:'2-digit',month:'2-digit',year:'numeric'})} &middot; Toca para ver detalle</div>
-                  </div>
-                  <i className="ti ti-chevron-right" style={{color:'#fcd34d',fontSize:16}}></i>
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:8}}>
-                  {[
-                    {label:'Inscritos',val:inscritos,color:'#b45309'},
-                    {label:'Pagaron',val:pagaron,color:'#16a34a'},
-                    {label:'Pendientes',val:pendientes,color:'#dc2626'},
-                  ].map((k,i) => (
-                    <div key={i} style={{textAlign:'center'}}>
-                      <div style={{fontSize:18,fontWeight:700,color:k.color}}>{k.val}</div>
-                      <div style={{fontSize:9,color:'#64748b'}}>{k.label}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{display:'flex',justifyContent:'space-between',marginTop:8,paddingTop:8,borderTop:'0.5px solid #fde68a',fontSize:12}}>
-                  <span style={{color:'#64748b'}}>Saldo por cobrar</span>
-                  <span style={{color:porCobrar>0?'#d97706':'#16a34a',fontWeight:700}}>{formatMoney(porCobrar)}</span>
-                </div>
               </div>
             )
           })}
