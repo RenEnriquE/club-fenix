@@ -43,6 +43,8 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
   const [todasPersonas, setTodasPersonas] = useState([])
   const [saldoMovimientos, setSaldoMovimientos] = useState(null)
   const [actSelDash, setActSelDash] = useState(null)
+  const [torneosProx, setTorneosProx] = useState([]) // ediciones por venir de torneos activos
+  const [torneoSelId, setTorneoSelId] = useState(null)
   const [ordenActDash, setOrdenActDash] = useState('referencia') // 'referencia' | 'nombre'
   const [ganadoresAct, setGanadoresAct] = useState([])
   const [ordenLocal, setOrdenLocal] = useState([])
@@ -61,6 +63,43 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
     supabase.from('rifa_ganadores').select('*').eq('id_actividad', actSelDash.id_actividad).order('orden')
       .then(({data}) => setGanadoresAct(data || []))
   }, [actSelDash])
+
+  // Torneos activos con edicion por venir: inscritos, pagos y saldo por cobrar
+  useEffect(() => {
+    if (!isAdmin) return
+    let activo = true
+    async function cargarTorneosProx() {
+      try {
+        const hoy = new Date()
+        const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`
+        const { data: torneos } = await supabase.from('torneos').select('id_torneo,nombre,activo').eq('activo', true)
+        const idsT = (torneos || []).map(t => t.id_torneo)
+        if (idsT.length === 0) { if (activo) setTorneosProx([]); return }
+        const { data: eds } = await supabase.from('ediciones_torneo').select('*')
+          .in('id_torneo', idsT).gte('fecha', hoyISO).order('fecha', { ascending: true })
+        const idsE = (eds || []).map(e => e.id_edicion)
+        if (idsE.length === 0) { if (activo) setTorneosProx([]); return }
+        const { data: insc } = await supabase.from('inscripciones_torneo').select('*').in('id_edicion', idsE)
+        const idsPago = (insc || []).map(i => i.id_pago).filter(Boolean)
+        let pagosT = []
+        if (idsPago.length > 0) {
+          const { data } = await supabase.from('pagos').select('id_pago,fecha_pago,monto').in('id_pago', idsPago)
+          pagosT = data || []
+        }
+        const porPago = Object.fromEntries(pagosT.map(p => [p.id_pago, p]))
+        const lista = (eds || []).map(e => ({
+          edicion: e,
+          torneo: (torneos || []).find(t => t.id_torneo === e.id_torneo),
+          insc: (insc || []).filter(i => i.id_edicion === e.id_edicion).map(i => ({ ...i, pago: porPago[i.id_pago] || null })),
+        }))
+        if (activo) setTorneosProx(lista)
+      } catch (e) {
+        if (activo) setTorneosProx([])
+      }
+    }
+    cargarTorneosProx()
+    return () => { activo = false }
+  }, [isAdmin, intento])
 
   async function guardarGanador() {
     if (!nuevoGanadorRef.trim() || !nuevoGanadorPremio.trim()) return
@@ -353,6 +392,118 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
           })}
         </div>
       )}
+
+      {/* Torneos por venir (activos) */}
+      {isAdmin && torneosProx.length > 0 && (
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12,marginBottom:12}}>
+          {torneosProx.map(t => {
+            const inscritos = t.insc.length
+            const pagaron = t.insc.filter(i => i.pagado).length
+            const pendientes = inscritos - pagaron
+            const porCobrar = pendientes * (t.edicion.valor_atleta || 0)
+            const fechaT = new Date(t.edicion.fecha + 'T12:00:00-04:00')
+            return (
+              <div key={t.edicion.id_edicion} className="card"
+                style={{cursor:'pointer',border:'1.5px solid #fcd34d',background:'#fffbeb'}}
+                onClick={() => setTorneoSelId(t.edicion.id_edicion)}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:14,color:'#b45309'}}><i className="ti ti-trophy" style={{marginRight:6}}></i>{t.torneo?.nombre}</div>
+                    <div style={{fontSize:11,color:'#64748b',marginTop:2}}>{fechaT.toLocaleDateString('es-CL', {day:'2-digit',month:'2-digit',year:'numeric'})} &middot; Toca para ver detalle</div>
+                  </div>
+                  <i className="ti ti-chevron-right" style={{color:'#fcd34d',fontSize:16}}></i>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:8}}>
+                  {[
+                    {label:'Inscritos',val:inscritos,color:'#b45309'},
+                    {label:'Pagaron',val:pagaron,color:'#16a34a'},
+                    {label:'Pendientes',val:pendientes,color:'#dc2626'},
+                  ].map((k,i) => (
+                    <div key={i} style={{textAlign:'center'}}>
+                      <div style={{fontSize:18,fontWeight:700,color:k.color}}>{k.val}</div>
+                      <div style={{fontSize:9,color:'#64748b'}}>{k.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between',marginTop:8,paddingTop:8,borderTop:'0.5px solid #fde68a',fontSize:12}}>
+                  <span style={{color:'#64748b'}}>Saldo por cobrar</span>
+                  <span style={{color:porCobrar>0?'#d97706':'#16a34a',fontWeight:700}}>{formatMoney(porCobrar)}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Modal detalle torneo por venir */}
+      {torneoSelId && (() => {
+        const sel = torneosProx.find(t => t.edicion.id_edicion === torneoSelId)
+        if (!sel) return null
+        const { edicion, torneo, insc } = sel
+        const nombreDe = i => todasPersonas.find(p => p.id_caif === i.id_socio)?.nombre_comp || ('ID ' + i.id_socio)
+        const fmt = f => f ? new Date(f + 'T12:00:00-04:00').toLocaleDateString('es-CL', {day:'2-digit',month:'2-digit',year:'numeric'}) : '-'
+        const pagadas = insc.filter(i => i.pagado)
+          .map(i => ({ i, fecha: i.pago?.fecha_pago || null, monto: i.pago ? (i.pago.monto || 0) : (edicion.valor_atleta || 0) }))
+          .sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999'))
+        const pendientes = insc.filter(i => !i.pagado)
+        const totalPagado = pagadas.reduce((a, x) => a + x.monto + (x.i.monto_adicional || 0), 0)
+        const porCobrar = pendientes.length * (edicion.valor_atleta || 0)
+        return (
+          <div className="modal-bg open" onClick={e => e.target === e.currentTarget && setTorneoSelId(null)}>
+            <div className="modal" style={{width:'min(560px,95vw)'}}>
+              <div className="modal-header">
+                <h2><i className="ti ti-trophy" style={{marginRight:8,color:'#b45309'}}></i>{torneo?.nombre}</h2>
+                <button className="modal-close" onClick={() => setTorneoSelId(null)}>&times;</button>
+              </div>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:12}}>
+                Fecha del torneo: {fmt(edicion.fecha)} &middot; Valor por atleta: {formatMoney(edicion.valor_atleta || 0)}
+              </div>
+
+              <div style={{fontSize:12,fontWeight:600,color:'#64748b',marginBottom:6,textTransform:'uppercase'}}>Pagaron ({pagadas.length})</div>
+              {pagadas.length === 0 ? (
+                <div style={{fontSize:13,color:'#94a3b8',fontStyle:'italic',marginBottom:12}}>Aun no hay pagos registrados</div>
+              ) : (
+                <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:12}}>
+                  {pagadas.map(({ i, fecha, monto }) => (
+                    <div key={i.id_inscripcion} style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontWeight:600,fontSize:13}}>{nombreDe(i)}</div>
+                        <div style={{fontSize:11,color:'#64748b'}}>Dia de pago: {fmt(fecha)}</div>
+                      </div>
+                      <div style={{textAlign:'right'}}>
+                        <div style={{fontWeight:700,fontSize:13,color:'#16a34a'}}>{formatMoney(monto)}</div>
+                        {i.monto_adicional > 0 && <div style={{fontSize:10,color:'#64748b'}}>+ {formatMoney(i.monto_adicional)} adicional</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {pendientes.length > 0 && (
+                <>
+                  <div style={{fontSize:12,fontWeight:600,color:'#64748b',marginBottom:6,textTransform:'uppercase'}}>Pendientes de pago ({pendientes.length})</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:12}}>
+                    {pendientes.map(i => (
+                      <div key={i.id_inscripcion} style={{background:'#fef2f2',border:'0.5px solid #fecaca',borderRadius:8,padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+                        <span style={{fontWeight:600,fontSize:13}}>{nombreDe(i)}</span>
+                        <span style={{fontSize:12,color:'#dc2626',fontWeight:600}}>{formatMoney(edicion.valor_atleta || 0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <div style={{display:'flex',justifyContent:'space-between',gap:8,flexWrap:'wrap',paddingTop:10,borderTop:'0.5px solid #e2e8f0',fontSize:13}}>
+                <span style={{color:'#16a34a',fontWeight:700}}>Recaudado: {formatMoney(totalPagado)}</span>
+                <span style={{color:porCobrar>0?'#d97706':'#16a34a',fontWeight:700}}>Por cobrar: {formatMoney(porCobrar)}</span>
+              </div>
+              <div style={{display:'flex',justifyContent:'flex-end',marginTop:14}}>
+                <button className="btn" onClick={() => setTorneoSelId(null)}>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Modal detalle actividad */}
       {actSelDash && (() => {
