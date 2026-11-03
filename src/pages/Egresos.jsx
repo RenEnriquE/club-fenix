@@ -855,6 +855,14 @@ export default function Egresos({ isAdmin = true }) {
 }
 
 // ── Modal nuevo/editar movimiento ─────────────────────────────────────
+// Monto: solo digitos (sin negativos ni decimales) y con puntos de miles al mostrarlo
+function soloDigitosMonto(v) {
+  return String(v ?? '').replace(/\D/g, '').replace(/^0+/, '').slice(0, 10)
+}
+function fmtMilesMonto(v) {
+  return soloDigitosMonto(v).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
 function itemVacio(tipo, fecha, metodo) {
   return { tipo, fecha, metodo_pago: metodo, id_categoria: '', item: '', monto: '', num_comprobante: '', obs: '', obs_detalle: '' }
 }
@@ -1071,7 +1079,8 @@ function ModalMovimiento({ movimiento, categorias, movimientosTodos = [], anio, 
               {/* 4. Monto */}
               <div className="form-group">
                 <label>Monto ($) *</label>
-                <input type="number" value={it.monto} onChange={e => setItem(idx, 'monto', e.target.value)} placeholder="0" />
+                <input type="text" inputMode="numeric" autoComplete="off" value={fmtMilesMonto(it.monto)}
+                  onChange={e => setItem(idx, 'monto', soloDigitosMonto(e.target.value))} placeholder="0" />
               </div>
               {/* 5. Comprobante */}
               <div className="form-group">

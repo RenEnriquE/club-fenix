@@ -25,6 +25,22 @@ function saveCache(data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })) } catch {}
 }
 
+// Resumen economico de una edicion de torneo (mismas formulas que la pestana Torneos)
+function resumenTorneo(t) {
+  const { edicion, insc } = t
+  const valor = edicion.valor_atleta || 0
+  const inscritos = insc.length
+  const pagaron = insc.filter(i => i.pagado).length
+  const pendientes = inscritos - pagaron
+  const adicional = insc.reduce((a, i) => a + (i.monto_adicional || 0), 0)
+  const recaudado = pagaron * valor + adicional
+  const porCobrar = pendientes * valor
+  const orgPagado = !!edicion.pagado_organizador
+  // Si ya se pago, valor_organizador es el total pagado; si no, es el valor por atleta
+  const montoOrg = orgPagado ? (edicion.valor_organizador || 0) : (edicion.valor_organizador || 0) * inscritos
+  return { inscritos, pagaron, pendientes, adicional, recaudado, porCobrar, orgPagado, montoOrg, neto: recaudado - montoOrg }
+}
+
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS_SEMANA = ['dom','lun','mar','mie','jue','vie','sab']
 
@@ -324,11 +340,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
       {(isAdmin || isCoach) && torneosProx.length > 0 && (
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12,marginBottom:12}}>
           {torneosProx.map(t => {
-            const inscritos = t.insc.length
-            const pagaron = t.insc.filter(i => i.pagado).length
-            const pendientes = inscritos - pagaron
-            const porCobrar = pendientes * (t.edicion.valor_atleta || 0)
+            const r = resumenTorneo(t)
             const fechaT = new Date(t.edicion.fecha + 'T12:00:00-04:00')
+            const fechaOrg = t.edicion.fecha_pago_org ? new Date(t.edicion.fecha_pago_org + 'T12:00:00-04:00').toLocaleDateString('es-CL', {day:'2-digit',month:'2-digit',year:'numeric'}) : null
             return (
               <div key={t.edicion.id_edicion} className="card"
                 style={{cursor:'pointer',border:'1.5px solid #fcd34d',background:'#fffbeb'}}
@@ -342,9 +356,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:8}}>
                   {[
-                    {label:'Inscritos',val:inscritos,color:'#b45309'},
-                    {label:'Pagaron',val:pagaron,color:'#16a34a'},
-                    {label:'Pendientes',val:pendientes,color:'#dc2626'},
+                    {label:'Inscritos',val:r.inscritos,color:'#b45309'},
+                    {label:'Pagaron',val:r.pagaron,color:'#16a34a'},
+                    {label:'Pendientes',val:r.pendientes,color:'#dc2626'},
                   ].map((k,i) => (
                     <div key={i} style={{textAlign:'center'}}>
                       <div style={{fontSize:18,fontWeight:700,color:k.color}}>{k.val}</div>
@@ -353,8 +367,22 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   ))}
                 </div>
                 <div style={{display:'flex',justifyContent:'space-between',marginTop:8,paddingTop:8,borderTop:'0.5px solid #fde68a',fontSize:12}}>
-                  <span style={{color:'#64748b'}}>Saldo por cobrar</span>
-                  <span style={{color:porCobrar>0?'#d97706':'#16a34a',fontWeight:700}}>{formatMoney(porCobrar)}</span>
+                  <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(r.recaudado)} recaudado</span>
+                  <span style={{color:'#d97706',fontWeight:600}}>{formatMoney(r.porCobrar)} pendiente</span>
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,flexWrap:'wrap',marginTop:6,paddingTop:6,borderTop:'0.5px dashed #fde68a',fontSize:12}}>
+                  <span style={{color:'#64748b'}}>Organizador {formatMoney(r.montoOrg)}</span>
+                  <span style={{
+                    fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999,
+                    background:r.orgPagado?'#f0fdf4':'#fef2f2',color:r.orgPagado?'#16a34a':'#dc2626',
+                    border:'0.5px solid ' + (r.orgPagado?'#a7f3d0':'#fecaca')
+                  }}>
+                    {r.orgPagado ? 'Pagado' + (fechaOrg ? ' ' + fechaOrg : '') : 'Sin pagar'}
+                  </span>
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between',marginTop:6,fontSize:13}}>
+                  <span style={{color:'#64748b'}}>Neto</span>
+                  <span style={{fontWeight:700,color:r.neto>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(r.neto)}</span>
                 </div>
               </div>
             )
@@ -446,8 +474,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
           .map(i => ({ i, fecha: i.pago?.fecha_pago || null, monto: i.pago ? (i.pago.monto || 0) : (edicion.valor_atleta || 0) }))
           .sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999'))
         const pendientes = insc.filter(i => !i.pagado)
-        const totalPagado = pagadas.reduce((a, x) => a + x.monto + (x.i.monto_adicional || 0), 0)
-        const porCobrar = pendientes.length * (edicion.valor_atleta || 0)
+        const r = resumenTorneo(sel)
+        const totalPagado = r.recaudado
+        const porCobrar = r.porCobrar
         return (
           <div className="modal-bg open" onClick={e => e.target === e.currentTarget && setTorneoSelId(null)}>
             <div className="modal" style={{width:'min(560px,95vw)'}}>
@@ -496,6 +525,15 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               <div style={{display:'flex',justifyContent:'space-between',gap:8,flexWrap:'wrap',paddingTop:10,borderTop:'0.5px solid #e2e8f0',fontSize:13}}>
                 <span style={{color:'#16a34a',fontWeight:700}}>Recaudado: {formatMoney(totalPagado)}</span>
                 <span style={{color:porCobrar>0?'#d97706':'#16a34a',fontWeight:700}}>Por cobrar: {formatMoney(porCobrar)}</span>
+              </div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap',marginTop:8,fontSize:13}}>
+                <span style={{color:'#64748b'}}>
+                  Organizador: {formatMoney(r.montoOrg)}{' '}
+                  <strong style={{color:r.orgPagado?'#16a34a':'#dc2626'}}>
+                    {r.orgPagado ? '(pagado' + (edicion.fecha_pago_org ? ' ' + fmt(edicion.fecha_pago_org) : '') + ')' : '(sin pagar)'}
+                  </strong>
+                </span>
+                <span style={{fontWeight:700,color:r.neto>=0?'#1d4ed8':'#dc2626'}}>Neto: {formatMoney(r.neto)}</span>
               </div>
               <div style={{display:'flex',justifyContent:'flex-end',marginTop:14}}>
                 <button className="btn" onClick={() => setTorneoSelId(null)}>Cerrar</button>
