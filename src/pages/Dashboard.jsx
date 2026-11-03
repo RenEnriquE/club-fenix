@@ -370,6 +370,10 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   <span style={{color:'#16a34a',fontWeight:600}}>{formatMoney(r.recaudado)} recaudado</span>
                   <span style={{color:'#d97706',fontWeight:600}}>{formatMoney(r.porCobrar)} pendiente</span>
                 </div>
+                <div style={{display:'flex',justifyContent:'space-between',marginTop:8,paddingTop:8,borderTop:'0.5px solid #fde68a',fontSize:14,fontWeight:700}}>
+                  <span style={{color:'#1e293b'}}>Total neto</span>
+                  <span style={{color:r.neto>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(r.neto)}</span>
+                </div>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,flexWrap:'wrap',marginTop:6,paddingTop:6,borderTop:'0.5px dashed #fde68a',fontSize:12}}>
                   <span style={{color:'#64748b'}}>Organizador {formatMoney(r.montoOrg)}</span>
                   <span style={{
@@ -377,12 +381,8 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                     background:r.orgPagado?'#f0fdf4':'#fef2f2',color:r.orgPagado?'#16a34a':'#dc2626',
                     border:'0.5px solid ' + (r.orgPagado?'#a7f3d0':'#fecaca')
                   }}>
-                    {r.orgPagado ? 'Pagado' + (fechaOrg ? ' ' + fechaOrg : '') : 'Sin pagar'}
+                    {r.orgPagado ? 'Transferido' + (fechaOrg ? ' ' + fechaOrg : '') : 'No transferido'}
                   </span>
-                </div>
-                <div style={{display:'flex',justifyContent:'space-between',marginTop:6,fontSize:13}}>
-                  <span style={{color:'#64748b'}}>Neto</span>
-                  <span style={{fontWeight:700,color:r.neto>=0?'#1d4ed8':'#dc2626'}}>{formatMoney(r.neto)}</span>
                 </div>
               </div>
             )
@@ -530,7 +530,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                 <span style={{color:'#64748b'}}>
                   Organizador: {formatMoney(r.montoOrg)}{' '}
                   <strong style={{color:r.orgPagado?'#16a34a':'#dc2626'}}>
-                    {r.orgPagado ? '(pagado' + (edicion.fecha_pago_org ? ' ' + fmt(edicion.fecha_pago_org) : '') + ')' : '(sin pagar)'}
+                    {r.orgPagado ? '(transferido' + (edicion.fecha_pago_org ? ' ' + fmt(edicion.fecha_pago_org) : '') + ')' : '(no transferido)'}
                   </strong>
                 </span>
                 <span style={{fontWeight:700,color:r.neto>=0?'#1d4ed8':'#dc2626'}}>Neto: {formatMoney(r.neto)}</span>
