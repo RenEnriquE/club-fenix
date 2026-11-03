@@ -66,7 +66,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
 
   // Torneos activos con edicion por venir: inscritos, pagos y saldo por cobrar
   useEffect(() => {
-    if (!isAdmin) return
+    if (!isAdmin && !isCoach) return
     let activo = true
     async function cargarTorneosProx() {
       try {
@@ -99,7 +99,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
     }
     cargarTorneosProx()
     return () => { activo = false }
-  }, [isAdmin, intento])
+  }, [isAdmin, isCoach, intento])
 
   async function guardarGanador() {
     if (!nuevoGanadorRef.trim() || !nuevoGanadorPremio.trim()) return
@@ -394,7 +394,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
       )}
 
       {/* Torneos por venir (activos) */}
-      {isAdmin && torneosProx.length > 0 && (
+      {(isAdmin || isCoach) && torneosProx.length > 0 && (
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12,marginBottom:12}}>
           {torneosProx.map(t => {
             const inscritos = t.insc.length
