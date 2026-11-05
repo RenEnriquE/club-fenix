@@ -9,6 +9,7 @@ import Actividades from './pages/Actividades'
 import Torneos from './pages/Torneos'
 import Egresos from './pages/Egresos'
 import Usuarios from './pages/Usuarios'
+import Listados from './pages/Listados'
 
 export default function App() {
   const [session, setSession] = useState(() => getSession())
@@ -43,6 +44,9 @@ export default function App() {
     socios: <Socios isAdmin={isAdmin} isCoach={isCoach} />,
     comite: <Comite isAdmin={isAdmin} />,
     egresos: (isAdmin || isCoach) ? <Egresos isAdmin={isAdmin} /> : (
+      <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
+    ),
+    listados: (isAdmin || isCoach) ? <Listados /> : (
       <div className="content"><div className="card"><p style={{color:'var(--text-2)'}}>Acceso restringido.</p></div></div>
     ),
     torneos: isAdmin ? <Torneos /> : (
@@ -82,6 +86,7 @@ export default function App() {
           {key:'pagos', icon:'ti-cash', label:'Pagos'},
           {key:'comite', icon:'ti-report', label:'Comite'},
           ...((isAdmin || isCoach) ? [{key:'egresos', icon:'ti-arrows-exchange', label:'Movimientos'}] : []),
+          ...((isAdmin || isCoach) ? [{key:'listados', icon:'ti-list-details', label:'Listados'}] : []),
           ...(isAdmin ? [{key:'torneos', icon:'ti-trophy', label:'Torneos'}] : []),
           ...(isAdmin ? [{key:'actividades', icon:'ti-category', label:'Actividades'}] : []),
           ...(isAdmin ? [{key:'usuarios', icon:'ti-user-cog', label:'Usuarios'}] : []),
