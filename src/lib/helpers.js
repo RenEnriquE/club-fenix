@@ -2,6 +2,9 @@ export const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','
 export const MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 export const AÑOS = [2024, 2025, 2026, 2027]
 
+// Sedes de entrenamiento (columna personas.sede, ver supabase_sede.sql)
+export const SEDES = ['Recoleta', 'Independencia', 'Renca']
+
 // Cuota esperada segun tipo de atleta y periodo
 export function cuotaEsperada(atleta, anio, mes) {
   const esNino = atleta && atleta.includes('Ni')

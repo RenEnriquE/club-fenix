@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { SEDES } from '../lib/helpers'
 
 const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const LS_KEY = 'fenix-grupos-cuotas'
@@ -24,7 +25,7 @@ function guardarGrupos(g) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(g)) } catch (e) { /* sin almacenamiento: no se guarda */ }
 }
 
-export default function GrupoCuotas({ personas = [], pagos = [] }) {
+export default function GrupoCuotas({ personas = [], pagos = [], haySede = false }) {
   const [grupos, setGrupos] = useState(() => leerGrupos())
   const [grupoSel, setGrupoSel] = useState('')
   const [nombreGrupo, setNombreGrupo] = useState('')
@@ -114,6 +115,17 @@ export default function GrupoCuotas({ personas = [], pagos = [] }) {
     setPegado('')
   }
 
+  // Carga todos los socios vigentes de una sede, ordenados por nombre
+  function cargarSede(sede) {
+    const lista = personas
+      .filter(p => p.vigente === 1 && p.sede === sede)
+      .sort((a, b) => nombreCorto(a).localeCompare(nombreCorto(b), 'es'))
+    setIds(lista.map(p => p.id_caif))
+    setNombreGrupo(sede)
+    setGrupoSel('')
+    setPropuestas(null)
+  }
+
   function guardarGrupo() {
     const nombre = nombreGrupo.trim()
     if (!nombre || ids.length === 0) return
@@ -169,6 +181,20 @@ export default function GrupoCuotas({ personas = [], pagos = [] }) {
       <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 14px' }}>
         Arma un grupo de socios (por ejemplo, quienes entrenan en Recoleta) y copia el nombre con su &uacute;ltimo mes de cuota pagado, listo para pegar en WhatsApp.
       </p>
+
+      {haySede && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 500 }}>Cargar por sede (vigentes):</span>
+          {SEDES.map(x => {
+            const n = personas.filter(p => p.vigente === 1 && p.sede === x).length
+            return (
+              <button key={x} className="btn sm" onClick={() => cargarSede(x)} disabled={n === 0}>
+                <i className="ti ti-map-pin"></i>{x} ({n})
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {nombresGrupos.length > 0 && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
@@ -272,7 +298,7 @@ export default function GrupoCuotas({ personas = [], pagos = [] }) {
         {aviso && <span style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>{aviso}</span>}
       </div>
       <p style={{ fontSize: 11, color: 'var(--text-3)', margin: '10px 0 0' }}>
-        Los grupos guardados quedan en este navegador. El &uacute;ltimo mes pagado considera solo cuotas (no actividades ni torneos).
+        Los grupos guardados a mano quedan en este navegador; los de sede se arman solos con lo asignado en cada ficha. El &uacute;ltimo mes pagado considera solo cuotas (no actividades ni torneos).
       </p>
     </div>
   )

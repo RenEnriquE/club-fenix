@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, insertPersona, updatePersona } from '../lib/supabase'
 import Certificados from './Certificados'
-import { estadoSocio, mesesAlDia, mesesPendientes, estadoLabel, MESES, nombreMostrar, cuotaEsperada } from '../lib/helpers'
+import { estadoSocio, mesesAlDia, mesesPendientes, estadoLabel, MESES, nombreMostrar, cuotaEsperada, SEDES } from '../lib/helpers'
 
 const ANIO_ACTUAL = new Date().getFullYear()
 
@@ -64,7 +64,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
   function emptyForm() {
     return {
       apodo:'', nombre:'', seg_nombre:'', apellido:'', ap_mat:'', rut:'', dv:'',
-      fecha_nac:'', genero:'Masculino', atleta:'Atleta Adulto',
+      fecha_nac:'', genero:'Masculino', atleta:'Atleta Adulto', sede:'',
       celular:'', email:'', apoderado:'', vigente:1,
       f_ini_vig:'', f_fin_vig:'', causa_salida:'', f_reingreso:''
     }
@@ -373,7 +373,8 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
         f_ini_vig: socio.f_ini_vig || '',
         f_fin_vig: socio.f_fin_vig || '',
         causa_salida: socio.causa_salida || '',
-        f_reingreso: socio.f_reingreso || ''
+        f_reingreso: socio.f_reingreso || '',
+        sede: socio.sede || ''
       })
     } else {
       setEditando(null)
@@ -408,6 +409,11 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
         f_ini_vig: form.f_ini_vig || null,
         f_reingreso: form.f_reingreso || null,
       }
+      // La sede solo se envia si cambio (evita errores si la columna aun no existe)
+      const sedeNueva = form.sede || null
+      const sedeOrig = editando ? (editando.sede || null) : null
+      if (sedeNueva === sedeOrig) delete datos.sede
+      else datos.sede = sedeNueva
       if (editando) {
         await updatePersona(editando.id_caif, datos)
         setPersonas(prev => prev.map(p => p.id_caif === editando.id_caif ? { ...p, ...datos } : p))
@@ -426,6 +432,9 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
       setSaving(false)
     }
   }
+
+  // La columna sede existe si los socios cargados traen ese campo
+  const haySede = personas.some(p => 'sede' in p)
 
   if (loading) return (
     <div className="content"><div className="loading-center"><div className="spinner"></div><span>Cargando...</span></div></div>
@@ -764,6 +773,11 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
               <div className="form-group"><label>Tipo de atleta</label>
                 <select {...f('atleta')}><option>Atleta Adulto</option><option>Atleta Niño</option><option>Apoderado</option></select>
               </div>
+              {haySede && (
+                <div className="form-group"><label>Sede de entrenamiento</label>
+                  <select {...f('sede')}><option value="">Sin asignar</option>{SEDES.map(x => <option key={x} value={x}>{x}</option>)}</select>
+                </div>
+              )}
               <div className="form-group"><label>Celular</label><input type="text" {...f('celular')}/></div>
               <div className="form-group full"><label>Email</label><input type="email" {...f('email')}/></div>
               <div className="form-group full"><label>Apoderado</label><input type="text" {...f('apoderado')}/></div>
@@ -965,6 +979,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
             { icon: 'ti-login', label: 'Fecha de ingreso', val: fmtFecha(ingreso) },
             { icon: 'ti-logout', label: 'Fecha de salida', val: fmtFecha(sp.f_fin_vig) || '-', siempre: true },
           ],
+          ...(haySede ? [[{ icon: 'ti-map-pin', label: 'Sede de entrenamiento', val: sp.sede || '', vacioTxt: 'Sin asignar' }]] : []),
           [{ icon: 'ti-cash', label: 'Ultimo mes pagado', val: ultimoPagado, vacioTxt: 'Sin pagos registrados' }],
           [{ icon: 'ti-phone', label: 'Celular', val: sp.celular || '' }],
           [{ icon: 'ti-mail', label: 'E-mail', val: sp.email || '' }],

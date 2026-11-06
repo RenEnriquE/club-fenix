@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { estadoSocio, estadoLabel } from '../lib/helpers'
+import { estadoSocio, estadoLabel, SEDES } from '../lib/helpers'
 import GrupoCuotas from './GrupoCuotas'
 
 // Trae todas las filas de una consulta, de a 1000 (limite por defecto de Supabase)
@@ -69,6 +69,7 @@ const OP_TXT = { '>': 'mayor que', '>=': 'mayor o igual que', '<': 'menor que', 
 const FILTROS_INI = {
   vigencia: '1',
   tipo: '',
+  sede: '',
   genero: '',
   cuotas: '',
   edadOpMin: '>=', edadMin: '',
@@ -107,6 +108,8 @@ export default function Listados() {
   }, [])
 
   const set = (k, v) => setF(prev => ({ ...prev, [k]: v }))
+
+  const haySede = personas.some(p => 'sede' in p)
 
   const tiposDisponibles = useMemo(
     () => Array.from(new Set(personas.map(p => p.atleta).filter(Boolean))).sort(),
@@ -161,6 +164,7 @@ export default function Listados() {
       const p = r.p
       if (f.vigencia !== '' && String(p.vigente) !== f.vigencia) return false
       if (f.tipo && p.atleta !== f.tipo) return false
+      if (f.sede === '__sin' ? !!p.sede : (f.sede && p.sede !== f.sede)) return false
       if (f.genero) {
         const g = (p.genero || '').toLowerCase()
         if (f.genero === 'F' && !g.includes('fem')) return false
@@ -197,6 +201,7 @@ export default function Listados() {
     const d = []
     d.push('Socios: ' + (f.vigencia === '1' ? 'vigentes' : f.vigencia === '0' ? 'no vigentes' : 'vigentes y no vigentes'))
     if (f.tipo) d.push('Tipo de socio: ' + f.tipo)
+    if (f.sede) d.push('Sede: ' + (f.sede === '__sin' ? 'sin asignar' : f.sede))
     if (f.genero) d.push('G\u00e9nero: ' + (f.genero === 'F' ? 'Femenino' : f.genero === 'M' ? 'Masculino' : 'Otro'))
     if (f.cuotas) d.push('Estado de cuotas: ' + estadoLabel(f.cuotas) + ' (solo socios vigentes)')
     if (f.edadMin !== '') d.push('Edad ' + OP_TXT[f.edadOpMin] + ' ' + f.edadMin + ' a\u00f1os')
@@ -213,7 +218,7 @@ export default function Listados() {
     const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs')
     const enc = [
       'ID', 'Nombre completo', 'RUT', 'G\u00e9nero', 'Fecha de nacimiento', 'Edad', 'Tipo de socio',
-      'Estado', 'Estado de cuotas', 'Fecha de ingreso', 'Antig\u00fcedad (meses)', 'Antig\u00fcedad',
+      'Sede', 'Estado', 'Estado de cuotas', 'Fecha de ingreso', 'Antig\u00fcedad (meses)', 'Antig\u00fcedad',
       'Celular', 'E-mail', 'Apoderado',
     ]
     const datos = resultado.map(r => [
@@ -224,6 +229,7 @@ export default function Listados() {
       fmtFecha(r.p.fecha_nac),
       r.edad === null ? '' : r.edad,
       r.p.atleta || '',
+      r.p.sede || '',
       r.p.vigente === 1 ? 'Activo' : 'Inactivo',
       r.cuotas ? estadoLabel(r.cuotas) : '-',
       r.ingresoTxt,
@@ -236,7 +242,7 @@ export default function Listados() {
     const ws = XLSX.utils.aoa_to_sheet([enc, ...datos])
     ws['!cols'] = [
       { wch: 7 }, { wch: 38 }, { wch: 14 }, { wch: 11 }, { wch: 18 }, { wch: 6 }, { wch: 16 },
-      { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 30 }, { wch: 28 },
+      { wch: 14 }, { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 30 }, { wch: 28 },
     ]
     ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: datos.length, c: enc.length - 1 } }) }
     const hoy = new Date()
@@ -291,6 +297,16 @@ export default function Listados() {
                   {tiposDisponibles.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
+              {haySede && (
+                <div className="form-group">
+                  <label>Sede de entrenamiento</label>
+                  <select value={f.sede} onChange={e => set('sede', e.target.value)}>
+                    <option value="">Todas</option>
+                    {SEDES.map(x => <option key={x} value={x}>{x}</option>)}
+                    <option value="__sin">Sin asignar</option>
+                  </select>
+                </div>
+              )}
               <div className="form-group">
                 <label>G&eacute;nero</label>
                 <select value={f.genero} onChange={e => set('genero', e.target.value)}>
@@ -384,7 +400,7 @@ export default function Listados() {
         )}
       </div>
 
-      {!loading && !error && <GrupoCuotas personas={personas} pagos={pagos} />}
+      {!loading && !error && <GrupoCuotas personas={personas} pagos={pagos} haySede={haySede} />}
 
       {!loading && !error && (
         <div className="card">
@@ -407,6 +423,7 @@ export default function Listados() {
                     <th>Edad</th>
                     <th>G&eacute;nero</th>
                     <th>Tipo</th>
+                    {haySede && <th>Sede</th>}
                     <th>Ingreso</th>
                     <th>Antig&uuml;edad</th>
                     <th>Cuotas</th>
@@ -420,6 +437,7 @@ export default function Listados() {
                       <td>{r.edad === null ? '-' : r.edad}</td>
                       <td>{r.p.genero || '-'}</td>
                       <td>{r.p.atleta || '-'}</td>
+                      {haySede && <td>{r.p.sede || '-'}</td>}
                       <td>{r.ingresoTxt || '-'}</td>
                       <td>{r.meses === null ? '-' : textoTiempo(r.meses)}</td>
                       <td>{r.cuotas ? <span className={'badge ' + r.cuotas}>{estadoLabel(r.cuotas)}</span> : '-'}</td>
