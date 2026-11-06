@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { SEDES } from '../lib/helpers'
+import { SEDES, mesesPendientes } from '../lib/helpers'
 
 const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const LS_KEY = 'fenix-grupos-cuotas'
@@ -35,6 +35,7 @@ export default function GrupoCuotas({ personas = [], pagos = [], haySede = false
   const [propuestas, setPropuestas] = useState(null)
   const [aviso, setAviso] = useState('')
   const [abierto, setAbierto] = useState(false)
+  const [orden, setOrden] = useState('deuda') // 'deuda' | 'manual'
 
   useEffect(() => { if (aviso) { const t = setTimeout(() => setAviso(''), 4000); return () => clearTimeout(t) } }, [aviso])
 
@@ -59,6 +60,22 @@ export default function GrupoCuotas({ personas = [], pagos = [], haySede = false
     const k = ultimoPago[id]
     return k ? MES_CORTO[(k % 100) - 1] + '/' + String(Math.floor(k / 100)).slice(2) : 'sin pagos'
   }
+
+  // Meses que debe para estar al dia (misma regla que la ficha del socio)
+  const deuda = id => (porId[id] ? mesesPendientes(id, pagos, porId[id]) : 0)
+
+  const textoEstado = id => {
+    const d = deuda(id)
+    if (d === 0) return 'sin deuda'
+    return textoUltimo(id) + ' (' + d + (d === 1 ? ' mes)' : ' meses)')
+  }
+
+  const idsOrdenados = useMemo(() => {
+    const lista = ids.filter(id => porId[id])
+    if (orden !== 'deuda') return lista
+    return [...lista].sort((a, b) =>
+      (deuda(b) - deuda(a)) || nombreCorto(porId[a]).localeCompare(nombreCorto(porId[b]), 'es'))
+  }, [ids, orden, porId, pagos])
 
   const indice = useMemo(() => personas.map(p => ({
     p, palabras: norm([p.nombre, p.seg_nombre, p.apellido, p.ap_mat].filter(Boolean).join(' ')).split(' '),
@@ -156,9 +173,9 @@ export default function GrupoCuotas({ personas = [], pagos = [], haySede = false
   }
 
   const mensaje = useMemo(() => {
-    const lineas = ids.filter(id => porId[id]).map(id => '\u2022 ' + nombreCorto(porId[id]) + ': ' + textoUltimo(id))
+    const lineas = idsOrdenados.map(id => '\u2022 ' + nombreCorto(porId[id]) + ': ' + textoEstado(id))
     return ['Atleta / \u00daltimo mes pagado:', ...lineas].join('\n')
-  }, [ids, porId, ultimoPago])
+  }, [idsOrdenados, porId, ultimoPago, pagos])
 
   function copiar() {
     const ok = () => setAviso('Copiado. Ya puedes pegarlo en WhatsApp.')
@@ -271,17 +288,18 @@ export default function GrupoCuotas({ personas = [], pagos = [], haySede = false
           <div className="tbl-wrap" style={{ border: 'var(--border)', marginBottom: 12 }}>
             <table className="tbl" style={{ tableLayout: 'auto' }}>
               <thead>
-                <tr><th>Atleta</th><th>&Uacute;ltimo mes pagado</th><th style={{ width: 110 }}></th></tr>
+                <tr><th>Atleta</th><th>&Uacute;ltimo mes pagado</th><th>Deuda</th><th style={{ width: orden === 'manual' ? 110 : 44 }}></th></tr>
               </thead>
               <tbody>
-                {ids.filter(id => porId[id]).map(id => (
+                {idsOrdenados.map(id => (
                   <tr key={id}>
                     <td>{nombreCorto(porId[id])}{porId[id].vigente === 1 ? '' : <span style={{ fontSize: 11, color: 'var(--text-3)', marginLeft: 6 }}>(inactivo)</span>}</td>
                     <td>{textoUltimo(id)}</td>
+                    <td style={{ color: deuda(id) > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>{deuda(id) > 0 ? deuda(id) + (deuda(id) === 1 ? ' mes' : ' meses') : 'sin deuda'}</td>
                     <td style={{ overflow: 'visible' }}>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button className="btn sm" title="Subir" onClick={() => mover(id, -1)}><i className="ti ti-arrow-up"></i></button>
-                        <button className="btn sm" title="Bajar" onClick={() => mover(id, 1)}><i className="ti ti-arrow-down"></i></button>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        {orden === 'manual' && <button className="btn sm" title="Subir" onClick={() => mover(id, -1)}><i className="ti ti-arrow-up"></i></button>}
+                        {orden === 'manual' && <button className="btn sm" title="Bajar" onClick={() => mover(id, 1)}><i className="ti ti-arrow-down"></i></button>}
                         <button className="btn sm" title="Quitar" onClick={() => quitar(id)}><i className="ti ti-x"></i></button>
                       </div>
                     </td>
@@ -300,11 +318,16 @@ export default function GrupoCuotas({ personas = [], pagos = [], haySede = false
         <input type="text" placeholder="Nombre del grupo (ej: Recoleta)" value={nombreGrupo} onChange={e => setNombreGrupo(e.target.value)}
           style={{ padding: '6px 10px', border: '0.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', width: 220 }} />
         <button className="btn" onClick={guardarGrupo} disabled={ids.length === 0 || !nombreGrupo.trim()}><i className="ti ti-device-floppy"></i>Guardar grupo</button>
+        <select value={orden} onChange={e => setOrden(e.target.value)} title="Orden de la lista y del mensaje"
+          style={{ padding: '6px 10px', border: '0.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+          <option value="deuda">Orden: mayor deuda primero</option>
+          <option value="manual">Orden: manual</option>
+        </select>
         {ids.length > 0 && <button className="btn" onClick={() => { setIds([]); setGrupoSel('') }}>Vaciar</button>}
         {aviso && <span style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>{aviso}</span>}
       </div>
       <p style={{ fontSize: 11, color: 'var(--text-3)', margin: '10px 0 0' }}>
-        Los grupos guardados a mano quedan en este navegador; los de sede se arman solos con lo asignado en cada ficha. El &uacute;ltimo mes pagado considera solo cuotas (no actividades ni torneos).
+        Los grupos guardados a mano quedan en este navegador; los de sede se arman solos con lo asignado en cada ficha. El &uacute;ltimo mes pagado considera solo cuotas (no actividades ni torneos). Los meses de deuda son los mismos que muestra la ficha del socio.
       </p>
       </>)}
     </div>
