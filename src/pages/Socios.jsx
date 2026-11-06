@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase, insertPersona, updatePersona } from '../lib/supabase'
+import Certificados from './Certificados'
 import { estadoSocio, mesesAlDia, mesesPendientes, estadoLabel, MESES, nombreMostrar, cuotaEsperada } from '../lib/helpers'
 
 const ANIO_ACTUAL = new Date().getFullYear()
@@ -24,6 +25,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
   const [savingCelular, setSavingCelular] = useState(false)
   const [copiadoId, setCopiadoId] = useState(null)
   const [modalPDF, setModalPDF] = useState(false)
+  const [vista, setVista] = useState('lista') // 'lista' | 'certificados'
   const [campoExtra, setCampoExtra] = useState('RIFA')
   const [filtroTipoPDF, setFiltroTipoPDF] = useState('')
   const [filtroGeneroPDF, setFiltroGeneroPDF] = useState('')
@@ -477,6 +479,8 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
     setLoadingHistorial(false)
   }
 
+  if (vista === 'certificados' && isAdmin) return <Certificados personas={personas} onVolver={() => setVista('lista')} />
+
   return (
     <div className="content">
       {/* Filtros */}
@@ -513,6 +517,9 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
         </div>
         {isAdmin && (
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <button className="btn" onClick={() => setVista('certificados')}>
+              <i className="ti ti-certificate"></i>Certificados
+            </button>
             <button className="btn" onClick={detectarDuplicados}>
               <i className="ti ti-copy-off"></i>Ver duplicados
             </button>
