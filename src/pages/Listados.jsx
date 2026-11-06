@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { estadoSocio, estadoLabel } from '../lib/helpers'
+import GrupoCuotas from './GrupoCuotas'
 
 // Trae todas las filas de una consulta, de a 1000 (limite por defecto de Supabase)
 async function traerTodo(construir) {
@@ -382,6 +383,8 @@ export default function Listados() {
           </>
         )}
       </div>
+
+      {!loading && !error && <GrupoCuotas personas={personas} pagos={pagos} />}
 
       {!loading && !error && (
         <div className="card">
