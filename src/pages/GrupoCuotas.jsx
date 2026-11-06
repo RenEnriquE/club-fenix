@@ -34,6 +34,7 @@ export default function GrupoCuotas({ personas = [], pagos = [], haySede = false
   const [pegado, setPegado] = useState('')
   const [propuestas, setPropuestas] = useState(null)
   const [aviso, setAviso] = useState('')
+  const [abierto, setAbierto] = useState(false)
 
   useEffect(() => { if (aviso) { const t = setTimeout(() => setAviso(''), 4000); return () => clearTimeout(t) } }, [aviso])
 
@@ -177,7 +178,12 @@ export default function GrupoCuotas({ personas = [], pagos = [], haySede = false
 
   return (
     <div className="card">
-      <div className="card-title"><i className="ti ti-brand-whatsapp"></i>Estado de cuotas por grupo (WhatsApp)</div>
+      <div className="card-title" onClick={() => setAbierto(a => !a)} role="button" aria-expanded={abierto}
+        style={{ cursor: 'pointer', userSelect: 'none', margin: abierto ? undefined : 0 }}>
+        <i className="ti ti-brand-whatsapp"></i>Estado de cuotas por grupo (WhatsApp)
+        <i className={'ti ' + (abierto ? 'ti-chevron-up' : 'ti-chevron-down')} style={{ marginLeft: 'auto', color: 'var(--text-3)' }}></i>
+      </div>
+      {abierto && (<>
       <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 14px' }}>
         Arma un grupo de socios (por ejemplo, quienes entrenan en Recoleta) y copia el nombre con su &uacute;ltimo mes de cuota pagado, listo para pegar en WhatsApp.
       </p>
@@ -300,6 +306,7 @@ export default function GrupoCuotas({ personas = [], pagos = [], haySede = false
       <p style={{ fontSize: 11, color: 'var(--text-3)', margin: '10px 0 0' }}>
         Los grupos guardados a mano quedan en este navegador; los de sede se arman solos con lo asignado en cada ficha. El &uacute;ltimo mes pagado considera solo cuotas (no actividades ni torneos).
       </p>
+      </>)}
     </div>
   )
 }
