@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, insertPersona, updatePersona } from '../lib/supabase'
 import Certificados from './Certificados'
-import { estadoSocio, mesesAlDia, mesesPendientes, estadoLabel, MESES, nombreMostrar, cuotaEsperada, SEDES } from '../lib/helpers'
+import { estadoSocio, mesesAlDia, mesesPendientes, estadoLabel, MESES, nombreMostrar, cuotaEsperada, SEDES, fmtFechaDMA } from '../lib/helpers'
 
 const ANIO_ACTUAL = new Date().getFullYear()
 
@@ -217,7 +217,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
         ? Math.max(0, (hoy.getFullYear()-fechaIngreso.getFullYear())*12 + (hoy.getMonth()-fechaIngreso.getMonth()))
         : 0
       const nombreComp = [p.nombre, p.seg_nombre, p.apellido, p.ap_mat].filter(Boolean).join(' ')
-      const fechaIngresoStr = fechaIngreso ? fechaIngreso.toLocaleDateString('es-CL') + (fechaEstimada?'*':'') : '-'
+      const fechaIngresoStr = fechaIngreso ? fmtFechaDMA(fechaIngreso) + (fechaEstimada?'*':'') : '-'
       return { ...p, mesesActivo, nombreComp, fechaIngresoStr, fechaEstimada }
     })
 
@@ -269,7 +269,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
 <body>
   <h2>Club Atletico Independencia Fenix</h2>
   <div class="sub">
-    Listado de Socios Activos${filtroTipoPDF?' - '+filtroTipoPDF:''} &nbsp;|&nbsp; ${conMeses.length} socios &nbsp;|&nbsp; Generado: ${hoy.toLocaleDateString('es-CL')}
+    Listado de Socios Activos${filtroTipoPDF?' - '+filtroTipoPDF:''} &nbsp;|&nbsp; ${conMeses.length} socios &nbsp;|&nbsp; Generado: ${fmtFechaDMA(hoy)}
   </div>
   <table>
     <thead>
@@ -287,7 +287,7 @@ export default function Socios({ isAdmin = false, isCoach = false }) {
   </table>
   <div class="footer">
     ${conMeses.some(p=>p.fechaEstimada)?'* Fecha estimada en base al primer pago registrado &nbsp;|&nbsp;':''}
-    Club Atletico Independencia Fenix &bull; ${hoy.toLocaleDateString('es-CL')}
+    Club Atletico Independencia Fenix &bull; ${fmtFechaDMA(hoy)}
   </div>
 </body>
 </html>`
@@ -620,8 +620,8 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                             : null
                           return (
                             <div style={{fontSize:10,color:'var(--text-3)',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginTop:1}}>
-                              {fechaIni && <span>Ingreso: {fechaIni.toLocaleDateString('es-CL')}</span>}
-                              {fechaFin && <span>· Salida: {fechaFin.toLocaleDateString('es-CL')}</span>}
+                              {fechaIni && <span>Ingreso: {fmtFechaDMA(fechaIni)}</span>}
+                              {fechaFin && <span>· Salida: {fmtFechaDMA(fechaFin)}</span>}
                               {mesesActivo !== null && (
                                 <span style={{color:s.vigente===1?'#1a5e3a':'#94a3b8',fontWeight:600}}>
                                   · {mesesActivo} {mesesActivo===1?'mes':'meses'} {s.vigente===1?'activo':'activo en el club'}
@@ -693,7 +693,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                     </td>
                     {filtroVigente === '0' && (
                       <td style={{color:'var(--text-2)',fontSize:12}}>
-                        {s.f_fin_vig ? new Date(s.f_fin_vig+'T12:00:00-04:00').toLocaleDateString('es-CL') : '—'}
+                        {s.f_fin_vig ? fmtFechaDMA(s.f_fin_vig) : '—'}
                       </td>
                     )}
                     {filtroVigente === '0' && (
@@ -905,8 +905,8 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                       <td>{s.id_caif}</td>
                       <td>{s.nombre_comp}</td>
                       <td><span className={`badge ${s.vigente===1?'al-dia':'moroso'}`}>{s.vigente===1?'Activo':'Inactivo'}</span></td>
-                      <td style={{fontSize:11}}>{s.f_ini_vig ? new Date(s.f_ini_vig+'T12:00:00-04:00').toLocaleDateString('es-CL') : '—'}</td>
-                      <td style={{fontSize:11}}>{s.f_fin_vig ? new Date(s.f_fin_vig+'T12:00:00-04:00').toLocaleDateString('es-CL') : '—'}</td>
+                      <td style={{fontSize:11}}>{s.f_ini_vig ? fmtFechaDMA(s.f_ini_vig) : '—'}</td>
+                      <td style={{fontSize:11}}>{s.f_fin_vig ? fmtFechaDMA(s.f_fin_vig) : '—'}</td>
                     </tr>
                   ))}</tbody>
                 </table>
@@ -925,7 +925,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
         const sp = modalPerfil
         const est = estadoSocio(sp.id_caif, pagos, sp.atleta, sp)
         const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-        const fmtFecha = f => f ? new Date(f + 'T12:00:00-04:00').toLocaleDateString('es-CL') : ''
+        const fmtFecha = f => f ? fmtFechaDMA(f) : ''
         const edad = (() => {
           if (!sp.fecha_nac) return null
           const d = new Date(sp.fecha_nac + 'T12:00:00-04:00')
@@ -1215,7 +1215,7 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
               </div>
               {modalReingreso.f_fin_vig && (
                 <div style={{fontSize:12,color:'#64748b',marginTop:4}}>
-                  Fecha de salida registrada: <strong>{new Date(modalReingreso.f_fin_vig).toLocaleDateString('es-CL')}</strong>
+                  Fecha de salida registrada: <strong>{fmtFechaDMA(modalReingreso.f_fin_vig)}</strong>
                   {modalReingreso.causa_salida && ` (${modalReingreso.causa_salida})`}
                 </div>
               )}
@@ -1254,8 +1254,8 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
             <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 14px',marginBottom:12}}>
               <div style={{fontSize:11,fontWeight:600,color:'#16a34a',textTransform:'uppercase',marginBottom:4}}>Ciclo actual</div>
               <div style={{display:'flex',gap:16,fontSize:13,flexWrap:'wrap'}}>
-                <span>Ingreso: <strong>{modalHistorial.f_ini_vig ? new Date(modalHistorial.f_ini_vig+'T12:00:00-04:00').toLocaleDateString('es-CL') : 'Sin fecha'}</strong></span>
-                {modalHistorial.f_reingreso && <span>Reingreso: <strong>{new Date(modalHistorial.f_reingreso+'T12:00:00-04:00').toLocaleDateString('es-CL')}</strong></span>}
+                <span>Ingreso: <strong>{modalHistorial.f_ini_vig ? fmtFechaDMA(modalHistorial.f_ini_vig) : 'Sin fecha'}</strong></span>
+                {modalHistorial.f_reingreso && <span>Reingreso: <strong>{fmtFechaDMA(modalHistorial.f_reingreso)}</strong></span>}
                 <span style={{color:modalHistorial.vigente===1?'#16a34a':'#dc2626',fontWeight:600}}>{modalHistorial.vigente===1?'Activo':'Inactivo'}</span>
               </div>
             </div>
@@ -1284,8 +1284,8 @@ Si ya realizaste algun pago o tienes alguna consulta, no dudes en comunicarte co
                       const dias = ini && fin ? Math.round((fin-ini)/(1000*60*60*24)) : null
                       return (
                         <tr key={i}>
-                          <td>{ini ? ini.toLocaleDateString('es-CL') : '—'}</td>
-                          <td>{fin ? fin.toLocaleDateString('es-CL') : '—'}</td>
+                          <td>{ini ? fmtFechaDMA(ini) : '—'}</td>
+                          <td>{fin ? fmtFechaDMA(fin) : '—'}</td>
                           <td style={{color:'#64748b'}}>{dias !== null ? `${dias} dias` : '—'}</td>
                           <td style={{color:'#64748b'}}>{h.causa_salida || '—'}</td>
                         </tr>

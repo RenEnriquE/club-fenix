@@ -136,3 +136,15 @@ export function nombreMostrar(s) {
   }
   return nombreComp
 }
+
+// Fecha en formato DD-MM-AAAA. Acepta "AAAA-MM-DD" (o timestamp ISO) o un objeto Date.
+// Los textos no pasan por Date para evitar desfases de zona horaria. Devuelve '' si no hay fecha valida.
+export function fmtFechaDMA(v) {
+  if (!v) return ''
+  if (v instanceof Date) {
+    if (isNaN(v)) return ''
+    return String(v.getDate()).padStart(2, '0') + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + v.getFullYear()
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v))
+  return m ? m[3] + '-' + m[2] + '-' + m[1] : ''
+}

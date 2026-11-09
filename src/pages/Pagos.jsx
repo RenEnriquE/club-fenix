@@ -5,7 +5,7 @@ import {
   getActividades,
   supabase
 } from '../lib/supabase'
-import { MESES, A\u00d1OS, pagosPorSocioAnio, formatMoney, nombreMostrar } from '../lib/helpers'
+import { MESES, A\u00d1OS, pagosPorSocioAnio, formatMoney, nombreMostrar, fmtFechaDMA } from '../lib/helpers'
 
 const CUOTA = 3000
 
@@ -489,7 +489,7 @@ export default function Pagos({ isAdmin = true }) {
                             }
                           </div>
                           <div style={{fontSize:11,color:'var(--text-3)',display:'flex',gap:6,flexWrap:'wrap'}}>
-                            <span>{p.fecha_pago||'—'}</span>
+                            <span>{fmtFechaDMA(p.fecha_pago) || '\u2014'}</span>
                             <span>· {metodoAbrev}</span>
                             {p.num_transacc && <span>· N {p.num_transacc}</span>}
                           </div>
@@ -551,7 +551,7 @@ export default function Pagos({ isAdmin = true }) {
                       {g.personas.map(p=>p.nombre_comp.split(' ')[0]).join(', ')}
                     </div>
                     <div style={{fontSize:11,color:'#64748b'}}>
-                      {g.veces} vez{g.veces!==1?'ces':''} &middot; Ultimo: {g.ultimo_pago ? new Date(g.ultimo_pago).toLocaleDateString('es-CL') : '&#8212;'}
+                      {g.veces} vez{g.veces!==1?'ces':''} &middot; Ultimo: {g.ultimo_pago ? fmtFechaDMA(g.ultimo_pago) : '&#8212;'}
                     </div>
                   </div>
                   <button className="btn sm primary" onClick={()=>cargarGrupoFrecuente(g)}>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { formatMoney } from '../lib/helpers'
+import { formatMoney, fmtFechaDMA } from '../lib/helpers'
 
 export default function ActividadDetalle({ actividad, onVolver }) {
   const esGrupal = actividad.permite_grupo === true
@@ -798,7 +798,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
                           <button type="button"
                             onClick={() => { setEditandoFecha(insc.id_inscripcion); setFechaTemp(insc.fecha_pago || '') }}
                             style={{ cursor: 'pointer', color: 'var(--text-3)', background:'none', border:'none', fontFamily:'inherit', fontSize:11, padding:'6px 4px', display:'flex', alignItems:'center', gap:4 }}>
-                            {insc.fecha_pago || '-'} <i className="ti ti-pencil" style={{ fontSize: 10 }}></i>
+                            {fmtFechaDMA(insc.fecha_pago) || '-'} <i className="ti ti-pencil" style={{ fontSize: 10 }}></i>
                           </button>
                         )}
                       </td>

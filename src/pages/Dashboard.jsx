@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { estadoSocio, mesesPendientes, MESES_SHORT, formatMoney } from '../lib/helpers'
+import { estadoSocio, mesesPendientes, MESES_SHORT, formatMoney, fmtFechaDMA } from '../lib/helpers'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Bar, Doughnut } from 'react-chartjs-2'
 
@@ -631,7 +631,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   'Fecha Nacimiento': fechaNacFormato(c.persona?.fecha_nac),
                   'Edad': calcEdadExport(c.persona?.fecha_nac),
                   'Monto Pagado': formatMoney(montoPersona),
-                  'Fecha de Pago': i.fecha_pago || '',
+                  'Fecha de Pago': fmtFechaDMA(i.fecha_pago),
                   ...(esResumen ? { 'Pagado': i.pagado ? 'Si' : 'No' } : {})
                 })
               } else {
@@ -642,7 +642,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                   'Persona Cubierta': c.nombre,
                   'Tipo Persona Cubierta': c.tipo,
                   'Monto Pagado': formatMoney(montoPersona),
-                  'Fecha Pago': i.fecha_pago || '',
+                  'Fecha Pago': fmtFechaDMA(i.fecha_pago),
                   ...(esResumen ? { 'Pagado': i.pagado ? 'Si' : 'No' } : {})
                 })
               }
@@ -875,7 +875,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
                             <div style={{fontSize:11,color:'#64748b',marginTop:2,display:'flex',gap:6,flexWrap:'wrap'}}>
                               {cob.total>0 && <span>{cob.adultos>0 && `${cob.adultos} adulto${cob.adultos!==1?'s':''}`}{cob.adultos>0&&cob.ninos>0&&', '}{cob.ninos>0 && `${cob.ninos} nino${cob.ninos!==1?'s':''}`}</span>}
                               {i.num_referencia && <span style={{fontFamily:'monospace',fontWeight:600,color:'#16a34a'}}>#{i.num_referencia}</span>}
-                              {i.fecha_pago && <span>{i.fecha_pago}</span>}
+                              {i.fecha_pago && <span>{fmtFechaDMA(i.fecha_pago)}</span>}
                             </div>
                           </div>
                           <div style={{fontWeight:700,color:'#16a34a',fontSize:14,whiteSpace:'nowrap'}}>{formatMoney(i.monto)}</div>

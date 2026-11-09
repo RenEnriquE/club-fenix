@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { formatMoney } from '../lib/helpers'
+import { formatMoney, fmtFechaDMA } from '../lib/helpers'
 
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const METODOS = ['Transferencia','Efectivo','Cheque']
@@ -373,7 +373,7 @@ export default function Egresos({ isAdmin = true }) {
                               <div key={m.id_movimiento} style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #fef3c7',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12}}>
                                 <div>
                                   <div style={{color:'var(--text-2)'}}>{m.item}</div>
-                                  <div style={{color:'#94a3b8',fontSize:11}}>{m.fecha}</div>
+                                  <div style={{color:'#94a3b8',fontSize:11}}>{fmtFechaDMA(m.fecha)}</div>
                                 </div>
                                 <span style={{fontWeight:600,color:m.tipo==='ingreso'?'#16a34a':'#dc2626'}}>
                                   {m.tipo==='ingreso'?'+':'-'}{formatMoney(m.monto)}
@@ -433,7 +433,7 @@ export default function Egresos({ isAdmin = true }) {
                               <div key={m.id_movimiento} style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #f3e8ff',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12}}>
                                 <div>
                                   <div style={{color:'var(--text-2)'}}>{m.item}</div>
-                                  <div style={{color:'#94a3b8',fontSize:11}}>{m.fecha}{m.obs ? ` \u00b7 ${m.obs}` : ''}</div>
+                                  <div style={{color:'#94a3b8',fontSize:11}}>{fmtFechaDMA(m.fecha)}{m.obs ? ` \u00b7 ${m.obs}` : ''}</div>
                                 </div>
                                 <div style={{textAlign:'right'}}>
                                   <div style={{fontWeight:600,color:m.tipo==='ingreso'?'#16a34a':'#dc2626'}}>
@@ -476,7 +476,7 @@ export default function Egresos({ isAdmin = true }) {
                               <div key={m.id_movimiento} style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #f1f5f9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12,background:'#f8fafc'}}>
                                 <div>
                                   <div style={{color:'var(--text-2)'}}>{m.item}</div>
-                                  <div style={{color:'#94a3b8',fontSize:11}}>{m.fecha}{m.obs ? ` \u00b7 ${m.obs}` : ''}</div>
+                                  <div style={{color:'#94a3b8',fontSize:11}}>{fmtFechaDMA(m.fecha)}{m.obs ? ` \u00b7 ${m.obs}` : ''}</div>
                                 </div>
                                 <span style={{fontWeight:600,color:m.tipo==='ingreso'?'#16a34a':'#dc2626'}}>
                                   {m.tipo==='ingreso'?'+':'-'}{formatMoney(m.monto)}
@@ -516,7 +516,7 @@ export default function Egresos({ isAdmin = true }) {
                               <div key={m.id_movimiento} style={{padding:'8px 12px 8px 30px',borderTop:'0.5px solid #fef3c7',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6,fontSize:12}}>
                                 <div>
                                   <div style={{color:'var(--text-2)'}}>{m.item}</div>
-                                  <div style={{color:'#94a3b8',fontSize:11}}>{m.fecha}{m.obs ? ` \u00b7 ${m.obs}` : ''}</div>
+                                  <div style={{color:'#94a3b8',fontSize:11}}>{fmtFechaDMA(m.fecha)}{m.obs ? ` \u00b7 ${m.obs}` : ''}</div>
                                 </div>
                                 <span style={{fontWeight:600,color:m.tipo==='ingreso'?'#16a34a':'#dc2626'}}>
                                   {m.tipo==='ingreso'?'+':'-'}{formatMoney(m.monto)}
@@ -698,7 +698,7 @@ export default function Egresos({ isAdmin = true }) {
                             <span style={{fontWeight:600,fontSize:13,wordBreak:'break-word'}}>{m.item}</span>
                           </div>
                           <div style={{fontSize:11,color:'var(--text-3)',display:'flex',gap:6,flexWrap:'wrap'}}>
-                            <span>{m.fecha ? m.fecha : `${MESES_ES[(m.mes||1)-1].substring(0,3)} ${m.anio||anio}`}</span>
+                            <span>{m.fecha ? fmtFechaDMA(m.fecha) : `${MESES_ES[(m.mes||1)-1].substring(0,3)} ${m.anio||anio}`}</span>
                             {m.categoria && <span>&middot; {m.categoria}</span>}
                             {m.metodo && m.metodo !== '-' && <span>&middot; {m.metodo}</span>}
                           </div>

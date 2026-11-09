@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { formatMoney } from '../lib/helpers'
+import { formatMoney, fmtFechaDMA } from '../lib/helpers'
 
 const TIPOS_CUENTA = ['Cuenta Corriente','Cuenta Vista','Cuenta RUT','Cuenta Ahorro']
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -128,7 +128,7 @@ function ListaTorneos({ torneos, loading, onSelect, onRefresh }) {
                   <div style={{fontSize:12,color:'var(--text-3)',marginTop:2}}>
                     {t.organizador && <span>{t.organizador}</span>}
                     {t.email_organizador && <span style={{marginLeft:8}}>{t.email_organizador}</span>}
-                    {t.ultima_fecha && <span style={{marginLeft:8}}>&middot; Ultima edicion: {t.ultima_fecha}</span>}
+                    {t.ultima_fecha && <span style={{marginLeft:8}}>&middot; Ultima edicion: {fmtFechaDMA(t.ultima_fecha)}</span>}
                   </div>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -303,7 +303,7 @@ function DetalleTorneo({ torneo, onBack, onSelectEdicion }) {
                   <div>
                     <div style={{fontWeight:600,fontSize:14}}>{mes} {anio}</div>
                     <div style={{fontSize:12,color:'var(--text-3)',marginTop:2}}>
-                      Fecha: {e.fecha} &middot; Valor: {formatMoney(e.valor_atleta)}/atleta &middot; {inscritos} inscrito{inscritos!==1?'s':''}
+                      Fecha: {fmtFechaDMA(e.fecha)} &middot; Valor: {formatMoney(e.valor_atleta)}/atleta &middot; {inscritos} inscrito{inscritos!==1?'s':''}
                     </div>
                     {e.obs && <div style={{fontSize:11,color:'var(--text-3)',marginTop:2}}>{e.obs}</div>}
                   </div>
@@ -665,7 +665,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
         <div>
           <h2 style={{fontSize:16,fontWeight:700,color:'var(--accent)'}}>{torneo.nombre}</h2>
           <div style={{fontSize:12,color:'var(--text-3)'}}>
-            {MESES_ES[fecha.getMonth()]} {fecha.getFullYear()} &middot; {edicion.fecha} &middot; {formatMoney(edicion.valor_atleta)}/atleta
+            {MESES_ES[fecha.getMonth()]} {fecha.getFullYear()} &middot; {fmtFechaDMA(edicion.fecha)} &middot; {formatMoney(edicion.valor_atleta)}/atleta
           </div>
         </div>
       </div>
@@ -707,7 +707,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
             {edicionLocal.pagado_organizador ? (
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <span style={{fontSize:12,background:'#f0fdf4',color:'#16a34a',padding:'4px 12px',borderRadius:6,border:'0.5px solid #a7f3d0',fontWeight:600}}>
-                  <i className="ti ti-check" style={{marginRight:4}}></i>Pagado {edicionLocal.fecha_pago_org}
+                  <i className="ti ti-check" style={{marginRight:4}}></i>Pagado {fmtFechaDMA(edicionLocal.fecha_pago_org)}
                 </span>
                 <button className="btn sm" title="Registrar otro pago al organizador"
                   onClick={()=>{
@@ -884,7 +884,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
               <button className="modal-close" onClick={()=>setModalPagoOrg(false)}>&times;</button>
             </div>
             <div style={{background:'#fef2f2',border:'0.5px solid #fecaca',borderRadius:8,padding:'10px 14px',marginBottom:12}}>
-              <div style={{fontWeight:600,fontSize:14}}>{torneo.nombre} - {edicion.fecha}</div>
+              <div style={{fontWeight:600,fontSize:14}}>{torneo.nombre} - {fmtFechaDMA(edicion.fecha)}</div>
               <div style={{fontSize:12,color:'#64748b',marginTop:4}}>
                 Este egreso quedara registrado automaticamente en Movimientos.
               </div>
@@ -1026,7 +1026,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
             </div>
             <div style={{background:'#faf5ff',border:'0.5px solid #ddd6fe',borderRadius:8,padding:'10px 14px',marginBottom:16}}>
               <div style={{fontWeight:600,fontSize:14}}>{personas.find(p=>p.id_caif===modalAdicional.id_socio)?.nombre_comp}</div>
-              <div style={{fontSize:12,color:'var(--text-3)',marginTop:2}}>{torneo.nombre} - {edicion.fecha}</div>
+              <div style={{fontSize:12,color:'var(--text-3)',marginTop:2}}>{torneo.nombre} - {fmtFechaDMA(edicion.fecha)}</div>
               {modalAdicional.monto_adicional > 0 && (
                 <div style={{fontSize:12,color:'#7c3aed',marginTop:4,fontWeight:600}}>
                   Adicional actual: {formatMoney(modalAdicional.monto_adicional)}
@@ -1069,7 +1069,7 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
             </div>
             <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:8,padding:'10px 14px',marginBottom:16}}>
               <div style={{fontWeight:600,fontSize:14}}>{personas.find(p=>p.id_caif===registrandoPago.id_socio)?.nombre_comp}</div>
-              <div style={{fontSize:12,color:'var(--text-3)'}}>{torneo.nombre} &middot; {edicion.fecha} &middot; {formatMoney(edicion.valor_atleta)}</div>
+              <div style={{fontSize:12,color:'var(--text-3)'}}>{torneo.nombre} &middot; {fmtFechaDMA(edicion.fecha)} &middot; {formatMoney(edicion.valor_atleta)}</div>
             </div>
             <div className="form-grid">
               <div className="form-group"><label>Fecha de pago</label><input type="date" value={fechaPago} onChange={e=>setFechaPago(e.target.value)}/></div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { estadoSocio, estadoLabel, SEDES } from '../lib/helpers'
+import { estadoSocio, estadoLabel, SEDES, fmtFechaDMA } from '../lib/helpers'
 import GrupoCuotas from './GrupoCuotas'
 
 // Trae todas las filas de una consulta, de a 1000 (limite por defecto de Supabase)
@@ -20,7 +20,7 @@ async function traerTodo(construir) {
 const fechaDe = f => (f ? new Date(f + 'T12:00:00-04:00') : null)
 const fmtFecha = f => {
   const d = fechaDe(f)
-  return d ? d.toLocaleDateString('es-CL') : ''
+  return d ? fmtFechaDMA(d) : ''
 }
 
 function edadDe(fechaNac, hoy) {
@@ -148,7 +148,7 @@ export default function Listados() {
       return {
         p, edad, meses, cuotas, estimada, ingreso,
         nombre: nombre || p.nombre_comp || '',
-        ingresoTxt: ingreso ? ingreso.toLocaleDateString('es-CL') + (estimada ? ' (est.)' : '') : '',
+        ingresoTxt: ingreso ? fmtFechaDMA(ingreso) + (estimada ? ' (est.)' : '') : '',
       }
     })
   }, [personas, pagos, primerPago])
@@ -248,7 +248,7 @@ export default function Listados() {
     const hoy = new Date()
     const info = [
       ['Listado de socios - Club Atl\u00e9tico Independencia F\u00e9nix'],
-      ['Generado el', hoy.toLocaleDateString('es-CL') + ' ' + hoy.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })],
+      ['Generado el', fmtFechaDMA(hoy) + ' ' + hoy.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })],
       ['Total de socios', datos.length],
       [],
       ['Filtros aplicados'],
