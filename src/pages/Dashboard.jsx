@@ -567,6 +567,12 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
         }
         const pagaron = insc.filter(i => i.pagado).sort(comparador)
         const pendientes = insc.filter(i => !i.pagado).sort(comparador)
+        // En actividades grupales un pago cubre a varias personas: se cuentan personas, no pagos
+        const esGrupalAct = actSelDash.permite_grupo === true
+        const personasDe = lista => lista.reduce((n, i) => n + getCobertura(i).total, 0)
+        const txtConteo = lista => esGrupalAct
+          ? `${lista.length} pago${lista.length!==1?'s':''} \u00b7 ${personasDe(lista)} persona${personasDe(lista)!==1?'s':''}`
+          : String(lista.length)
         const opcionesOrden = tieneReferencias
           ? [{k:'referencia',l:'N referencia'},{k:'nombre',l:'Nombre'}]
           : [{k:'fecha',l:'Fecha de pago'},{k:'nombre',l:'Nombre'}]
@@ -732,9 +738,9 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
                 {[
-                  {label:'Total',val:insc.length,color:'#1d4ed8',bg:'#eff6ff'},
-                  {label:'Pagaron',val:pagaron.length,color:'#16a34a',bg:'#f0fdf4'},
-                  {label:'Pendientes',val:pendientes.length,color:'#dc2626',bg:'#fef2f2'},
+                  {label:esGrupalAct?'Total personas':'Total',val:esGrupalAct?personasDe(insc):insc.length,color:'#1d4ed8',bg:'#eff6ff'},
+                  {label:esGrupalAct?'Personas pagadas':'Pagaron',val:esGrupalAct?personasDe(pagaron):pagaron.length,color:'#16a34a',bg:'#f0fdf4'},
+                  {label:esGrupalAct?'Personas pendientes':'Pendientes',val:esGrupalAct?personasDe(pendientes):pendientes.length,color:'#dc2626',bg:'#fef2f2'},
                 ].map((k,i)=>(
                   <div key={i} style={{background:k.bg,borderRadius:8,padding:'10px',textAlign:'center'}}>
                     <div style={{fontSize:22,fontWeight:700,color:k.color}}>{k.val}</div>
@@ -831,7 +837,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               {pendientes.length > 0 && (
                 <div style={{marginBottom:16}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:8}}>
-                    <div style={{fontSize:12,fontWeight:700,color:'#dc2626',textTransform:'uppercase'}}>Pendientes de pago ({pendientes.length})</div>
+                    <div style={{fontSize:12,fontWeight:700,color:'#dc2626',textTransform:'uppercase'}}>Pendientes de pago ({txtConteo(pendientes)})</div>
                     <button type="button" onClick={()=>exportarExcel(pendientes,'pendientes')}
                       style={{fontSize:11,fontWeight:600,padding:'4px 10px',borderRadius:6,border:'1.5px solid #dc2626',background:'#fef2f2',color:'#dc2626',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
                       <i className="ti ti-download"></i>Excel
@@ -859,7 +865,7 @@ export default function Dashboard({ isAdmin = true, isCoach = false }) {
               {pagaron.length > 0 && (
                 <div>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:8}}>
-                    <div style={{fontSize:12,fontWeight:700,color:'#16a34a',textTransform:'uppercase'}}>Ya pagaron ({pagaron.length})</div>
+                    <div style={{fontSize:12,fontWeight:700,color:'#16a34a',textTransform:'uppercase'}}>Ya pagaron ({txtConteo(pagaron)})</div>
                     <button type="button" onClick={()=>exportarExcel(pagaron,'pagaron')}
                       style={{fontSize:11,fontWeight:600,padding:'4px 10px',borderRadius:6,border:'1.5px solid #16a34a',background:'#f0fdf4',color:'#16a34a',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
                       <i className="ti ti-download"></i>Excel
