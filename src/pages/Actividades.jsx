@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import ActividadDetalle from './ActividadDetalle'
+import { fmtFechaDMA } from '../lib/helpers'
 
 export default function Actividades() {
   const [actividades, setActividades] = useState([])
@@ -14,6 +15,9 @@ export default function Actividades() {
   const [mostrarDashboard, setMostrarDashboard] = useState(false)
   const [permiteGrupo, setPermiteGrupo] = useState(false)
   const [esCompetencia, setEsCompetencia] = useState(false)
+  const [fecha, setFecha] = useState('')
+  const [montoExterno, setMontoExterno] = useState('')
+  const [orden, setOrden] = useState('fecha_asc') // 'fecha_asc' | 'fecha_desc' | 'creacion'
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState(null)
   const [actividadSel, setActividadSel] = useState(null)
@@ -89,6 +93,22 @@ export default function Actividades() {
     setLoading(false)
   }
 
+  const hayFecha = actividades.some(a => 'fecha' in a)
+  const hayMontoExterno = actividades.some(a => 'monto_externo' in a)
+
+  // Cuotas (ID 0) siempre primero; el resto segun el orden elegido. Sin fecha va al final.
+  const actividadesOrdenadas = [
+    ...actividades.filter(a => a.id_actividad === 0),
+    ...actividades.filter(a => a.id_actividad !== 0).sort((a, b) => {
+      if (orden === 'creacion') return b.id_actividad - a.id_actividad
+      const fa = a.fecha || '', fb = b.fecha || ''
+      if (fa && fb) return orden === 'fecha_desc' ? fb.localeCompare(fa) : fa.localeCompare(fb)
+      if (fa) return -1
+      if (fb) return 1
+      return b.id_actividad - a.id_actividad
+    })
+  ]
+
   function abrirNueva() {
     setEditando(null)
     setNombre('')
@@ -97,6 +117,9 @@ export default function Actividades() {
     setMontoDefault('')
     setMostrarDashboard(false)
     setPermiteGrupo(false)
+    setEsCompetencia(false)
+    setFecha('')
+    setMontoExterno('')
     setModal(true)
   }
 
@@ -109,6 +132,8 @@ export default function Actividades() {
     setMostrarDashboard(act.mostrar_dashboard || false)
     setPermiteGrupo(act.permite_grupo || false)
     setEsCompetencia(act.es_competencia || false)
+    setFecha(act.fecha || '')
+    setMontoExterno(act.monto_externo ?? '')
     setModal(true)
   }
 
@@ -120,6 +145,8 @@ export default function Actividades() {
     setTipoCobro('mensual')
     setMontoDefault('')
     setMostrarDashboard(false)
+    setFecha('')
+    setMontoExterno('')
   }
 
   async function guardar() {
@@ -135,6 +162,9 @@ export default function Actividades() {
         permite_grupo: permiteGrupo,
         es_competencia: esCompetencia
       }
+      // Fecha y monto de externos solo se envian si las columnas existen (ver supabase_actividades_fecha_externo.sql)
+      if (hayFecha) payload.fecha = fecha || null
+      if (hayMontoExterno) payload.monto_externo = (tipoCobro === 'unico' && permiteGrupo && montoExterno !== '') ? Number(montoExterno) : null
       if (editando) {
         const { error } = await supabase.from('actividades').update(payload).eq('id_actividad', editando.id_actividad)
         if (error) throw error
@@ -254,9 +284,19 @@ export default function Actividades() {
           <div className="card-title" style={{ marginBottom: 0 }}>
             <i className="ti ti-category"></i>Tipos de pago / Actividades
           </div>
-          <button className="btn primary" onClick={abrirNueva}>
-            <i className="ti ti-plus"></i>Nueva actividad
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {hayFecha && (
+              <select value={orden} onChange={e => setOrden(e.target.value)} title="Orden de la lista"
+                style={{ padding: '6px 10px', border: '0.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                <option value="fecha_asc">Orden: fecha (mas proxima primero)</option>
+                <option value="fecha_desc">Orden: fecha (mas lejana primero)</option>
+                <option value="creacion">Orden: creacion (mas nueva primero)</option>
+              </select>
+            )}
+            <button className="btn primary" onClick={abrirNueva}>
+              <i className="ti ti-plus"></i>Nueva actividad
+            </button>
+          </div>
         </div>
 
         <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 16 }}>
@@ -275,10 +315,7 @@ export default function Actividades() {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  ...actividades.filter(a => a.id_actividad === 0),
-                  ...actividades.filter(a => a.id_actividad !== 0)
-                ].map(act => (
+                {actividadesOrdenadas.map(act => (
                   <tr key={act.id_actividad}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
@@ -299,7 +336,17 @@ export default function Actividades() {
                         </span>
                         {act.monto_default && (
                           <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
-                            ${Number(act.monto_default).toLocaleString('es-CL')}
+                            {act.monto_externo != null && Number(act.monto_externo) !== Number(act.monto_default) ? 'Socios ' : ''}${Number(act.monto_default).toLocaleString('es-CL')}
+                          </span>
+                        )}
+                        {act.monto_externo != null && Number(act.monto_externo) !== Number(act.monto_default) && (
+                          <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
+                            Externos ${Number(act.monto_externo).toLocaleString('es-CL')}
+                          </span>
+                        )}
+                        {act.fecha && (
+                          <span style={{ fontSize: 10, color: '#7c3aed', fontWeight: 600 }}>
+                            <i className="ti ti-calendar-event" style={{ marginRight: 2 }}></i>{fmtFechaDMA(act.fecha)}
                           </span>
                         )}
                       </div>
@@ -353,7 +400,7 @@ export default function Actividades() {
       {/* Modal */}
       {modal && (
         <div className="modal-bg open" onClick={e => e.target === e.currentTarget && cerrar()}>
-          <div className="modal" style={{ width: 'min(500px,95vw)' }}>
+          <div className="modal" style={{ width: 'min(560px,95vw)' }}>
             <div className="modal-header">
               <h2>{editando ? 'Editar actividad' : 'Nueva actividad'}</h2>
               <button className="modal-close" onClick={cerrar}>&times;</button>
@@ -381,13 +428,34 @@ export default function Actividades() {
               </div>
 
               <div className="form-group">
-                <label>Monto por defecto ($)</label>
+                <label>{tipoCobro === 'unico' && permiteGrupo ? 'Monto por socio ($)' : 'Monto por defecto ($)'}</label>
                 <input type="number" value={montoDefault} onChange={e => setMontoDefault(e.target.value)}
                   placeholder={tipoCobro === 'unico' ? 'Ej: 10000' : 'Ej: 3000'} />
                 <span style={{ fontSize: 11, color: '#64748b', marginTop: 3, display: 'block' }}>
                   Se precargara al registrar pagos
                 </span>
               </div>
+
+              {tipoCobro === 'unico' && permiteGrupo && hayMontoExterno && (
+                <div className="form-group">
+                  <label>Monto por externo ($)</label>
+                  <input type="number" min="0" value={montoExterno} onChange={e => setMontoExterno(e.target.value)}
+                    placeholder="Igual al de socios" />
+                  <span style={{ fontSize: 11, color: '#64748b', marginTop: 3, display: 'block' }}>
+                    Para asistentes que no son socios. Vacio = pagan lo mismo que los socios.
+                  </span>
+                </div>
+              )}
+
+              {hayFecha && (
+                <div className="form-group">
+                  <label>Fecha de realizacion</label>
+                  <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
+                  <span style={{ fontSize: 11, color: '#64748b', marginTop: 3, display: 'block' }}>
+                    Se usa para ordenar las actividades.
+                  </span>
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Estado</label>
@@ -412,8 +480,8 @@ export default function Actividades() {
                 <div className="form-group">
                   <label>Modo de inscripcion</label>
                   <select value={permiteGrupo} onChange={e => setPermiteGrupo(e.target.value === 'true')}>
-                    <option value="false">Individual (1 socio activo por registro, ej: Rifa)</option>
-                    <option value="true">Grupal (un pagador cubre varios asistentes, ej: Fonda, paseo)</option>
+                    <option value="false">Individual (1 socio por registro, ej: Rifa)</option>
+                    <option value="true">Grupal (varios asistentes, ej: Fonda, paseo)</option>
                   </select>
                   <span style={{fontSize:11,color:'#64748b',marginTop:3,display:'block'}}>
                     Individual: solo socios activos, un registro por socio. Grupal: un pagador puede cubrir a varios socios y/o externos.

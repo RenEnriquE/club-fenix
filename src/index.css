@@ -156,9 +156,12 @@ body {
 
 /* Forms */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
-.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-grid > * { min-width: 0; }
+.form-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .form-group label { font-size: 12px; font-weight: 500; color: var(--text-2); }
 .form-group input, .form-group select, .form-group textarea {
+  min-width: 0;
+  max-width: 100%;
   padding: 8px 10px;
   border: var(--border);
   border-radius: var(--radius);
@@ -231,6 +234,7 @@ body {
   width: min(560px, 95vw);
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   border: var(--border);
   box-shadow: 0 20px 60px rgba(0,0,0,.2);
 }

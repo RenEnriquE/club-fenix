@@ -173,7 +173,23 @@ export default function ActividadDetalle({ actividad, onVolver }) {
   // Calcular monto total automático
   const cantAsistentes = listaAsistentes.length
   const montoDefault = actividad.monto_default || 0
-  const montoTotal = cantAsistentes > 0 && montoDefault > 0 ? cantAsistentes * montoDefault : Number(monto) || 0
+  // Socios pagan monto_default; externos pagan monto_externo (si no hay, lo mismo que los socios)
+  const montoSocio = Number(actividad.monto_default) || 0
+  const montoExterno = (actividad.monto_externo !== null && actividad.monto_externo !== undefined && actividad.monto_externo !== '')
+    ? Number(actividad.monto_externo) : montoSocio
+  const preciosDistintos = montoExterno !== montoSocio
+  const sumarMonto = lista => lista.reduce((s, a) => s + (a.tipo === 'externo' ? montoExterno : montoSocio), 0)
+  // "2 socios x $5.000 + 1 externo x $8.000"
+  const detalleMonto = lista => {
+    const nSoc = lista.filter(a => a.tipo !== 'externo').length
+    const nExt = lista.length - nSoc
+    if (!preciosDistintos) return lista.length + ' x ' + formatMoney(montoSocio)
+    return [
+      nSoc > 0 ? nSoc + (nSoc === 1 ? ' socio' : ' socios') + ' x ' + formatMoney(montoSocio) : '',
+      nExt > 0 ? nExt + (nExt === 1 ? ' externo' : ' externos') + ' x ' + formatMoney(montoExterno) : '',
+    ].filter(Boolean).join(' + ')
+  }
+  const montoTotal = cantAsistentes > 0 && montoDefault > 0 ? sumarMonto(listaAsistentes) : Number(monto) || 0
 
   async function registrarSimple() {
     if (!socioSimple) { mostrarAlert('error', 'Selecciona un socio activo.'); return }
@@ -343,7 +359,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
       await supabase.from('actividad_asistentes').insert(nuevos)
       // Actualizar monto si corresponde al monto_default
       if (actividad.monto_default) {
-        const nuevoMonto = asistEditando.length * actividad.monto_default
+        const nuevoMonto = sumarMonto(asistEditando)
         await supabase.from('actividad_inscripciones').update({ monto: nuevoMonto }).eq('id_inscripcion', modalEditAsist.id_inscripcion)
         if (modalEditAsist.pagado) await sincronizarPago(modalEditAsist, { monto: nuevoMonto })
       }
@@ -468,7 +484,12 @@ export default function ActividadDetalle({ actividad, onVolver }) {
         <div>
           <h2 style={{ margin: 0, fontSize: 18, color: '#1a5e3a' }}>{actividad.nombre}</h2>
           <div style={{ fontSize: 12, color: '#64748b' }}>
-            {actividad.monto_default ? `$${Number(actividad.monto_default).toLocaleString('es-CL')} por persona` : 'Actividad de pago unico'}
+            {actividad.monto_default
+              ? (preciosDistintos
+                  ? `Socios $${montoSocio.toLocaleString('es-CL')} \u00b7 Externos $${montoExterno.toLocaleString('es-CL')} por persona`
+                  : `$${Number(actividad.monto_default).toLocaleString('es-CL')} por persona`)
+              : 'Actividad de pago unico'}
+            {actividad.fecha ? ` \u00b7 ${fmtFechaDMA(actividad.fecha)}` : ''}
           </div>
         </div>
       </div>
@@ -627,7 +648,7 @@ export default function ActividadDetalle({ actividad, onVolver }) {
               style={{ background: cantAsistentes > 0 && montoDefault > 0 ? '#f0fdf4' : '#fff' }} />
             {cantAsistentes > 0 && montoDefault > 0 && (
               <span style={{ fontSize: 11, color: '#16a34a', marginTop: 3, display: 'block' }}>
-                {cantAsistentes} x {formatMoney(montoDefault)} = {formatMoney(montoTotal)}
+                {detalleMonto(listaAsistentes)} = {formatMoney(montoTotal)}
               </span>
             )}
           </div>
@@ -1021,8 +1042,8 @@ export default function ActividadDetalle({ actividad, onVolver }) {
 
             {actividad.monto_default && (
               <div style={{ background: '#f0fdf4', border: '0.5px solid #a7f3d0', borderRadius: 8, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: '#64748b' }}>Nuevo monto ({asistEditando.length} x {formatMoney(actividad.monto_default)})</span>
-                <span style={{ fontWeight: 700, color: '#16a34a' }}>{formatMoney(asistEditando.length * actividad.monto_default)}</span>
+                <span style={{ color: '#64748b' }}>Nuevo monto ({detalleMonto(asistEditando)})</span>
+                <span style={{ fontWeight: 700, color: '#16a34a' }}>{formatMoney(sumarMonto(asistEditando))}</span>
               </div>
             )}
 
