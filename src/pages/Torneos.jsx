@@ -64,6 +64,49 @@ function interpretarDatosPago(texto, bancos) {
   return { campos, ok, falta, bancoNoEncontrado: !mejor && bancoTexto ? bancoTexto : '' }
 }
 
+// -- Copiar datos de transferencia del organizador ---------------------
+// Formato:  Nombre / RUT: ... / Banco ... / Cuenta corriente: N / Mail: ...
+function textoTransferencia(t) {
+  const tipos = { 'Cuenta Corriente': 'Cuenta corriente', 'Cuenta Vista': 'Cuenta vista', 'Cuenta RUT': 'Cuenta RUT', 'Cuenta Ahorro': 'Cuenta ahorro' }
+  const lineas = []
+  if (t.organizador) lineas.push(t.organizador.trim())
+  if (t.rut_organizador) lineas.push('RUT: ' + t.rut_organizador.trim())
+  if (t.banco) lineas.push(t.banco.trim())
+  if (t.num_cuenta) {
+    const num = String(t.num_cuenta).trim()
+    // Solo digitos, listo para pegar en el banco (se quitan guiones y espacios)
+    const limpio = /^[\d\s.\-]+$/.test(num) ? num.replace(/[^\d]/g, '') : num
+    lineas.push((tipos[t.tipo_cuenta] || t.tipo_cuenta || 'Cuenta') + ': ' + limpio)
+  }
+  if (t.email_organizador) lineas.push('Mail: ' + t.email_organizador.trim())
+  return lineas.join('\n')
+}
+
+function BotonCopiarTransferencia({ torneo, style }) {
+  const [copiado, setCopiado] = useState(false)
+  const texto = textoTransferencia(torneo)
+  if (!texto) return null
+  function copiar() {
+    const ok = () => { setCopiado(true); setTimeout(() => setCopiado(false), 2000) }
+    const respaldo = () => {
+      const ta = document.createElement('textarea')
+      ta.value = texto
+      ta.style.position = 'fixed'; ta.style.opacity = '0'
+      document.body.appendChild(ta); ta.select()
+      try { document.execCommand('copy'); ok() } catch (e) { /* sin portapapeles */ }
+      document.body.removeChild(ta)
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(ok, respaldo)
+    else respaldo()
+  }
+  return (
+    <button type="button" className="btn sm" onClick={copiar} title="Copiar datos para la transferencia"
+      style={{ ...(copiado ? { color: '#16a34a', borderColor: '#a7f3d0', background: '#f0fdf4' } : {}), ...style }}>
+      <i className={'ti ' + (copiado ? 'ti-check' : 'ti-copy')}></i>{copiado ? 'Copiado' : 'Copiar datos'}
+    </button>
+  )
+}
+
 // -- Vistas ------------------------------------------------------------
 // lista -> detalle torneo -> detalle edicion
 
@@ -358,7 +401,10 @@ function DetalleTorneo({ torneo, onBack, onSelectEdicion }) {
 
       {/* Datos del organizador */}
       <div className="card">
-        <div className="card-title"><i className="ti ti-building"></i>Datos del organizador</div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:12}}>
+          <div className="card-title" style={{marginBottom:0}}><i className="ti ti-building"></i>Datos del organizador</div>
+          <BotonCopiarTransferencia torneo={torneo} />
+        </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10,fontSize:13}}>
           {[
             { label:'Organizador', val: torneo.organizador },
@@ -985,8 +1031,9 @@ function DetalleEdicion({ edicion, torneo, onBack }) {
             {/* Datos de transferencia del organizador */}
             {(torneo.organizador||torneo.rut_organizador||torneo.banco||torneo.num_cuenta) && (
               <div style={{background:'#eff6ff',border:'0.5px solid #bfdbfe',borderRadius:8,padding:'12px 14px',marginBottom:16}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#1d4ed8',textTransform:'uppercase',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
-                  <i className="ti ti-building-bank"></i>Datos para la transferencia
+                <div style={{fontSize:11,fontWeight:700,color:'#1d4ed8',textTransform:'uppercase',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}}>
+                  <span style={{display:'flex',alignItems:'center',gap:6}}><i className="ti ti-building-bank"></i>Datos para la transferencia</span>
+                  <BotonCopiarTransferencia torneo={torneo} />
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:6}}>
                   {/* Fila 1: Destinatario + RUT */}
