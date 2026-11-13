@@ -5,6 +5,65 @@ import { formatMoney, fmtFechaDMA } from '../lib/helpers'
 const TIPOS_CUENTA = ['Cuenta Corriente','Cuenta Vista','Cuenta RUT','Cuenta Ahorro']
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
+// -- Lectura de datos de pago pegados (mensaje del organizador) --------
+const normTxt = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim()
+
+function interpretarDatosPago(texto, bancos) {
+  const t = String(texto || '').replace(/\[([^\]]*)\]\(mailto:[^)]*\)/gi, '$1').replace(/mailto:/gi, '')
+  const campos = {}
+  let resto = t
+
+  // Email
+  const em = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+/.exec(t)
+  if (em) { campos.email_organizador = em[0]; resto = resto.replace(em[0], ' ') }
+
+  // RUT: primero el que sigue a la palabra "rut"; si no, un RUT suelto (no parte de un numero de cuenta)
+  const rutRe = /(?<![\d\-.])(\d{1,2}(?:\.\d{3}){2}|\d{7,8})\s*-\s*([\dkK])(?![\d\-])/
+  const rutEtiq = /r\.?u\.?t\.?\s*:?\s*(\d{1,2}(?:\.\d{3}){2}|\d{7,8})\s*-\s*([\dkK])(?![\d\-])/i.exec(t)
+  const rm = rutEtiq || rutRe.exec(t)
+  if (rm) {
+    campos.rut_organizador = rm[1].replace(/\./g, '') + '-' + rm[2].toUpperCase()
+    resto = resto.replace(rm[0], ' ')
+  }
+
+  // Organizador: "Nombre: ...", "Titular: ...", "Razon social: ..."
+  const nm = /(?:nombre|titular|raz[o\u00f3]n social|a nombre de)\s*:\s*(.+?)(?=\s+r\.?u\.?t\b|[\r\n]|$)/i.exec(t)
+  if (nm && nm[1].trim()) campos.organizador = nm[1].trim().replace(/[.,;]+$/, '')
+
+  // Tipo de cuenta
+  const nt = normTxt(t)
+  if (/cuenta corriente|cta\.? ?cte|cta\.? corriente|\bcc\b/.test(nt)) campos.tipo_cuenta = 'Cuenta Corriente'
+  else if (/cuenta vista|cta\.? vista|chequera electronica/.test(nt)) campos.tipo_cuenta = 'Cuenta Vista'
+  else if (/cuenta rut|cta\.? rut/.test(nt)) campos.tipo_cuenta = 'Cuenta RUT'
+  else if (/ahorro/.test(nt)) campos.tipo_cuenta = 'Cuenta Ahorro'
+
+  // Numero de cuenta: el numero mas largo que quede (sin RUT ni email), tal como viene escrito
+  const nums = (resto.match(/\d[\d\-]{5,}/g) || []).map(x => x.replace(/-+$/, '')).sort((a, b) => b.length - a.length)
+  if (nums[0]) campos.num_cuenta = nums[0]
+
+  // Banco: se compara con la lista de bancos configurada
+  const lineaBanco = (t.split(/\r?\n/).find(l => /banco|\bbco\b/i.test(l)) || '')
+  let bancoTexto = ''
+  const bt = /(?:banco|bco\.?)\s+([^\r\n]+)/i.exec(lineaBanco)
+  if (bt) bancoTexto = bt[1].trim()
+  const compacto = x => normTxt(x).replace(/\s/g, '')
+  let mejor = ''
+  for (const b of bancos) {
+    const nb = compacto(b)
+    const core = compacto(b.replace(/^banco\s+(de\s+)?/i, ''))
+    const enLinea = compacto(lineaBanco)
+    const enTodo = compacto(t)
+    const coincide = (nb && (enLinea.includes(nb) || enTodo.includes(nb))) || (core.length >= 3 && enLinea.includes(core))
+    if (coincide && b.length > mejor.length) mejor = b
+  }
+  if (mejor) campos.banco = mejor
+
+  const etiquetas = { organizador: 'Organizador', rut_organizador: 'RUT', banco: 'Banco', tipo_cuenta: 'Tipo de cuenta', num_cuenta: 'N de cuenta', email_organizador: 'Email' }
+  const ok = Object.keys(etiquetas).filter(k => campos[k]).map(k => etiquetas[k])
+  const falta = Object.keys(etiquetas).filter(k => !campos[k]).map(k => etiquetas[k])
+  return { campos, ok, falta, bancoNoEncontrado: !mejor && bancoTexto ? bancoTexto : '' }
+}
+
 // -- Vistas ------------------------------------------------------------
 // lista -> detalle torneo -> detalle edicion
 
@@ -64,6 +123,14 @@ function ListaTorneos({ torneos, loading, onSelect, onRefresh }) {
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState(null)
   const [bancos, setBancos] = useState([])
+  const [pegado, setPegado] = useState('')
+  const [resumenPegado, setResumenPegado] = useState(null)
+
+  function aplicarPegado(texto) {
+    const r = interpretarDatosPago(texto, bancos)
+    setForm(f => ({ ...f, ...r.campos }))
+    setResumenPegado(r)
+  }
 
   useEffect(() => {
     supabase.from('bancos').select('nombre').eq('activo', true).order('orden').order('nombre')
@@ -72,6 +139,7 @@ function ListaTorneos({ torneos, loading, onSelect, onRefresh }) {
 
   function abrirNuevo() {
     setEditando(null)
+    setPegado(''); setResumenPegado(null)
     setForm({ nombre:'', organizador:'', rut_organizador:'', banco:'', tipo_cuenta:'', num_cuenta:'', email_organizador:'', activo:true })
     setModal(true)
   }
@@ -79,6 +147,7 @@ function ListaTorneos({ torneos, loading, onSelect, onRefresh }) {
   function abrirEditar(t, e) {
     e.stopPropagation()
     setEditando(t)
+    setPegado(''); setResumenPegado(null)
     setForm({ nombre:t.nombre, organizador:t.organizador||'', rut_organizador:t.rut_organizador||'', banco:t.banco||'', tipo_cuenta:t.tipo_cuenta||'', num_cuenta:t.num_cuenta||'', email_organizador:t.email_organizador||'', activo:t.activo })
     setModal(true)
   }
@@ -152,6 +221,30 @@ function ListaTorneos({ torneos, loading, onSelect, onRefresh }) {
               <h2>{editando?'Editar torneo':'Nuevo torneo'}</h2>
               <button className="modal-close" onClick={cerrar}>&times;</button>
             </div>
+
+            {/* Pegar el mensaje del organizador con los datos de transferencia */}
+            <div style={{background:'#f0fdf4',border:'0.5px solid #a7f3d0',borderRadius:10,padding:12,marginBottom:14}}>
+              <label style={{fontSize:12,fontWeight:600,color:'#1a5e3a',display:'block',marginBottom:6}}>
+                <i className="ti ti-clipboard-text" style={{marginRight:4}}></i>Pegar datos de pago (opcional)
+              </label>
+              <textarea rows={3} value={pegado} onChange={e=>setPegado(e.target.value)}
+                onPaste={e=>{ const txt = e.clipboardData.getData('text'); setTimeout(()=>aplicarPegado(txt), 0) }}
+                placeholder="Pega aqui el mensaje del organizador con los datos de transferencia y se completaran los campos de abajo."
+                style={{width:'100%',boxSizing:'border-box',fontFamily:'inherit',fontSize:13,padding:8,border:'0.5px solid #e2e8f0',borderRadius:8,resize:'vertical'}} />
+              <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginTop:6}}>
+                <button type="button" className="btn sm" onClick={()=>aplicarPegado(pegado)} disabled={!pegado.trim()}>
+                  <i className="ti ti-wand"></i>Completar campos
+                </button>
+                {resumenPegado && (
+                  <span style={{fontSize:12,lineHeight:1.5}}>
+                    {resumenPegado.ok.length > 0 && <span style={{color:'#16a34a',fontWeight:600}}>Completado: {resumenPegado.ok.join(', ')}. </span>}
+                    {resumenPegado.falta.length > 0 && <span style={{color:'#d97706',fontWeight:600}}>Revisar: {resumenPegado.falta.join(', ')}. </span>}
+                    {resumenPegado.bancoNoEncontrado && <span style={{color:'#d97706'}}>Banco "{resumenPegado.bancoNoEncontrado}" no esta en la lista; agregalo en Actividades &gt; Bancos o elige uno.</span>}
+                  </span>
+                )}
+              </div>
+            </div>
+
             <div className="form-grid">
               <div className="form-group full"><label>Nombre del torneo *</label><input value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))} placeholder="Ej: Torneo La Pintana"/></div>
               <div className="form-group"><label>Organizador</label><input value={form.organizador} onChange={e=>setForm(f=>({...f,organizador:e.target.value}))}/></div>
