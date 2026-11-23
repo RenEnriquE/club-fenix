@@ -4,6 +4,27 @@ const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u030
 
 const nombreCompleto = p => [p.nombre, p.seg_nombre, p.apellido, p.ap_mat].filter(x => x && String(x).trim()).join(' ')
 
+// Distancia de edicion (cuantas letras hay que cambiar para pasar de a a b)
+function distancia(a, b) {
+  if (a === b) return 0
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    }
+    prev = cur
+  }
+  return prev[b.length]
+}
+
+// Palabras casi iguales: 1 letra de diferencia desde 4 letras, 2 desde 8 letras
+function similares(a, b) {
+  if (a.length < 4 || b.length < 4) return false
+  if (Math.abs(a.length - b.length) > 2) return false
+  return distancia(a, b) <= (Math.min(a.length, b.length) >= 8 ? 2 : 1)
+}
+
 export default function VerificarNombres({ personas = [] }) {
   const [abierto, setAbierto] = useState(false)
   const [texto, setTexto] = useState('')
@@ -28,9 +49,17 @@ export default function VerificarNombres({ personas = [] }) {
       const exactos = []
       const parecidos = []
       indice.forEach(x => {
-        const hits = tokens.filter(t => x.palabras.includes(t)).length
-        if (tokens.length >= 2 && hits === tokens.length) exactos.push(x.p)
-        else if (tokens.length >= 3 && hits / tokens.length >= 0.75) parecidos.push({ p: x.p, hits })
+        let exacto = 0
+        let parecido = 0
+        tokens.forEach(t => {
+          if (x.palabras.includes(t)) exacto++
+          else if (x.palabras.some(w => similares(t, w))) parecido++
+        })
+        const total = exacto + parecido
+        if (tokens.length >= 2 && exacto === tokens.length) exactos.push(x.p)
+        // Con errores de tipeo (ej: Emanuel / Emmanuel) o falta una palabra: "posible"
+        else if (tokens.length >= 2 && total === tokens.length && exacto >= 1) parecidos.push({ p: x.p, hits: exacto * 2 + parecido })
+        else if (tokens.length >= 3 && total / tokens.length >= 0.75 && exacto >= 2) parecidos.push({ p: x.p, hits: exacto * 2 + parecido })
       })
       if (exactos.length > 0) {
         res.push({ linea, estado: 'socio', cand: exactos.sort((a, b) => (b.vigente === 1) - (a.vigente === 1)) })
@@ -130,7 +159,7 @@ export default function VerificarNombres({ personas = [] }) {
                 </div>
               )}
               <p style={{ fontSize: 11, color: 'var(--text-3)', margin: '10px 0 0' }}>
-                "Socio" = todas las palabras del nombre aparecen en el registro. "Posible" = coinciden casi todas (por ejemplo falta un nombre o hay una tilde distinta); conviene revisarlo a mano. Los hermanos con los mismos apellidos no se cuentan como coincidencia.
+                "Socio" = todas las palabras del nombre aparecen en el registro. "Posible" = coinciden casi todas las palabras (por ejemplo, un nombre mal escrito como Emanuel/Emmanuel o que falta un nombre); conviene revisarlo a mano. Los hermanos con los mismos apellidos no se cuentan como coincidencia.
               </p>
             </>
           )}
